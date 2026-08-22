@@ -1,0 +1,103 @@
+﻿# Kronos 股票交易助手
+
+基于 [Kronos 金融 K 线基础大模型](https://github.com/shiyu-coder/Kronos)（AAAI 2026，45+ 全球交易所数据训练）的本地股票分析 + 模拟交易工作台。
+
+> **免责声明**：本项目仅供学习研究，所有预测/信号/荐股均由统计模型生成，不构成任何投资建议。模拟交易为虚拟资金。
+
+---
+
+## 功能全景
+
+| 模块 | 能力 |
+|---|---|
+| 外围市场 | 美股三大指数 / 恒指 / 国企指数 / 日经225 / KOSPI 实时，顶部常驻条 |
+| 赛道分组 | 自选股按 AI/新能源/消费/周期分组，每组显示热度（均涨/涨跌家数/领涨股） |
+| 行情与指标 | 日线 + 1/5/15/30/60 分钟线，MA/MACD/RSI/KDJ/BOLL 叠加 |
+| Kronos 预测 | 未来 30/60/120 根预测 + 置信误差带 + 历史准确率提示 |
+| 买卖点 | 操作建议/买入区间/目标价/止损价 + 接近买点/止损/目标提前预警（可推微信） |
+| 自动荐股 | 全 A 股涨幅榜扫描，四维打分排行榜（动量/技术/基本面/Kronos），一键加自选 |
+| 预测准确率 | 滚动样本外验证：MAE/RMSE/MAPE/方向准确率 |
+| 基本面 | 公司概况/估值(PE/PB)/财务摘要/公司公告 |
+| 模拟交易 | 多账户、A股规则（整手/佣金/印花税）、快速下单、一键跟投（含风控） |
+| 自动接管 | 规则引擎自动买卖（涨幅/量比/信号触发），执行日志 |
+| 提醒中心 | 买卖点触发/异动监控/微信推送（Server酱/PushPlus） |
+| 每日要闻 | 每日 5 条重要财经新闻 |
+| 盘前速览 | 外围+赛道+异动+荐股+要闻 五大板块聚合主页 |
+
+## 快速开始
+
+### 环境要求
+- Windows 10/11，Python 3.12
+- NVIDIA GPU + CUDA（可选，无 GPU 自动 CPU）
+- 可访问腾讯行情 / 新浪财经 / 东财数据中心（国内网络）
+
+### 安装
+
+```bash
+# 1. 克隆本仓库
+git clone <仓库地址>
+cd kronos-trading-app
+
+# 2. 创建虚拟环境并安装依赖
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt -r trading-app\requirements.txt
+
+# 3. 下载 Kronos 模型权重（官方 HuggingFace，约 400MB）
+#    把 Kronos-base 和 Kronos-Tokenizer-base 放到 models/ 目录
+
+# 4. 启动
+双击 启动交易APP.bat   # 或: cd trading-app && python app.py
+```
+
+浏览器打开 http://localhost:7071
+
+## 自动化测试
+
+```bash
+cd trading-app
+python tests/regression.py          # 核心 API 回归（50 项）
+python tests/edge_cases.py          # 边界情况（20 项）
+python tests/data_correctness.py    # 数据数学核验（16 项）
+python tests/performance.py         # 性能/缓存/并发（15 项）
+python tests/security.py            # 安全健壮性（18 项）
+python tests/stability.py           # 稳定性长跑（11 项）
+```
+
+## 项目结构
+
+```
+kronos-trading-app/
+├── model/                  # Kronos 模型源码（官方）
+├── trading-app/
+│   ├── app.py              # Flask 后端（40+ API）
+│   ├── market.py           # 行情（腾讯/新浪，绕代理）
+│   ├── kronos_service.py   # Kronos 预测服务（多模型支持）
+│   ├── recommend.py        # 全市场荐股 + 每日要闻
+│   ├── fundamentals.py     # 基本面分析
+│   ├── buysell.py          # 买卖点引擎
+│   ├── alerts.py           # 提醒/预警引擎
+│   ├── auto_trade.py       # 自动接管引擎
+│   ├── account.py          # 多账户模拟交易
+│   ├── backtest.py         # 策略回测
+│   ├── tests/              # 自动化测试套件（130 项）
+│   └── templates/          # 前端界面
+├── 启动交易APP.bat         # 一键启动
+└── 运行测试.bat            # 一键跑全部测试
+```
+
+## 相关资源
+
+- Kronos 官方仓库：https://github.com/shiyu-coder/Kronos
+- Kronos 论文：https://arxiv.org/abs/2508.02739
+- 模型权重：https://huggingface.co/NeoQuasar
+
+## License
+
+MIT（Kronos 模型部分遵循其原仓库 License，见 Kronos-README.md）
+
+## 重要提醒
+
+1. 预测可靠性：Kronos 是统计模型，方向准确率有限（自检约 50%），数值预测偏乐观，请勿据此实盘操作。
+2. 数据源：腾讯/新浪/东财公开接口，非券商级数据，有缓存。
+3. 不接实盘：本项目的模拟交易/自动接管均为虚拟资金，不涉及真实交易。

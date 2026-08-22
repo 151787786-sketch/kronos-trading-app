@@ -1,0 +1,108 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Data files (large files)
+*.feather
+*.parquet
+*.h5
+*.hdf5
+
+# Model files (large files)
+*.pth
+*.pt
+*.ckpt
+*.bin
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+.python-version
+
+# ---- 本地部署补充（Kronos Trading App 专用）----
+# 模型权重体积大（Kronos-base ~400MB），不纳入版本库，按官方 HuggingFace 获取
+models/
+.hf/
+
+# 行情缓存 / 本地数据
+trading-app/data/
+data/
+
+# 本地数据库与敏感配置（账户/持仓/微信 token）
+trading-app/trade.db
+trading-app/notify_config.json
+trading-app/model_state.json
+*.db
+*.db-journal
+
+# 部署日志与恢复文件
+debug.log
+clone.log
+install-recovery-state*.json
+
+# 测试/临时目录
+_tmp/
+_scratch/
+.pip-cache/
+.pnpm-store/
+
+# 生成的预测图（截图类，不入库）
+*.png
+!trading-app/**/*.png
+!examples/yuce/*.png
