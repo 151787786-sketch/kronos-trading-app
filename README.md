@@ -1,12 +1,29 @@
 # Kronos 股票交易助手
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Kronos-AAAI_2026-9cf" alt="Kronos"/>
+  <img src="https://img.shields.io/badge/Python-3.12-blue" alt="Python"/>
+  <img src="https://img.shields.io/badge/Flask-3.x-green" alt="Flask"/>
+  <img src="https://img.shields.io/badge/Torch-2.x-orange" alt="PyTorch"/>
+  <img src="https://img.shields.io/badge/Tests-130_passed-brightgreen" alt="Tests"/>
+  <img src="https://img.shields.io/badge/License-MIT-yellow" alt="License"/>
+</p>
+
 基于 [Kronos 金融 K 线基础大模型](https://github.com/shiyu-coder/Kronos)（AAAI 2026，45+ 全球交易所数据训练）的本地股票分析 + 模拟交易工作台。
 
 > **免责声明**：本项目仅供学习研究，所有预测/信号/荐股均由统计模型生成，不构成任何投资建议。模拟交易为虚拟资金。
 
+## 📸 界面预览
+
+> 截图示例（后续可替换为真实运行截图）：
+> - **盘前速览**：外围市场 / 赛道热度 / 自选异动 / 荐股 Top5 / 每日要闻 聚合页
+> - **K线+预测**：多周期蜡烛图 + 指标叠加 + Kronos 预测（含误差带）
+> - **自动荐股**：全市场排行榜（评分/量比/涨跌幅）
+> - **模拟交易**：多账户 / 持仓 / 委托 / 自动接管规则
+
 ---
 
-## 功能全景
+## ✨ 功能全景
 
 | 模块 | 能力 |
 |---|---|
@@ -146,7 +163,27 @@ kronos-trading-app/
 - Kronos 论文：https://arxiv.org/abs/2508.02739
 - 模型权重：https://huggingface.co/NeoQuasar
 
-## License
+## ❓ 常见问题
+
+**Q：没有 GPU 能跑吗？**
+能。程序自动检测，无 CUDA 时用 CPU 推理（预测会慢些，功能一致）。
+
+**Q：模型权重在哪里下载？**
+本项目不包含权重（约 400MB）。运行前从 HuggingFace 下载 `Kronos-base` 和 `Kronos-Tokenizer-base` 放到 `models/` 目录；国内网络可设 `HF_ENDPOINT=https://hf-mirror.com` 走镜像。
+
+**Q：数据是哪里的？**
+腾讯行情（K线/报价/量比）+ 新浪财经（涨幅榜/要闻）+ 东财数据中心（财务/公告），均为免费公开接口，本地缓存。非券商级数据，有延迟。
+
+**Q：微信推送怎么配？**
+提醒中心填 Server酱 SendKey 或 PushPlus token 即可，两者都免费、微信扫码获取。
+
+**Q：自动接管会真实下单吗？**
+不会。所有交易都在模拟账户（虚拟资金）中执行，不接任何券商实盘。
+
+**Q：为什么预测准确率不高？**
+Kronos 是统计模型，方向准确率约 50%（模型自检），数值预测偏乐观——项目内置"预测准确率"tab 展示真实误差，请理性看待预测。
+
+## 📄 License
 
 MIT（Kronos 模型部分遵循其原仓库 License，见 Kronos-README.md）
 
