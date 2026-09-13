@@ -29,6 +29,7 @@ import kronos_service
 import market
 import notify
 import recommend
+import requirements_map
 import research_report
 from agents import ROLES as AGENT_ROLES
 from agents import llm as llm_adapter
@@ -39,6 +40,9 @@ sys.path.insert(0, ROOT)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # reject bodies > 1 MB
+# 模板改动立即生效（debug=False 时 Jinja 默认会缓存模板，改了 index.html 不重启看不到）
+app.config["TEMPLATES_AUTO_RELOAD"] = True
+app.jinja_env.auto_reload = True
 
 # ---- helpers ----------------------------------------------------------------
 
@@ -686,6 +690,12 @@ def api_research_agents():
         "llm": {"available": llm_adapter.is_available(),
                 "engine": "llm" if llm_adapter.is_available() else "rule"},
     })
+
+
+@app.route("/api/research/requirements")
+def api_research_requirements():
+    """需求清单逐条对照表（需求原文 → 实现位置 → 网页可见位置 → 状态）。"""
+    return jsonify(requirements_map.all_requirements())
 
 
 @app.route("/api/research/meeting", methods=["POST"])

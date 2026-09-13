@@ -190,6 +190,14 @@ tr:hover { background: var(--panel2); }
                     🏛️ 9 位数字员工将围绕标的开展 <b>4 轮圆桌会议</b>：独立闭门 → 圆桌辩论 → 交叉互评（幻觉排查）→ 共识裁决。
                     结论含假设/置信度/分歧点，并与 Kronos 预测交叉校验。仅供研究参考，不构成投资建议。
                 </div>
+                <!-- 需求实现对照表 -->
+                <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                    <h2>📋 需求实现对照 <span class="hint" id="rq-sum">加载中...</span>
+                        <button class="ghost" style="padding:2px 8px;font-size:11px" onclick="var b=document.getElementById('rq-body');b.style.display=b.style.display==='none'?'block':'none'">展开 / 收起</button>
+                    </h2>
+                    <div id="rq-body" style="display:none"></div>
+                </div>
+
                 <div class="form-row">
                     <div class="field"><label>标的（逗号分隔，最多 20 只；留空=用自选股）</label>
                         <input type="text" id="rs-symbols" placeholder="如 600585,002202">
@@ -1572,6 +1580,12 @@ async function loadAutoLogs() {
 }
 
 // ---------- tabs ----------
+function activateTab(tabId) {
+    const btn = [...document.querySelectorAll('.tabs button')].find(b => b.dataset.tab === tabId);
+    if (!btn) return false;
+    btn.click();
+    return true;
+}
 document.querySelectorAll('.tabs button').forEach(btn=>{
     btn.addEventListener('click', ()=>{
         document.querySelectorAll('.tabs button').forEach(b=>b.classList.remove('active'));
@@ -1588,7 +1602,7 @@ document.querySelectorAll('.tabs button').forEach(btn=>{
         if (btn.dataset.tab==='tab-auto') { loadAutoRules(); loadAutoLogs(); }
         if (btn.dataset.tab==='tab-recommend') { loadRecommend(); loadDailyNews(); }
         if (btn.dataset.tab==='tab-overview') loadOverview();
-        if (btn.dataset.tab==='tab-research') loadSessions();
+        if (btn.dataset.tab==='tab-research') { loadSessions(); loadRequirements(); }
     });
 });
 
@@ -1602,6 +1616,24 @@ setInterval(loadGlobalMarkets, 60000);
 setInterval(loadAccount, 15000);
 setInterval(()=>{ if(currentSymbol) loadRealtime(); }, 15000);
 loadModelStatus();
+
+// ---------- 深链接：?tab=research&req=1 或 #tab=research&req=1 ----------
+function applyHash() {
+    let raw = (location.search || '').replace(/^\?/, '');
+    if (!raw) raw = (location.hash || '').replace(/^#/, '');
+    if (!raw) return;
+    const p = new URLSearchParams(raw);
+    const tab = p.get('tab');
+    if (!tab) return;
+    const id = tab.startsWith('tab-') ? tab : 'tab-' + tab;
+    if (activateTab(id)) {
+        if (p.get('req') === '1') {
+            const b = document.getElementById('rq-body');
+            if (b) b.style.display = 'block';
+        }
+    }
+}
+applyHash();
 
 // ---------- recommend modal ----------
 function openRecModal(rec) {
@@ -1905,6 +1937,35 @@ async function loadSessions() {
             <td><button class="ghost" style="padding:2px 8px;font-size:11px" onclick="viewSession(${s.id})">审计回溯</button></td>
         </tr>`).join('')}</tbody></table>`;
     } catch(e) {}
+}
+
+// ---------- 需求实现对照表 ----------
+var reqCache = null;
+async function loadRequirements() {
+    const box = document.getElementById('rq-body');
+    const sum = document.getElementById('rq-sum');
+    try {
+        if (!reqCache) reqCache = await api('/api/research/requirements');
+        const r = reqCache;
+        if (r.error) { sum.textContent = r.error; return; }
+        const s = r.summary;
+        sum.innerHTML = `共 ${s.total} 项 · <span style="color:var(--green)">✅ 已完成 ${s.done}</span> · <span style="color:var(--amber)">⚠️ 部分 ${s.partial}</span> · <span style="color:var(--red)">❌ 未做 ${s.todo}</span> · 完成率 ${s.done_pct}%`;
+        const badge = st => st === 'done'
+            ? '<span style="color:var(--green);font-weight:600">✅ 已完成</span>'
+            : st === 'partial'
+                ? '<span style="color:var(--amber);font-weight:600">⚠️ 部分实现</span>'
+                : '<span style="color:var(--red);font-weight:600">❌ 未实现</span>';
+        box.innerHTML = r.modules.map(m => `
+            <div style="margin:12px 0 6px;font-weight:700;color:var(--blue);border-left:3px solid var(--blue);padding-left:8px">${m.module}</div>
+            <table><thead><tr><th style="width:34%">需求原文</th><th style="width:22%">实现位置（代码）</th><th style="width:24%">网页可见位置</th><th style="width:8%">状态</th></tr></thead><tbody>
+            ${m.items.map(it => `<tr>
+                <td>${it.req}</td>
+                <td style="font-size:11px;color:var(--muted)">${it.where}</td>
+                <td style="font-size:12px">${it.ui}${it.gap ? `<div style="color:var(--amber);margin-top:4px">缺：${it.gap}</div>` : ''}</td>
+                <td>${badge(it.status)}</td>
+            </tr>`).join('')}
+            </tbody></table>`).join('');
+    } catch (e) { sum.textContent = '加载失败：' + e.message; }
 }
 
 async function viewSession(sid) {
