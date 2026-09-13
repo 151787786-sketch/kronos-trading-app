@@ -184,6 +184,33 @@ check("状态取值合法",
 check("每条都有网页可见位置", all(it.get("ui") for m in rq["modules"] for it in m["items"] if it["status"] != "todo"))
 check("完成率与计数一致", abs(s["done_pct"] - round(s["done"] / s["total"] * 100, 1)) < 0.11)
 
+print("\n=== 9. 涨跌配色（A股红涨绿跌） ===")
+import re as _re
+try:
+    with urllib.request.urlopen(urllib.request.Request(BASE + "/"), timeout=30) as resp:
+        page = resp.read().decode("utf-8", "replace")
+    st = resp.status
+except Exception as e:
+    page, st = "", -1
+check("首页 200", st == 200 and len(page) > 10000, f"len={len(page)}")
+
+check("默认配色方案为 A股(cn)", 'data-scheme="cn"' in page or "applyScheme('cn')" in page)
+check("定义 --up / --down 变量", "--up:" in page and "--down:" in page)
+check("默认 --up 为红色", bool(_re.search(r"--up:\s*#ef4444", page)), "期望上涨=红")
+check("默认 --down 为绿色", bool(_re.search(r"--down:\s*#22c55e", page)), "期望下跌=绿")
+check(".pos 使用 --up", bool(_re.search(r"\.pos\s*\{\s*color:\s*var\(--up\)", page)))
+check(".neg 使用 --down", bool(_re.search(r"\.neg\s*\{\s*color:\s*var\(--down\)", page)))
+check("提供欧美配色覆盖块", 'html[data-scheme="western"]' in page)
+check("欧美覆盖块里 --up 是绿色",
+      bool(_re.search(r'data-scheme="western"\]\s*\{[^}]*--up:\s*#22c55e', page, _re.S)))
+check("顶栏有配色切换按钮", 'id="scheme-toggle"' in page)
+check("方向类颜色不再硬编码 green/red",
+      "o.side==='BUY'?'var(--up)':'var(--down)'" in page)
+check("语义色 tone-good/tone-bad 独立存在", ".tone-good" in page and ".tone-bad" in page)
+check("K线涨跌色跟随配色", "schemeColor('up')" in page and "schemeColor('down')" in page)
+check("宏观卡片用语义色而非涨跌色", "c.tone==='good'?'tone-good'" in page)
+check("风险等级用语义色而非涨跌色", "i.level==='高'?'tone-bad'" in page)
+
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")
 if FAILURES:

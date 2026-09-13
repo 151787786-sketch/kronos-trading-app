@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<!-- data-scheme: cn = A股习惯（红涨绿跌，默认）；western = 欧美习惯（绿涨红跌）。
+     写在静态 HTML 上可避免首屏闪一下错误配色，JS 启动后再按 localStorage 覆盖。 -->
+<html lang="zh-CN" data-scheme="cn">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,8 +10,18 @@
 <style>
 :root {
     --bg: #0f1115; --panel: #1a1d24; --panel2: #22262f; --border: #2e3440;
-    --text: #d8dee9; --muted: #8a93a5; --green: #22c55e; --red: #ef4444;
+    --text: #d8dee9; --muted: #8a93a5;
+    /* 语义色：green/red 用于「成功/失败、通过/风险」等非涨跌含义，不随配色方案切换 */
+    --green: #22c55e; --red: #ef4444;
     --blue: #3b82f6; --amber: #f59e0b;
+    /* 涨跌色：默认 A 股习惯 —— 红涨绿跌 */
+    --up: #ef4444; --up-bg: rgba(239,68,68,.15); --up-bg-strong: rgba(239,68,68,.18);
+    --down: #22c55e; --down-bg: rgba(34,197,94,.15); --down-bg-strong: rgba(34,197,94,.18);
+}
+/* 欧美习惯：绿涨红跌（可在顶栏切换） */
+html[data-scheme="western"] {
+    --up: #22c55e; --up-bg: rgba(34,197,94,.15); --up-bg-strong: rgba(34,197,94,.18);
+    --down: #ef4444; --down-bg: rgba(239,68,68,.15); --down-bg-strong: rgba(239,68,68,.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 14px; }
@@ -40,7 +52,10 @@ th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--bor
 th { color: var(--muted); font-weight: normal; font-size: 12px; }
 td:first-child, th:first-child { text-align: left; }
 tr:hover { background: var(--panel2); }
-.pos { color: var(--green); } .neg { color: var(--red); }
+/* 涨跌配色：.pos = 上涨 / .neg = 下跌（颜色由 --up/--down 决定，随红涨绿跌设置切换） */
+.pos { color: var(--up); } .neg { color: var(--down); }
+/* 语义配色：与涨跌无关的判断（好坏、通过/失败、风险高低）固定用 green/red */
+.tone-good { color: var(--green); } .tone-bad { color: var(--red); }
 .watch-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border); cursor: pointer; }
 .watch-item:hover { background: var(--panel2); }
 .watch-item .code { color: var(--muted); font-size: 12px; }
@@ -49,17 +64,17 @@ tr:hover { background: var(--panel2); }
 .watch-item:hover .watch-del { opacity: 1; }
 .watch-del:hover { color: var(--red); }
 .wl-flag { display:inline-block; font-size:10px; padding:0 5px; border-radius:3px; margin-left:3px; }
-.wl-flag.pos { background:rgba(34,197,94,.18); color:var(--green); }
-.wl-flag.neg { background:rgba(239,68,68,.18); color:var(--red); }
-.follow-btn { display:inline-block; font-size:11px; padding:2px 7px; border-radius:4px; background:rgba(34,197,94,.15); color:var(--green); cursor:pointer; margin-left:4px; }
-.follow-btn:hover { background:rgba(34,197,94,.3); }
+.wl-flag.pos { background:var(--up-bg-strong); color:var(--up); }
+.wl-flag.neg { background:var(--down-bg-strong); color:var(--down); }
+.follow-btn { display:inline-block; font-size:11px; padding:2px 7px; border-radius:4px; background:var(--up-bg); color:var(--up); cursor:pointer; margin-left:4px; }
+.follow-btn:hover { background:var(--up-bg-strong); }
 .rec-card { background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:border-color .15s; }
 .rec-card:hover { border-color:var(--blue); }
 .rec-rank { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; border-radius:50%; background:var(--panel2); border:1px solid var(--border); font-size:12px; font-weight:bold; }
 .rec-rank.top { background:rgba(245,158,11,.2); border-color:var(--amber); color:var(--amber); }
 .signal-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
-.signal-BUY { background: rgba(34,197,94,.15); color: var(--green); }
-.signal-SELL { background: rgba(239,68,68,.15); color: var(--red); }
+.signal-BUY { background: var(--up-bg); color: var(--up); }
+.signal-SELL { background: var(--down-bg); color: var(--down); }
 .signal-HOLD { background: rgba(138,147,165,.15); color: var(--muted); }
 .chart-box { height: 420px; }
 .chart-box.small { height: 200px; }
@@ -91,6 +106,8 @@ tr:hover { background: var(--panel2); }
     <div class="badge" id="model-badge">模型未加载</div>
     <div class="badge" id="device-badge">设备: -</div>
     <div class="badge" id="cache-badge">缓存 -</div>
+    <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
+            title="切换涨跌配色：A股习惯红涨绿跌 / 欧美习惯绿涨红跌">🔴涨🟢跌（A股）</button>
     <div style="flex:1"></div>
     <label style="color:var(--muted);font-size:12px">模型</label>
     <select id="model-select-top" style="width:180px" onchange="loadModelFromTop()">
@@ -709,9 +726,40 @@ tr:hover { background: var(--panel2); }
 </div>
 
 <script>
+// ---------- 涨跌配色方案（A股：红涨绿跌 / 欧美：绿涨红跌）----------
+function schemeColor(kind) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue('--' + kind).trim();
+    return v || (kind === 'up' ? '#ef4444' : '#22c55e');
+}
+function applyScheme(name) {
+    // name: 'cn'（红涨绿跌）| 'western'（绿涨红跌）
+    document.documentElement.setAttribute('data-scheme', name === 'western' ? 'western' : 'cn');
+    try { localStorage.setItem('kronos_color_scheme', name); } catch (e) {}
+    const btn = document.getElementById('scheme-toggle');
+    if (btn) {
+        btn.textContent = name === 'western' ? '🟢涨🔴跌（欧美）' : '🔴涨🟢跌（A股）';
+        const u = schemeColor('up'), d = schemeColor('down');
+        btn.title = `当前配色：上涨 ${u} / 下跌 ${d}。点一下切换（A股习惯：红涨绿跌；欧美习惯：绿涨红跌）`;
+    }
+    try {
+        if (typeof currentSymbol !== 'undefined' && currentSymbol) loadChart();
+    } catch (e) {}
+}
+function toggleScheme() {
+    const cur = document.documentElement.getAttribute('data-scheme') === 'western' ? 'western' : 'cn';
+    applyScheme(cur === 'western' ? 'cn' : 'western');
+}
+
 let currentSymbol = null;
 let lastRecLLM = {};
 let currentQuote = null;
+
+// 初始化配色（必须在 currentSymbol 声明之后调用，避免 TDZ）
+(function initScheme() {
+    let saved = 'cn';
+    try { saved = localStorage.getItem('kronos_color_scheme') || 'cn'; } catch (e) {}
+    applyScheme(saved);
+})();
 let tradeMode = '';
 
 function fmt(n, d=2) { return (n===null||n===undefined) ? '-' : Number(n).toLocaleString('zh-CN', {minimumFractionDigits:d, maximumFractionDigits:d}); }
@@ -886,7 +934,7 @@ async function loadAccount() {
     else {
         otb.innerHTML = ord.orders.slice(0,8).map(o=>`
             <tr><td>${new Date(o.ts*1000).toLocaleString('zh-CN')}</td><td>${o.name||o.symbol}</td>
-            <td style="color:${o.side==='BUY'?'var(--green)':'var(--red)'}">${o.side==='BUY'?'买入':'卖出'}</td>
+            <td style="color:${o.side==='BUY'?'var(--up)':'var(--down)'}">${o.side==='BUY'?'买入':'卖出'}</td>
             <td>${fmt(o.price)}</td><td>${fmt(o.shares,0)}</td></tr>`).join('');
     }
     document.getElementById('t-cash').textContent = fmt(r.cash);
@@ -986,7 +1034,7 @@ function drawChart(k, indicator, predLen, seq) {
     const x = bars.map(b=>b.timestamps);
     const o = bars.map(b=>b.open), h = bars.map(b=>b.high), l = bars.map(b=>b.low), c = bars.map(b=>b.close), v = bars.map(b=>b.volume);
 
-    const inc = { color: '#ef4444' }, dec = { color: '#22c55e' };
+    const inc = { color: schemeColor('up') }, dec = { color: schemeColor('down') };
     const candle = { x:x, open:o, high:h, low:l, close:c, type:'candlestick', name:'K线',
         increasing:inc, decreasing:dec, yaxis:'y' };
 
@@ -1186,7 +1234,7 @@ async function loadOrdersFull() {
     if (!r.orders.length) { tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--muted)">暂无记录</td></tr>'; return; }
     tb.innerHTML = r.orders.map(o=>`
         <tr><td>${new Date(o.ts*1000).toLocaleString('zh-CN')}</td><td>${o.name||o.symbol}</td>
-        <td style="color:${o.side==='BUY'?'var(--green)':'var(--red)'}">${o.side==='BUY'?'买入':'卖出'}</td>
+        <td style="color:${o.side==='BUY'?'var(--up)':'var(--down)'}">${o.side==='BUY'?'买入':'卖出'}</td>
         <td>${fmt(o.price)}</td><td>${fmt(o.shares,0)}</td><td>${fmt(o.amount)}</td><td>${fmt(o.fee)}</td></tr>`).join('');
 }
 
@@ -1328,7 +1376,7 @@ async function runCompareForecast() {
         // bar chart of predicted change %
         const names = r.results.map(x=>`${x.name}`);
         const pcts = r.results.map(x=>x.change_pct);
-        const colors = pcts.map(p=>p>=0?'#22c55e':'#ef4444');
+        const colors = pcts.map(p=>p>=0?schemeColor('up'):schemeColor('down'));
         Plotly.react('cpf-bar', [{x:names, y:pcts, type:'bar', marker:{color:colors}, text:pcts.map(p=>(p>0?'+':'')+p+'%'), textposition:'outside'}],
             {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'}, margin:{l:50,r:20,t:30,b:50},
              height:260, yaxis:{title:'预测涨跌幅 %', gridcolor:'#2e3440'}});
@@ -1418,8 +1466,8 @@ async function loadEvents() {
     tb.innerHTML = r.events.map(e=>{
         const typeMap = {entry:'进入买入区', stop:'触及止损', target:'达到目标', surge:'大幅拉升', volume:'放量异动',
             near_buy:'⚠️接近买点', near_sell:'⚠️接近卖点', near_stop:'⚠️接近止损', near_target:'⚠️接近目标'};
-        const colorMap = {entry:'var(--green)', stop:'var(--red)', target:'var(--amber)', surge:'var(--green)', volume:'var(--blue)',
-            near_buy:'var(--amber)', near_sell:'var(--amber)', near_stop:'var(--red)', near_target:'var(--green)'};
+        const colorMap = {entry:'var(--up)', stop:'var(--down)', target:'var(--amber)', surge:'var(--up)', volume:'var(--blue)',
+            near_buy:'var(--amber)', near_sell:'var(--amber)', near_stop:'var(--down)', near_target:'var(--up)'};
         return `<tr><td>${new Date(e.ts*1000).toLocaleString('zh-CN')}</td><td>${e.name||e.symbol}</td>
         <td style="color:${colorMap[e.event_type]||'var(--muted)'}">${typeMap[e.event_type]||e.event_type}</td>
         <td>${fmt(e.price)}</td><td style="text-align:left">${e.message}</td></tr>`;
@@ -1577,7 +1625,7 @@ async function loadAutoRules() {
         <tr>
             <td>${rule.name||rule.symbol}<div class="code">${rule.symbol}</div></td>
             <td>${TRIGGER_LABELS[rule.trigger_type]||rule.trigger_type} ${rule.trigger_value}</td>
-            <td style="color:${rule.action==='BUY'?'var(--green)':'var(--red)'}">${rule.action==='BUY'?'买入':'卖出'}</td>
+            <td style="color:${rule.action==='BUY'?'var(--up)':'var(--down)'}">${rule.action==='BUY'?'买入':'卖出'}</td>
             <td>${rule.shares>0?rule.shares+'股':rule.amount_value>0?rule.amount_value+'元':'10%资金'}</td>
             <td>账户${rule.account_id}</td>
             <td>${rule.enabled?'<span style="color:var(--green)">● 启用</span>':'<span style="color:var(--muted)">○ 停用</span>'}</td>
@@ -1606,7 +1654,7 @@ async function loadAutoLogs() {
         <tr>
             <td>${new Date(l.ts*1000).toLocaleString('zh-CN')}</td>
             <td>${l.symbol}</td>
-            <td style="color:${l.action==='BUY'?'var(--green)':'var(--red)'}">${l.action==='BUY'?'买入':'卖出'}</td>
+            <td style="color:${l.action==='BUY'?'var(--up)':'var(--down)'}">${l.action==='BUY'?'买入':'卖出'}</td>
             <td>${fmt(l.price)}</td><td>${fmt(l.shares,0)}</td>
             <td style="text-align:left">${l.reason}</td>
             <td style="color:${l.ok?'var(--green)':'var(--red)'}">${l.ok?'成功':'失败'}</td>
@@ -1660,6 +1708,7 @@ function applyHash() {
     const tab = p.get('tab');
     if (!tab) return;
     const id = tab.startsWith('tab-') ? tab : 'tab-' + tab;
+    if (p.get('scheme')) applyScheme(p.get('scheme'));
     if (activateTab(id)) {
         if (p.get('req') === '1') {
             const b = document.getElementById('rq-body');
@@ -1726,7 +1775,7 @@ function drawMiniChart(symbol, elId) {
         const b = k.bars;
         Plotly.react(elId, [{x:b.map(x=>x.timestamps), open:b.map(x=>x.open), high:b.map(x=>x.high),
             low:b.map(x=>x.low), close:b.map(x=>x.close), type:'candlestick',
-            increasing:{color:'#ef4444'}, decreasing:{color:'#22c55e'}}],
+            increasing:{color:schemeColor('up')}, decreasing:{color:schemeColor('down')}}],
             {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'},
              margin:{l:40,r:10,t:10,b:20}, xaxis:{rangeslider:{visible:false}}, height:280, showlegend:false});
     });
@@ -1882,7 +1931,7 @@ function renderResearch(r) {
         ${op.evidence.length?`<div style="margin-top:6px;font-size:12px"><b>量化论据：</b>${op.evidence.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
         ${op.risks.length?`<div style="margin-top:4px;font-size:12px;color:var(--amber)"><b>风险点：</b>${op.risks.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
         ${op.assumptions.length?`<div style="margin-top:4px;font-size:11px;color:var(--muted)"><b>假设：</b>${op.assumptions.join('；')}</div>`:''}
-    `, op.view==='偏多'?'var(--green)':(op.view==='偏空'?'var(--red)':'var(--muted)'))).join('');
+    `, op.view==='偏多'?'var(--up)':(op.view==='偏空'?'var(--down)':'var(--muted)'))).join('');
 
     html += `<h3 style="font-size:13px;color:#fff;margin:12px 0 6px">第 1 轮 · 圆桌辩论（${R.round1_debate.length} 组）</h3>`;
     html += R.round1_debate.length ? R.round1_debate.slice(0,8).map(d => rsPanel('辩论', `
@@ -1915,13 +1964,13 @@ function renderResearch(r) {
     if (rs.items) {
         ah += `<h3 style="font-size:13px;color:#fff;margin:10px 0 6px">风险扫描（高 ${rs.summary.high} / 中 ${rs.summary.medium} / 低 ${rs.summary.low}）</h3>
         <table><thead><tr><th>标的</th><th>等级</th><th>风险点</th></tr></thead><tbody>
-        ${rs.items.map(i=>`<tr><td>${i.name||i.symbol}</td><td class="${i.level==='高'?'neg':''}">${i.level}</td><td style="text-align:left">${(i.risks||[]).join('；')||'未触发阈值'}</td></tr>`).join('')}
+        ${rs.items.map(i=>`<tr><td>${i.name||i.symbol}</td><td class="${i.level==='高'?'tone-bad':(i.level==='中'?'':'tone-good')}">${i.level}</td><td style="text-align:left">${(i.risks||[]).join('；')||'未触发阈值'}</td></tr>`).join('')}
         </tbody></table>`;
     }
     if (corr.symbols && corr.symbols.length > 1) {
         ah += `<h3 style="font-size:13px;color:#fff;margin:10px 0 6px">相关性矩阵</h3>
         <table><thead><tr><th></th>${corr.symbols.map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>
-        ${corr.symbols.map((s,i)=>`<tr><td>${s}</td>${corr.matrix[i].map(v=>`<td class="${Math.abs(v)>=0.7?'neg':''}">${v}</td>`).join('')}</tr>`).join('')}
+        ${corr.symbols.map((s,i)=>`<tr><td>${s}</td>${corr.matrix[i].map(v=>`<td class="${Math.abs(v)>=0.7?'tone-bad':''}">${v}</td>`).join('')}</tr>`).join('')}
         </tbody></table>
         ${(corr.high_corr_pairs||[]).length?`<div style="font-size:12px;color:var(--amber);margin-top:4px">⚠️ 高相关对（|r|≥0.7）：${corr.high_corr_pairs.map(p=>`${p.name_a}↔${p.name_b}(${p.corr})`).join('、')}</div>`:''}`;
     }
@@ -2055,13 +2104,13 @@ async function loadMacro() {
     srcLoading('src-macro', '拉取 CPI/PPI/PMI/GDP/存准率/资金利率');
     try {
         const d = await api('/api/macro');
-        const toneColor = d.tone === '偏多' ? 'var(--green)' : (d.tone === '偏空' ? 'var(--red)' : 'var(--muted)');
+        const toneColor = d.tone === '偏多' ? 'var(--up)' : (d.tone === '偏空' ? 'var(--down)' : 'var(--muted)');
         document.getElementById('src-macro').innerHTML = `
             <div style="margin:8px 0 4px;font-weight:700">🌏 宏观/利率 <span style="color:${toneColor}">综合打分 ${d.score} · ${d.tone}</span>
                 <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="macroBrief()">🧠 AI 解读</button></div>
             <div class="stat-grid">${(d.cards||[]).map(c=>`
                 <div class="stat"><div class="k">${c.name}</div>
-                <div class="v ${c.tone==='pos'?'pos':(c.tone==='neg'?'neg':'')}">${c.value}
+                <div class="v ${c.tone==='good'?'tone-good':(c.tone==='bad'?'tone-bad':'')}">${c.value}
                 <div style="font-size:11px;color:var(--muted)">${c.sub||''}</div></div></div>`).join('')}</div>
             <div id="src-macro-brief"></div>`;
     } catch (e) { srcErr('src-macro', '宏观数据获取失败：' + e.message); }
@@ -2127,7 +2176,7 @@ async function loadSentiment() {
     srcLoading('src-sentiment', '抓取新闻公告并做情感打分');
     try {
         const d = await api('/api/sentiment/' + srcSymbol());
-        const col = d.avg > 0.15 ? 'var(--green)' : (d.avg < -0.15 ? 'var(--red)' : 'var(--muted)');
+        const col = d.avg > 0.15 ? 'var(--up)' : (d.avg < -0.15 ? 'var(--down)' : 'var(--muted)');
         const rcol = d.risk_level === '高' ? 'var(--red)' : (d.risk_level === '中' ? 'var(--amber)' : 'var(--green)');
         document.getElementById('src-sentiment').innerHTML = `
             <div style="margin:12px 0 4px;font-weight:700">📰 舆情情感分析
@@ -2142,7 +2191,7 @@ async function loadSentiment() {
             </div>
             <table><thead><tr><th>情感</th><th>分值</th><th>类型</th><th>事件</th><th>标题</th><th>时间</th></tr></thead><tbody>
             ${(d.items||[]).map(it=>`<tr>
-                <td style="color:${it.final>0.15?'var(--green)':(it.final<-0.15?'var(--red)':'var(--muted)')}">${it.label}</td>
+                <td style="color:${it.final>0.15?'var(--up)':(it.final<-0.15?'var(--down)':'var(--muted)')}">${it.label}</td>
                 <td>${it.final>0?'+':''}${it.final}</td><td>${it.kind}</td><td>${it.event||'-'}</td>
                 <td>${it.url?`<a href="${it.url}" target="_blank" style="color:var(--blue)">${(it.title||'').slice(0,52)}</a>`:(it.title||'').slice(0,52)}</td>
                 <td style="font-size:11px;color:var(--muted)">${(it.date||'').slice(0,16)}</td>

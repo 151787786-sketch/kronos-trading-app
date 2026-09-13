@@ -163,28 +163,31 @@ def snapshot() -> dict:
     rr = latest(eco.get("reserve") or [])
 
     cards = []
+    # tone 语义：good = 对股市偏有利，bad = 偏不利，muted = 中性（与红涨绿跌配色无关）
     if cpi:
         cards.append({"name": "CPI 同比", "value": f"{cpi.get('yoy')}%", "sub": cpi.get("time"),
-                      "tone": "neg" if (cpi.get("yoy") or 0) < 0 else "pos"})
+                      "tone": "good" if 0.5 <= (cpi.get("yoy") or 0) <= 3 else "muted"})
     if ppi:
         cards.append({"name": "PPI 同比", "value": f"{ppi.get('yoy')}%", "sub": ppi.get("time"),
-                      "tone": "neg" if (ppi.get("yoy") or 0) < 0 else "pos"})
+                      "tone": "good" if (ppi.get("yoy") or 0) > 0 else "bad"})
     if pmi:
         m = pmi.get("manufacturing")
         cards.append({"name": "制造业 PMI", "value": str(m), "sub": pmi.get("time"),
-                      "tone": "pos" if (m or 0) >= 50 else "neg"})
+                      "tone": "good" if (m or 0) >= 50 else "bad"})
         cards.append({"name": "非制造业 PMI", "value": str(pmi.get("non_manufacturing")),
                       "sub": pmi.get("time"),
-                      "tone": "pos" if (pmi.get("non_manufacturing") or 0) >= 50 else "neg"})
+                      "tone": "good" if (pmi.get("non_manufacturing") or 0) >= 50 else "bad"})
     if gdp:
         cards.append({"name": "GDP 同比", "value": f"{gdp.get('yoy')}%", "sub": gdp.get("time"),
-                      "tone": "pos" if (gdp.get("yoy") or 0) > 0 else "neg"})
+                      "tone": "good" if (gdp.get("yoy") or 0) > 0 else "bad"})
     if rr:
         cards.append({"name": "大型银行存准率", "value": f"{rr.get('big_bank')}%", "sub": rr.get("date"),
-                      "tone": "pos" if (rr.get("change") or 0) < 0 else "muted"})
+                      "tone": "good" if (rr.get("change") or 0) < 0 else "muted"})
     for r in (rt.get("rows") or [])[:2]:
+        # 资金利率下降 = 流动性宽松 = 对股市偏有利
         cards.append({"name": r["label"], "value": f"{r['value']}{r['unit']}",
-                      "sub": f"较昨 {r['change']:+}", "tone": "pos" if r["change"] > 0 else "neg"})
+                      "sub": f"较昨 {r['change']:+}（{'下行=资金面宽松' if r['change'] < 0 else '上行=资金面收紧'}）",
+                      "tone": "good" if r["change"] < 0 else "bad"})
 
     # 简易宏观打分（-3 ~ +3）
     score = 0
