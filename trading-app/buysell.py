@@ -16,6 +16,56 @@ def _recent_pivots(df: pd.DataFrame, window: int = 20) -> pd.DataFrame:
     return out
 
 
+def llm_reading(plan: dict, symbol: str = "", name: str = "",
+                extra: dict = None) -> dict:
+    """DeepSeek 解读买卖点计划。失败返回 {'ok': False}。"""
+    try:
+        import deepseek
+    except Exception:
+        return {"ok": False, "error": "LLM 模块不可用"}
+    if not deepseek.available():
+        return {"ok": False, "error": "LLM 未配置"}
+    ex = extra or {}
+    ind = ex.get("industry") or {}
+    b = ind.get("board") or {}
+    sent = ex.get("sentiment") or {}
+    facts = [
+        f"操作建议：{plan.get('action')}（综合得分 {plan.get('score')}）",
+        f"现价/最新收盘：{plan.get('last_close')}",
+        f"买入区间：{(plan.get('entry_zone') or {}).get('low')} ~ {(plan.get('entry_zone') or {}).get('high')}",
+        f"止损：{plan.get('stop_loss')}   上涨目标：{plan.get('target_up')}   下跌目标：{plan.get('target_down')}",
+        f"支撑位：{plan.get('support_levels')}",
+        f"压力位：{plan.get('resistance_levels')}",
+        f"量化理由：{'；'.join(plan.get('reasons') or [])}",
+    ]
+    if ex.get("forecast"):
+        facts.append(f"Kronos 预测：{ex['forecast']}")
+    if b:
+        facts.append(f"所属行业 {ind.get('industry')}：今日 {b.get('pct'):+.2f}%，"
+                     f"5日 {b.get('pct5'):+.2f}%，景气度 {b.get('prosperity')}/100")
+    if sent.get("count"):
+        facts.append(f"舆情：{sent.get('count')} 条，均值 {sent.get('avg')}（{sent.get('label')}），"
+                     f"负面 {sent.get('neg')} 条")
+    if ex.get("macro"):
+        facts.append("宏观：" + "；".join(f"{c['name']}={c['value']}" for c in ex["macro"][:6]))
+
+    user = (f"【标的】{name or ''}（{symbol}）\n【事实清单】\n" + "\n".join(f"- {f}" for f in facts) +
+            "\n\n请解读这个买卖点计划，输出 JSON："
+            '{"reading":"160~240字解读，说明该计划为何这样设、什么情况下成立、什么情况下失效",'
+            '"entry_tip":"具体怎么下手（分批/等待/放弃）",'
+            '"invalid":"计划失效的信号是什么"}')
+    res = deepseek.chat_json(
+        "你是交易计划解读助手。基于给定的真实量化计划做解读。"
+        "必须：① 只引用给定数字，禁止编造；② 明确说明假设与不确定性；"
+        "③ 禁止保本/稳赚/必涨/无风险等表述；④ 不要写免责声明。只输出 JSON。",
+        user, temperature=0.4, max_tokens=800, tag="buysell_reading", use_cache=False)
+    if isinstance(res, dict) and res.get("reading"):
+        return {"ok": True, "reading": str(res["reading"])[:800],
+                "entry_tip": str(res.get("entry_tip") or "")[:300],
+                "invalid": str(res.get("invalid") or "")[:300]}
+    return {"ok": False, "error": "LLM 未返回有效解读"}
+
+
 def support_resistance(df: pd.DataFrame, lookback: int = 120) -> dict:
     """Compute support and resistance levels from recent swings + indicators."""
     df = df.tail(lookback).reset_index(drop=True)

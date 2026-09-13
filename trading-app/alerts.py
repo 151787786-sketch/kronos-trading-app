@@ -186,15 +186,26 @@ def fire_notification(ev: dict) -> None:
 # 盘中异动监控：自选股涨幅/量比异动触发（适合"景气赛道轮动扑击"玩法）
 # ---------------------------------------------------------------------------
 
-SURGE_PCT = 3.0       # 涨幅阈值 %
+SURGE_PCT = 3.0       # 涨幅阈值 %（默认值；实际取值见 _tuned()）
 VOLUME_RATIO = 2.5    # 量比阈值
 _DEDUP_WINDOW = 1800  # 同类型 30 分钟内不重复
+
+
+def _tuned(path: str, fallback: float) -> float:
+    """读取夜间自迭代生效后的参数（nightly.tuning.json），失败回退默认值。"""
+    try:
+        import nightly
+        return nightly.get_param(path)
+    except Exception:
+        return fallback
 
 
 def check_momentum(name_map: dict, quotes: list) -> list:
     """Check watchlist quotes for surge / volume-ratio momentum.
     name_map: {symbol: name}; quotes: list from market.fetch_realtime.
     Returns triggered events (recorded + ready to notify)."""
+    surge_pct = _tuned("alerts.surge_pct", SURGE_PCT)
+    vol_th = _tuned("alerts.volume_ratio", VOLUME_RATIO)
     events = []
     for q in quotes:
         symbol = q["symbol"]
@@ -205,7 +216,7 @@ def check_momentum(name_map: dict, quotes: list) -> list:
         now = time.time()
 
         # 大幅拉升
-        if pct is not None and pct >= SURGE_PCT:
+        if pct is not None and pct >= surge_pct:
             last = _last_event(symbol, "surge")
             if not last or now - last["ts"] > _DEDUP_WINDOW:
                 msg = f"{name} 现价 {price:.2f}，涨幅 {pct:+.1f}%，量比 {vol_ratio:.1f}——可能启动，注意是否轮动到它"
@@ -214,7 +225,7 @@ def check_momentum(name_map: dict, quotes: list) -> list:
                 events.append(ev)
 
         # 放量异动（量比高且有一定涨幅）
-        if vol_ratio >= VOLUME_RATIO and pct is not None and pct >= 1.0:
+        if vol_ratio >= vol_th and pct is not None and pct >= 1.0:
             last = _last_event(symbol, "volume")
             if not last or now - last["ts"] > _DEDUP_WINDOW:
                 msg = f"{name} 现价 {price:.2f}，量比 {vol_ratio:.1f}（涨幅 {pct:+.1f}%）——明显放量"
@@ -224,11 +235,38 @@ def check_momentum(name_map: dict, quotes: list) -> list:
     return events
 
 
+def stats(days: int = 30) -> dict:
+    """告警统计（供夜间自迭代评估信号质量）。"""
+    init_tables()
+    since = time.time() - days * 86400
+    conn = _conn()
+    rows = conn.execute("SELECT event_type, COUNT(*) c FROM alert_events WHERE ts>=? GROUP BY event_type",
+                        (since,)).fetchall()
+    total = conn.execute("SELECT COUNT(*) c FROM alert_events WHERE ts>=?", (since,)).fetchone()["c"]
+    conn.close()
+    by_type = {r["event_type"]: r["c"] for r in rows}
+    surge = by_type.get("surge", 0) + by_type.get("volume", 0)
+    plan_hits = sum(by_type.get(k, 0) for k in ("entry", "stop", "target",
+                                                "near_buy", "near_sell", "near_stop", "near_target"))
+    return {
+        "days": days, "total": total, "by_type": by_type,
+        "momentum_alerts": surge, "plan_alerts": plan_hits,
+        "momentum_per_day": round(surge / max(1, days), 2),
+        "plan_per_day": round(plan_hits / max(1, days), 2),
+        "noise_hint": ("异动提醒偏多，可上调阈值" if surge / max(1, days) > 8
+                       else ("异动提醒很少，可下调阈值" if surge / max(1, days) < 0.5 else "异动提醒频次正常")),
+        "current": {"surge_pct": _tuned("alerts.surge_pct", SURGE_PCT),
+                    "volume_ratio": _tuned("alerts.volume_ratio", VOLUME_RATIO),
+                    "near_pct": _tuned("alerts.near_pct", NEAR_PCT)},
+    }
+
+
 # ---------------------------------------------------------------------------
 # 买卖点提前预警：现价接近买点/止损/目标时提前提示（阈值 1.5%）
 # ---------------------------------------------------------------------------
 
 NEAR_PCT = 1.5          # 距关键价位 1.5% 内视为"接近"
+_NEAR_PCT_DEFAULT = NEAR_PCT
 _NEAR_DEDUP = 6 * 3600  # 同类提示 6 小时内不重复
 
 
@@ -238,6 +276,7 @@ def check_near_plans(plans: list, quotes: list) -> list:
     Returns early-warning events."""
     events = []
     qmap = {q["symbol"]: q for q in quotes}
+    NEAR_PCT = _tuned("alerts.near_pct", globals().get("_NEAR_PCT_DEFAULT", 1.5))
     for p in plans:
         try:
             plan = p["plan"] if isinstance(p["plan"], dict) else json.loads(p["plan"])

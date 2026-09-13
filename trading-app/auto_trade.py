@@ -111,6 +111,24 @@ def get_logs(limit=100) -> list:
     return [dict(r) for r in rows]
 
 
+def stats(days: int = 30) -> dict:
+    """自动接管执行统计（供夜间自迭代评估规则质量）。"""
+    init_tables()
+    since = time.time() - days * 86400
+    conn = _conn()
+    total = conn.execute("SELECT COUNT(*) c FROM auto_logs WHERE ts>=?", (since,)).fetchone()["c"]
+    okc = conn.execute("SELECT COUNT(*) c FROM auto_logs WHERE ts>=? AND ok=1", (since,)).fetchone()["c"]
+    rows = conn.execute("SELECT action, COUNT(*) c FROM auto_logs WHERE ts>=? GROUP BY action",
+                        (since,)).fetchall()
+    rules = conn.execute("SELECT COUNT(*) c FROM auto_rules WHERE enabled=1").fetchone()["c"]
+    conn.close()
+    by_action = {r["action"]: r["c"] for r in rows}
+    return {"days": days, "triggers": total, "succeeded": okc, "failed": total - okc,
+            "success_rate": round(okc / total * 100, 1) if total else None,
+            "by_action": by_action, "enabled_rules": rules,
+            "per_day": round(total / max(1, days), 2)}
+
+
 def _log(rule, symbol, action, price, shares, reason, ok, message):
     conn = _conn()
     conn.execute(

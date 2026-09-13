@@ -270,12 +270,31 @@ RISK_THRESHOLDS = {
     "pe_high": 60.0,
     "pb_high": 8.0,
     "turnover_low": 0.5,     # 换手率 %（流动性）
+    "sentiment_high": -0.35,  # 舆情均值高风险线
+    "sentiment_mid": -0.12,   # 舆情均值中风险线
 }
 
 
-def risk_scan(symbols: list, period: str = "day", bars: int = 120) -> dict:
+def _tuned_risk(path: str, key: str) -> float:
+    """读取夜间自迭代生效后的风控阈值。"""
+    try:
+        import nightly
+        return nightly.get_param(path)
+    except Exception:
+        return RISK_THRESHOLDS[key]
+
+
+def risk_scan(symbols: list, period: str = "day", bars: int = 120,
+              with_sentiment: bool = True) -> dict:
     """Multi-dimension risk scan: volatility / drawdown / valuation / liquidity /
-    sentiment(basic) / tail risk."""
+    sentiment(舆情情感) / tail risk."""
+    th = dict(RISK_THRESHOLDS)
+    th["vol_high"] = _tuned_risk("risk.vol_high", "vol_high")
+    th["drawdown_high"] = _tuned_risk("risk.drawdown_high", "drawdown_high")
+    th["pe_high"] = _tuned_risk("risk.pe_high", "pe_high")
+    th["pb_high"] = _tuned_risk("risk.pb_high", "pb_high")
+    th["sentiment_high"] = _tuned_risk("risk.sentiment_high", "sentiment_high")
+
     items = []
     for sym in symbols[:MAX_BATCH]:
         row = {"symbol": sym, "risks": [], "level": "低"}
@@ -289,15 +308,15 @@ def risk_scan(symbols: list, period: str = "day", bars: int = 120) -> dict:
             # 波动率
             vol = float(closes.pct_change().std() * math.sqrt(252) * 100)
             row["volatility_pct"] = round(vol, 2)
-            if vol > RISK_THRESHOLDS["vol_high"]:
-                row["risks"].append(f"高波动（年化 {vol:.1f}%）")
+            if vol > th["vol_high"]:
+                row["risks"].append(f"高波动（年化 {vol:.1f}% > {th['vol_high']:.0f}%）")
 
             # 回撤
             peak = closes.cummax()
             dd = float((closes.iloc[-1] / peak.iloc[-1] - 1) * 100)
             row["drawdown_pct"] = round(dd, 2)
-            if dd < RISK_THRESHOLDS["drawdown_high"]:
-                row["risks"].append(f"处于回撤（{dd:.1f}%）")
+            if dd < th["drawdown_high"]:
+                row["risks"].append(f"处于回撤（{dd:.1f}% < {th['drawdown_high']:.0f}%）")
 
             # 尾部风险（5% VaR，基于历史日收益）
             r = closes.pct_change().dropna()
@@ -311,18 +330,35 @@ def risk_scan(symbols: list, period: str = "day", bars: int = 120) -> dict:
             turnover = q.get("turnover") if q else None
             if turnover is not None:
                 row["turnover_pct"] = turnover
-                if turnover < RISK_THRESHOLDS["turnover_low"]:
+                if turnover < th["turnover_low"]:
                     row["risks"].append(f"流动性偏低（换手 {turnover:.2f}%）")
 
             # 估值风险
             try:
                 v = fundamentals.get_valuation(sym)
-                if v.get("pe_ttm") and v["pe_ttm"] > RISK_THRESHOLDS["pe_high"]:
-                    row["risks"].append(f"估值偏高（PE {v['pe_ttm']:.0f}）")
-                if v.get("pb") and v["pb"] > RISK_THRESHOLDS["pb_high"]:
-                    row["risks"].append(f"PB 偏高（{v['pb']:.1f}）")
+                if v.get("pe_ttm") and v["pe_ttm"] > th["pe_high"]:
+                    row["risks"].append(f"估值偏高（PE {v['pe_ttm']:.0f} > {th['pe_high']:.0f}）")
+                if v.get("pb") and v["pb"] > th["pb_high"]:
+                    row["risks"].append(f"PB 偏高（{v['pb']:.1f} > {th['pb_high']:.1f}）")
             except Exception:
                 pass
+
+            # 舆情风险维度（真实新闻/公告 + DeepSeek 语义打分）
+            if with_sentiment:
+                try:
+                    import sentiment
+                    s = sentiment.analyze(sym, use_llm=True, limit=8)
+                    row["sentiment"] = {"avg": s.get("avg"), "label": s.get("label"),
+                                        "count": s.get("count"), "pos": s.get("pos"),
+                                        "neg": s.get("neg"), "engine": s.get("engine")}
+                    avg = s.get("avg") or 0.0
+                    if avg < th["sentiment_high"]:
+                        row["risks"].append(
+                            f"舆情偏负面（均值 {avg:+.2f}，负面 {s.get('neg')}/{s.get('count')} 条）")
+                    elif avg < th["sentiment_mid"]:
+                        row["risks"].append(f"舆情略偏负面（均值 {avg:+.2f}）")
+                except Exception as e:
+                    row["sentiment"] = {"error": str(e)[:60]}
 
             # 等级
             n = len(row["risks"])
@@ -341,7 +377,7 @@ def risk_scan(symbols: list, period: str = "day", bars: int = 120) -> dict:
             "medium": len([i for i in items if i["level"] == "中"]),
             "low": len([i for i in items if i["level"] == "低"]),
         },
-        "thresholds": RISK_THRESHOLDS,
+        "thresholds": th,
         "assumptions": ["风险等级基于量化阈值，不含未公开信息与突发事件"],
     }
 

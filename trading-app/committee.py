@@ -10,9 +10,30 @@
 import time
 
 import audit
+import deepseek
 import market
-from agents.engine import analyze_as, build_context
+from agents.engine import analyze_as, analyze_parallel, build_context
 from agents.roles import ROLES, chair, get_role
+
+USE_LLM = True  # DeepSeek 可用时自动使用；不可用自动回退规则引擎
+
+# LLM 调用预算：避免 20 只标的的会议产生上百次请求（耗时与费用失控）
+MAX_LLM_DEBATES = 8
+MAX_LLM_REVIEWS = 12
+_budget = {"debate": 0, "review": 0}
+
+
+def _take(kind: str, limit: int) -> bool:
+    """占用一次 LLM 预算，超出返回 False（该条改用规则引擎）。"""
+    with _budget_lock:
+        if _budget[kind] >= limit:
+            return False
+        _budget[kind] += 1
+        return True
+
+
+import threading as _threading
+_budget_lock = _threading.Lock()
 
 
 def _opposed(a: dict, b: dict) -> bool:
@@ -21,10 +42,18 @@ def _opposed(a: dict, b: dict) -> bool:
     return views == {"偏多", "偏空"}
 
 
+_DEBATE_SYS = (
+    "你正在主持一场 A 股投研圆桌辩论。下面是两位分析师的发言摘要。\n"
+    "请生成 2~3 条**有实质内容的质询**（不是客套），必须针对对方的：具体数据、逻辑跳跃、或隐含假设。\n"
+    "禁止编造对方没说过的数据。只输出 JSON：\n"
+    '{"challenges":["质询1","质询2"],"defense":["被质询方的合理回应1","回应2"],'
+    '"key_conflict":"一句话概括双方的真正分歧"}'
+)
+
+
 def _debate_pair(a: dict, b: dict) -> dict:
     """Generate structured debate content between two opposing views."""
     challenges = []
-    # 质疑对方证据与假设
     for ev in b["evidence"][:2]:
         challenges.append(f"针对「{ev}」，请给出数据来源与样本区间；单一维度不足以支撑结论。")
     for asm in b["assumptions"][:1]:
@@ -33,32 +62,93 @@ def _debate_pair(a: dict, b: dict) -> dict:
         f"我的依据来自公开数据：{'; '.join(a['evidence'][:2]) or '（数据有限）'}",
         f"已标注不确定性：置信度 {a['confidence']}，并列出假设 {a['assumptions'][:1]}",
     ]
+    key_conflict = f"{a['role_name']}({a['view']}) 与 {b['role_name']}({b['view']}) 的立场相反"
+
+    if USE_LLM and deepseek.available() and _take("debate", MAX_LLM_DEBATES):
+        user = (
+            f"【{a['role_name']}（{a['view']}，打分 {a['stance_score']:+.2f}）发言】\n"
+            f"{(a.get('narrative') or '；'.join(a['evidence'][:4]))}\n"
+            f"其依据：{'; '.join(a['evidence'][:4]) or '（无）'}\n\n"
+            f"【{b['role_name']}（{b['view']}，打分 {b['stance_score']:+.2f}）发言】\n"
+            f"{(b.get('narrative') or '；'.join(b['evidence'][:4]))}\n"
+            f"其依据：{'; '.join(b['evidence'][:4]) or '（无）'}\n\n"
+            f"请输出针对 {b['role_name']} 的质询。"
+        )
+        data = deepseek.chat_json(_DEBATE_SYS, user, temperature=0.5, max_tokens=800,
+                                  tag="debate", use_cache=False)
+        if isinstance(data, dict) and data.get("challenges"):
+            return {
+                "challenger": a["role_name"], "challenger_view": a["view"],
+                "respondent": b["role_name"], "respondent_view": b["view"],
+                "challenges": [str(x)[:200] for x in data["challenges"]][:3],
+                "defense": [str(x)[:200] for x in (data.get("defense") or [])][:2],
+                "key_conflict": str(data.get("key_conflict") or key_conflict)[:120],
+                "engine": "deepseek",
+            }
     return {
         "challenger": a["role_name"], "challenger_view": a["view"],
         "respondent": b["role_name"], "respondent_view": b["view"],
         "challenges": challenges,
         "defense": defense,
+        "key_conflict": key_conflict,
+        "engine": "rule",
     }
+
+
+_REVIEW_SYS = (
+    "你是投研会的交叉审稿人，任务是**排查 AI 幻觉与逻辑缺陷**。\n"
+    "对给定分析师的发言，逐条找出以下 5 类问题（没有则不留）：\n"
+    "1) 逻辑断层：结论与依据不匹配\n"
+    "2) 数据错误：数字自相矛盾或与事实清单不符\n"
+    "3) 主观臆断：用词过度确定、无依据的预测\n"
+    "4) 假设缺陷：隐含假设不成立会推翻结论\n"
+    "5) 合规问题：承诺性表述（保本/稳赚/必涨）\n"
+    "只输出 JSON：{\"findings\":[{\"type\":\"类型\",\"detail\":\"具体问题\",\"severity\":\"高/中/低\"}],"
+    "\"verdict\":\"通过 或 需修正\"}"
+)
 
 
 def _review(reviewer: dict, target: dict) -> dict:
     """Cross-review: hunt for logic gaps / data errors / hallucination / bad assumptions."""
     findings = []
-    # 1) 逻辑断层：有结论但无证据
     if target["view"] != "中性" and len(target["evidence"]) == 0:
-        findings.append({"type": "逻辑断层", "detail": f"{target['role_name']} 给出「{target['view']}」但无支撑证据"})
-    # 2) 数据缺失：证据少于风险点
+        findings.append({"type": "逻辑断层", "detail": f"{target['role_name']} 给出「{target['view']}」但无支撑证据", "severity": "高"})
     if len(target["risks"]) > len(target["evidence"]):
-        findings.append({"type": "数据不足", "detail": f"{target['role_name']} 风险点({len(target['risks'])})多于证据({len(target['evidence'])})，论证偏弱"})
-    # 3) 主观幻觉：置信度高但证据少
+        findings.append({"type": "数据不足", "detail": f"{target['role_name']} 风险点({len(target['risks'])})多于证据({len(target['evidence'])})，论证偏弱", "severity": "中"})
     if target["confidence"] > 0.75 and len(target["evidence"]) < 2:
-        findings.append({"type": "疑似主观臆断", "detail": f"{target['role_name']} 置信度 {target['confidence']} 但证据仅 {len(target['evidence'])} 条，存在过度自信"})
-    # 4) 参数假设缺陷：无假设声明
+        findings.append({"type": "疑似主观臆断", "detail": f"{target['role_name']} 置信度 {target['confidence']} 但证据仅 {len(target['evidence'])} 条，存在过度自信", "severity": "高"})
     if not target["assumptions"]:
-        findings.append({"type": "参数假设缺失", "detail": f"{target['role_name']} 未声明任何假设条件"})
-    # 5) 立场过强：极端立场但证据弱
+        findings.append({"type": "参数假设缺失", "detail": f"{target['role_name']} 未声明任何假设条件", "severity": "中"})
     if abs(target["stance_score"]) > 2 and len(target["evidence"]) < 3:
-        findings.append({"type": "立场与证据不匹配", "detail": f"{target['role_name']} 立场强度 {target['stance_score']} 而证据仅 {len(target['evidence'])} 条"})
+        findings.append({"type": "立场与证据不匹配", "detail": f"{target['role_name']} 立场强度 {target['stance_score']} 而证据仅 {len(target['evidence'])} 条", "severity": "中"})
+
+    engine = "rule"
+    if (USE_LLM and deepseek.available() and target.get("narrative")
+            and _take("review", MAX_LLM_REVIEWS)):
+        user = (
+            f"【被审对象】{target['role_name']}（立场 {target['view']}，量化打分 {target['stance_score']:+.2f}，"
+            f"自评置信度 {target['confidence']}）\n"
+            f"【其发言】{target['narrative']}\n"
+            f"【其引用的事实】{'; '.join(target['evidence'][:8]) or '（无）'}\n"
+            f"【其声明的假设】{'; '.join(target['assumptions'][:4]) or '（无）'}\n\n"
+            f"请以 {reviewer['role_name']} 的身份审稿，只输出 JSON。"
+        )
+        data = deepseek.chat_json(_REVIEW_SYS, user, temperature=0.2, max_tokens=800,
+                                  tag="review", use_cache=False)
+        if isinstance(data, dict):
+            findings_raw = data.get("findings")
+            if not isinstance(findings_raw, list):
+                findings_raw = deepseek.unwrap_list(data)
+            llm_findings = []
+            for f in (findings_raw or [])[:4]:
+                if isinstance(f, dict) and f.get("detail"):
+                    llm_findings.append({"type": str(f.get("type") or "问题")[:12],
+                                         "detail": str(f["detail"])[:200],
+                                         "severity": str(f.get("severity") or "中")[:2],
+                                         "by": "deepseek"})
+            if llm_findings:
+                findings = findings + llm_findings
+                engine = "deepseek"
 
     return {
         "reviewer": reviewer["role_name"],
@@ -66,12 +156,16 @@ def _review(reviewer: dict, target: dict) -> dict:
         "target_view": target["view"],
         "findings": findings,
         "verdict": "通过" if not findings else f"需修正（{len(findings)} 项）",
+        "engine": engine,
     }
 
 
 def run_committee(symbols: list, session_name: str = None, with_forecast: bool = True) -> dict:
     """Run a full 4-round research committee. Returns the complete minutes."""
     t0 = time.time()
+    with _budget_lock:
+        _budget["debate"] = 0
+        _budget["review"] = 0
     sid = audit.create_session(session_name or f"投研会-{time.strftime('%Y%m%d-%H%M%S')}", symbols)
 
     # 共享数据上下文
@@ -80,12 +174,12 @@ def run_committee(symbols: list, session_name: str = None, with_forecast: bool =
               f"标的 {len(symbols)} 只，错误 {len(ctx['errors'])} 条", {"errors": ctx["errors"]})
 
     # ---------- 第 0 轮：独立闭门输出 ----------
-    round0 = []
-    for role in ROLES:
-        op = analyze_as(role, symbols, ctx)
-        round0.append(op)
+    round0 = analyze_parallel(list(ROLES), symbols, ctx, use_llm=USE_LLM)
+    for role, op in zip(ROLES, round0):
         audit.log(sid, "round0", role.id, role.name, op["view"], op)
-    audit.log_round(sid, 0, "独立闭门输出", f"{len(round0)} 位 Agent 完成独立观点")
+    llm_agents = sum(1 for o in round0 if o.get("engine") == "deepseek")
+    audit.log_round(sid, 0, "独立闭门输出",
+                    f"{len(round0)} 位 Agent 完成独立观点（其中 {llm_agents} 位由 DeepSeek 生成发言）")
 
     # ---------- 第 1 轮：圆桌辩论 ----------
     # 三种配对策略（保证单边行情下也有交锋）：
@@ -200,14 +294,70 @@ def run_committee(symbols: list, session_name: str = None, with_forecast: bool =
     if conflicts:
         verdict_text += f" 发现 {len(conflicts)} 项与 Kronos 预测的方向冲突，已高亮标记。"
 
+    # DeepSeek 主理人总结陈词（方向仍由规则加权立场决定，LLM 只负责表述）
+    chair_engine = "rule"
+    if USE_LLM and deepseek.available():
+        brief = []
+        for o in scored:
+            line = f"- {o['role_name']}（{o['view']}，{o['stance_score']:+.2f}）："
+            line += (o.get("narrative") or "；".join(o["evidence"][:3]) or "（无发言）")[:200]
+            brief.append(line)
+        dis_txt = "\n".join(f"- {d['point']}（{d['a_score']:+.2f} vs {d['b_score']:+.2f}）"
+                            for d in disagreements[:6]) or "（无严格对立分歧）"
+        conf_txt = "\n".join(f"- {c['name']}：Agent 判 {c['agent_verdict']}，Kronos 预测 "
+                             f"{c['kronos_prediction']}（{c['kronos_change_pct']:+.1f}%）"
+                             for c in conflicts[:5]) or "（无）"
+        review_txt = "\n".join(f"- {r['reviewer']}→{r['target']}：{r['verdict']}"
+                               for r in reviews[:10]) or "（无）"
+        user = (
+            f"【量化裁决结果（不可更改）】{verdict}，加权立场 {avg_stance:+.2f}，置信度 {final_conf:.2f}\n\n"
+            f"【各角色观点摘要】\n" + "\n".join(brief) +
+            f"\n\n【重大分歧】\n{dis_txt}\n\n【与 Kronos 预测的冲突】\n{conf_txt}"
+            f"\n\n【交叉互评结论】\n{review_txt}\n"
+            f"\n【会议标的】{', '.join(symbols)}\n\n"
+            "请以主理人身份输出 JSON："
+            '{"text":"裁决陈词，200~320字，必须明确写出结论、主要理由、分歧如何处理、'
+            '以及需要监控的关键条件","monitor":["需要盯的观察点1","观察点2","观察点3"]}'
+        )
+        data = deepseek.chat_json(
+            "你是投研会主理人（CIO）。你要基于各分析师的观点做最终裁决陈述。"
+            "必须：① 不得改变给定的量化裁决方向；② 显式说明分歧如何处理；"
+            "③ 列出需要持续监控的条件；④ 禁止保本/稳赚/必涨等表述；⑤ 只输出 JSON。",
+            user, temperature=0.4, max_tokens=1200, tag="verdict", use_cache=False)
+        if isinstance(data, dict) and data.get("text"):
+            verdict_text = str(data["text"])[:1500]
+            chair_engine = "deepseek"
+            monitor_points = [str(x)[:80] for x in (data.get("monitor") or [])][:5]
+        else:
+            monitor_points = []
+    else:
+        monitor_points = []
+
     verdict_obj = {
         "verdict": verdict,
         "avg_stance": round(avg_stance, 2),
         "confidence": round(final_conf, 2),
         "text": verdict_text,
+        "quant_line": (
+            f"经 {len(round0)} 位数字员工独立分析、{len(debates)} 组观点辩论、"
+            f"{len(reviews)} 条交叉评审后，主理人裁决：**{verdict}**"
+            f"（加权立场 {avg_stance:+.2f}，最终置信度 {final_conf:.2f}）。"
+            + (f" 存在 {len(disagreements)} 组重大分歧。" if disagreements else "")
+            + (f" 发现 {len(conflicts)} 项与 Kronos 预测的方向冲突。" if conflicts else "")
+        ),
+        "monitor": monitor_points,
+        "engine": chair_engine,
         "disagreements": disagreements,
         "conflicts": conflicts,
         "chair": chair_role.name,
+        "stages": {
+            "agents": len(round0),
+            "agents_llm": sum(1 for o in round0 if o.get("engine") == "deepseek"),
+            "debates": len(debates),
+            "debates_llm": sum(1 for d in debates if d.get("engine") == "deepseek"),
+            "reviews": len(reviews),
+            "reviews_llm": sum(1 for r in reviews if r.get("engine") == "deepseek"),
+        },
         "assumptions": [
             "结论基于公开数据与量化规则，不含未公开信息",
             "市场存在不确定性，历史规律不保证未来有效",
@@ -237,6 +387,19 @@ def run_committee(symbols: list, session_name: str = None, with_forecast: bool =
                               "band_pct": round(((v.get("confidence") or {}).get("mae_pct", 0.15)) * 100, 1),
                               "model": v.get("model")}
                           for k, v in ctx["forecasts"].items()},
+            "macro": {"tone": (ctx.get("macro") or {}).get("tone"),
+                      "score": (ctx.get("macro") or {}).get("score"),
+                      "cards": (ctx.get("macro") or {}).get("cards") or []},
+            "industry": {k: {"industry": v.get("industry"), "rank": v.get("rank"),
+                             "total": v.get("total"), "prosperity": v.get("prosperity")}
+                         for k, v in (ctx.get("industry") or {}).items()},
+            "sentiment": {k: {"avg": v.get("avg"), "label": v.get("label"),
+                              "count": v.get("count"), "risk_level": v.get("risk_level"),
+                              "pos": v.get("pos"), "neg": v.get("neg")}
+                          for k, v in (ctx.get("sentiment") or {}).items()},
+            "reports": {k: {"total": v.get("total"), "dist": v.get("dist")}
+                        for k, v in (ctx.get("reports") or {}).items()},
+            "engine": "deepseek" if deepseek.available() else "rule",
             "errors": ctx["errors"],
         },
     }

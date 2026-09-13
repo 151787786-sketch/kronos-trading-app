@@ -190,6 +190,33 @@ tr:hover { background: var(--panel2); }
                     🏛️ 9 位数字员工将围绕标的开展 <b>4 轮圆桌会议</b>：独立闭门 → 圆桌辩论 → 交叉互评（幻觉排查）→ 共识裁决。
                     结论含假设/置信度/分歧点，并与 Kronos 预测交叉校验。仅供研究参考，不构成投资建议。
                 </div>
+                <div class="msg" id="llm-bar" style="display:block;background:rgba(139,92,246,.1);color:#a78bfa">
+                    🧠 正在检测 DeepSeek 连接...
+                </div>
+
+                <!-- 外部数据源矩阵 -->
+                <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                    <h2>🧩 外部数据源矩阵 <span class="hint">点按钮查看实时数据（DeepSeek 解读）</span>
+                        <button class="ghost" style="padding:2px 8px;font-size:11px" onclick="loadAllSources()">全部刷新</button>
+                    </h2>
+                    <div class="form-row" style="margin-bottom:8px">
+                        <div class="field"><label>标的</label><input type="text" id="src-symbol" value="600519"></div>
+                        <div class="field"><label>行业分类（F10 查询用）</label><input type="text" id="src-industry-q" placeholder="留空则按标的自动查"></div>
+                        <div style="display:flex;align-items:end;gap:6px;flex-wrap:wrap">
+                            <button class="ghost" onclick="loadMacro()">🌏 宏观/利率</button>
+                            <button class="ghost" onclick="loadIndustry()">🏭 行业景气度</button>
+                            <button class="ghost" onclick="loadSentiment()">📰 舆情情感</button>
+                            <button class="ghost" onclick="loadReports()">📚 券商研报库</button>
+                            <button class="ghost" onclick="loadNightlyParams()">🌙 自迭代参数</button>
+                        </div>
+                    </div>
+                    <div id="src-macro"></div>
+                    <div id="src-industry"></div>
+                    <div id="src-sentiment"></div>
+                    <div id="src-reports"></div>
+                    <div id="src-nightly"></div>
+                </div>
+
                 <!-- 需求实现对照表 -->
                 <div class="panel" style="background:var(--panel2);margin-bottom:10px">
                     <h2>📋 需求实现对照 <span class="hint" id="rq-sum">加载中...</span>
@@ -419,6 +446,12 @@ tr:hover { background: var(--panel2); }
                     <div class="panel" style="background:var(--panel2);margin-bottom:10px">
                         <h2>操作依据 <span class="hint">指标 + Kronos 预测</span></h2>
                         <ul id="bs-reasons" style="padding-left:20px;line-height:1.8"></ul>
+                    </div>
+                    <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                        <h2>🧠 AI 解读 <span class="hint">DeepSeek 结合行业/舆情/宏观解读本计划</span>
+                            <button class="ghost" style="padding:2px 8px;font-size:11px" onclick="loadBsReading()">生成 AI 解读</button>
+                        </h2>
+                        <div id="bs-reading"><p style="color:var(--muted)">点上方按钮，让 DeepSeek 说明这个买卖点计划为什么这样设、什么情况会失效。</p></div>
                     </div>
                     <div class="panel" style="background:var(--panel2)">
                         <h2>关键价位</h2>
@@ -677,6 +710,7 @@ tr:hover { background: var(--panel2); }
 
 <script>
 let currentSymbol = null;
+let lastRecLLM = {};
 let currentQuote = null;
 let tradeMode = '';
 
@@ -1602,7 +1636,7 @@ document.querySelectorAll('.tabs button').forEach(btn=>{
         if (btn.dataset.tab==='tab-auto') { loadAutoRules(); loadAutoLogs(); }
         if (btn.dataset.tab==='tab-recommend') { loadRecommend(); loadDailyNews(); }
         if (btn.dataset.tab==='tab-overview') loadOverview();
-        if (btn.dataset.tab==='tab-research') { loadSessions(); loadRequirements(); }
+        if (btn.dataset.tab==='tab-research') { loadSessions(); loadRequirements(); loadLLMStatus(); }
     });
 });
 
@@ -1631,6 +1665,7 @@ function applyHash() {
             const b = document.getElementById('rq-body');
             if (b) b.style.display = 'block';
         }
+        if (p.get('sources') === '1') setTimeout(loadAllSources, 300);
     }
 }
 applyHash();
@@ -1645,6 +1680,16 @@ function openRecModal(rec) {
          <div class="stat"><div class="k">基本面</div><div class="v">${rec.breakdown.fundamental}</div></div>
          <div class="stat"><div class="k">Kronos预测</div><div class="v">${rec.breakdown.forecast}</div></div>`;
     document.getElementById('rm-reasons').innerHTML = rec.reasons.map(x=>`<li>${x}</li>`).join('');
+    const ai = document.getElementById('rm-ai');
+    ai.innerHTML = rec.ai_comment
+        ? `<div style="background:rgba(139,92,246,.1);border-left:3px solid #8b5cf6;padding:10px;border-radius:6px;margin-bottom:10px">
+             <div style="font-weight:700;color:#a78bfa;margin-bottom:4px">🧠 DeepSeek 点评</div>
+             <div style="line-height:1.7">${rec.ai_comment}</div>
+             ${rec.ai_watch?`<div style="margin-top:6px;font-size:12px"><b>观察点：</b>${rec.ai_watch}</div>`:''}
+             ${rec.ai_risk?`<div style="margin-top:4px;font-size:12px;color:var(--amber)"><b>风险：</b>${rec.ai_risk}</div>`:''}
+           </div>`
+        : (rec.ai_comment === undefined && lastRecLLM && lastRecLLM.available === false
+            ? '<div class="msg" style="display:block;color:var(--amber)">DeepSeek 未配置，未生成 AI 点评</div>' : '');
     document.getElementById('rm-detail').innerHTML = '<div class="loading">加载详情中...</div>';
     document.getElementById('rec-modal').style.display = 'flex';
     // load detail (chart + buysell + fundamentals)
@@ -1687,6 +1732,23 @@ function drawMiniChart(symbol, elId) {
     });
 }
 // init: load recommendations on tab open
+// ---------- 买卖点 AI 解读 ----------
+async function loadBsReading() {
+    const box = document.getElementById('bs-reading');
+    if (!currentSymbol) { box.innerHTML = '<p style="color:var(--amber)">请先在左侧选择股票</p>'; return; }
+    box.innerHTML = '<div class="loading">🧠 DeepSeek 正在结合行业/舆情/宏观解读该买卖点计划，约 10~30 秒...</div>';
+    try {
+        const r = await api('/api/buysell/reading', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbol: currentSymbol, period:'day', bars:400, forecast:true})});
+        if (!r.ok) { box.innerHTML = `<p style="color:var(--amber)">AI 解读不可用：${r.error||'未知原因'}</p>`; return; }
+        box.innerHTML = `
+            <div style="background:rgba(139,92,246,.1);border-left:3px solid #8b5cf6;padding:10px;border-radius:6px;line-height:1.75">${r.reading}</div>
+            ${r.entry_tip?`<div style="margin-top:8px;font-size:13px"><b>怎么下手：</b>${r.entry_tip}</div>`:''}
+            ${r.invalid?`<div style="margin-top:6px;font-size:13px;color:var(--amber)"><b>计划失效信号：</b>${r.invalid}</div>`:''}
+            <div style="margin-top:6px;font-size:11px;color:var(--muted)">由 DeepSeek 生成，仅供研究参考，不构成投资建议。</div>`;
+    } catch (e) { box.innerHTML = `<p style="color:var(--red)">解读失败：${e.message}</p>`; }
+}
+
 function loadRecommend(force) {
     const n = document.getElementById('rc-n').value;
     const fc = document.getElementById('rc-fc').value;
@@ -1696,7 +1758,9 @@ function loadRecommend(force) {
         document.getElementById('rc-loading').classList.add('hidden');
         if (r.error) { showMsg('rc-msg', r.error, false); return; }
         if (!r.recommendations.length) { showMsg('rc-msg', r.message||'暂无可推荐股票', false); return; }
-        document.getElementById('rc-info').textContent = `来源：${r.source||'全市场'} · 候选池 ${r.pool_size} 支 · 更新 ${r.generated}`;
+        document.getElementById('rc-info').textContent = `来源：${r.source||'全市场'} · 候选池 ${r.pool_size} 支 · 更新 ${r.generated}`
+            + (r.llm && r.llm.available ? ` · 🧠 DeepSeek 已点评 ${r.llm.commented||0} 支` : ' · ⚠️ DeepSeek 未配置，无 AI 点评');
+        lastRecLLM = r.llm || {};
         document.getElementById('rc-cards').innerHTML = r.recommendations.map((rc,i)=>`
             <div class="rec-card" onclick="openRecModal(${JSON.stringify(rc).replace(/"/g,'&quot;')})">
                 <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1712,6 +1776,7 @@ function loadRecommend(force) {
                     ${rc.pe?`<span>PE ${fmt(rc.pe,1)}</span>`:''}
                 </div>
                 <div style="color:var(--muted);font-size:12px;margin:6px 0">${rc.summary}</div>
+                ${rc.ai_comment?`<div style="font-size:12px;margin:6px 0;background:rgba(139,92,246,.1);border-left:2px solid #8b5cf6;padding:6px 8px;border-radius:4px">🧠 ${rc.ai_comment.slice(0,120)}…</div>`:''}
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <div style="font-size:13px;color:var(--amber)">⭐ 评分 ${rc.score}</div>
                     <div>
@@ -1785,7 +1850,12 @@ function renderResearch(r) {
     document.getElementById('rs-stance').textContent = v.avg_stance;
     document.getElementById('rs-disagree').textContent = (v.disagreements||[]).length;
     document.getElementById('rs-conflict').textContent = (v.conflicts||[]).length;
-    document.getElementById('rs-verdict-text').innerHTML = v.text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    document.getElementById('rs-verdict-text').innerHTML =
+        (v.quant_line ? `<div style="color:var(--muted);font-size:12px;margin-bottom:6px">${v.quant_line.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>')}</div>` : '')
+        + (v.engine==='deepseek' ? '<div style="font-size:11px;color:#a78bfa;margin-bottom:4px">🧠 主理人陈词由 DeepSeek 生成</div>' : '')
+        + v.text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+        + ((v.monitor||[]).length ? `<div style="margin-top:8px;font-size:12px;background:rgba(59,130,246,.1);padding:8px;border-radius:6px"><b>🔍 需持续监控：</b>${v.monitor.map(x=>`<div>· ${x}</div>`).join('')}</div>` : '')
+        + (v.stages ? `<div style="margin-top:8px;font-size:11px;color:var(--muted)">AI 引擎占比：发言 ${v.stages.agents_llm}/${v.stages.agents} · 辩论 ${v.stages.debates_llm}/${v.stages.debates} · 互评 ${v.stages.reviews_llm}/${v.stages.reviews}</div>` : '');
 
     // conflicts
     const cb = document.getElementById('rs-conflict-box');
@@ -1802,12 +1872,14 @@ function renderResearch(r) {
     // rounds
     let html = '';
     html += `<h3 style="font-size:13px;color:#fff;margin:8px 0 6px">第 0 轮 · 独立闭门输出（${R.round0_independent.length} 位）</h3>`;
-    html += R.round0_independent.map(op => rsPanel(op.role_name, `
+    html += R.round0_independent.map(op => rsPanel(op.role_name + (op.engine==='deepseek'?' 🧠':''), `
         <div style="display:flex;justify-content:space-between">
             <b>${op.role_name}</b>
             <span class="${op.view==='偏多'?'pos':(op.view==='偏空'?'neg':'')}">${op.view}（置信 ${op.confidence}｜强度 ${op.stance_score}）</span>
         </div>
-        ${op.evidence.length?`<div style="margin-top:6px;font-size:12px"><b>论据：</b>${op.evidence.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
+        ${op.narrative?`<div style="margin-top:6px;font-size:13px;line-height:1.7;background:rgba(139,92,246,.08);padding:8px;border-radius:6px;border-left:3px solid #8b5cf6">${op.narrative}</div>`:''}
+        ${(op.key_points||[]).length?`<div style="margin-top:6px;font-size:12px"><b>要点：</b>${op.key_points.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
+        ${op.evidence.length?`<div style="margin-top:6px;font-size:12px"><b>量化论据：</b>${op.evidence.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
         ${op.risks.length?`<div style="margin-top:4px;font-size:12px;color:var(--amber)"><b>风险点：</b>${op.risks.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
         ${op.assumptions.length?`<div style="margin-top:4px;font-size:11px;color:var(--muted)"><b>假设：</b>${op.assumptions.join('；')}</div>`:''}
     `, op.view==='偏多'?'var(--green)':(op.view==='偏空'?'var(--red)':'var(--muted)'))).join('');
@@ -1939,6 +2011,277 @@ async function loadSessions() {
     } catch(e) {}
 }
 
+// ---------- DeepSeek 状态 + 外部数据源矩阵 ----------
+async function loadLLMStatus() {
+    const bar = document.getElementById('llm-bar');
+    if (!bar) return null;
+    try {
+        const s = await api('/api/llm/status');
+        if (s.available) {
+            bar.style.background = 'rgba(34,197,94,.12)';
+            bar.style.color = 'var(--green)';
+            bar.innerHTML = `🧠 <b>DeepSeek 已连接</b> · 模型 ${s.model} · 密钥 ${s.key_masked}（来源 ${s.key_source}）`
+                + ` · 累计调用 ${s.calls} 次（成功 ${s.ok} / 失败 ${s.fail} / 命中缓存 ${s.cache_hits}）`
+                + ` · token 用量 输入 ${s.prompt_tokens} / 输出 ${s.completion_tokens}`
+                + (s.last_error ? ` · <span style="color:var(--red)">最近错误：${s.last_error.slice(0,80)}</span>` : '')
+                + ` <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="testLLM()">连通性测试</button>`;
+        } else {
+            bar.style.background = 'rgba(245,158,11,.12)';
+            bar.style.color = 'var(--amber)';
+            bar.innerHTML = '⚠️ 未检测到 DeepSeek 密钥，AI 解读功能自动回退到规则引擎。'
+                + '设置方法：环境变量 DEEPSEEK_API_KEY，或 trading-app/llm_config.json。';
+        }
+        return s;
+    } catch (e) { bar.textContent = 'DeepSeek 状态获取失败：' + e.message; return null; }
+}
+
+async function testLLM() {
+    const bar = document.getElementById('llm-bar');
+    bar.textContent = '⏳ 正在测试 DeepSeek 连通性...';
+    try {
+        const r = await api('/api/llm/test', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+        bar.innerHTML = r.ok
+            ? `✅ DeepSeek 连通正常，返回「${r.reply}」，耗时 ${r.latency}s <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="loadLLMStatus()">刷新状态</button>`
+            : `❌ 连接失败：${r.error} <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="loadLLMStatus()">刷新状态</button>`;
+    } catch (e) { bar.textContent = '测试失败：' + e.message; }
+}
+
+function srcSymbol() { return (document.getElementById('src-symbol').value || '600519').trim(); }
+function srcIndustry() { return (document.getElementById('src-industry-q').value || '').trim(); }
+function srcLoading(id, label) { document.getElementById(id).innerHTML = `<div class="loading">⏳ ${label}...</div>`; }
+function srcErr(id, msg) { document.getElementById(id).innerHTML = `<div class="msg" style="display:block;color:var(--red)">${msg}</div>`; }
+
+async function loadMacro() {
+    srcLoading('src-macro', '拉取 CPI/PPI/PMI/GDP/存准率/资金利率');
+    try {
+        const d = await api('/api/macro');
+        const toneColor = d.tone === '偏多' ? 'var(--green)' : (d.tone === '偏空' ? 'var(--red)' : 'var(--muted)');
+        document.getElementById('src-macro').innerHTML = `
+            <div style="margin:8px 0 4px;font-weight:700">🌏 宏观/利率 <span style="color:${toneColor}">综合打分 ${d.score} · ${d.tone}</span>
+                <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="macroBrief()">🧠 AI 解读</button></div>
+            <div class="stat-grid">${(d.cards||[]).map(c=>`
+                <div class="stat"><div class="k">${c.name}</div>
+                <div class="v ${c.tone==='pos'?'pos':(c.tone==='neg'?'neg':'')}">${c.value}
+                <div style="font-size:11px;color:var(--muted)">${c.sub||''}</div></div></div>`).join('')}</div>
+            <div id="src-macro-brief"></div>`;
+    } catch (e) { srcErr('src-macro', '宏观数据获取失败：' + e.message); }
+}
+
+async function macroBrief() {
+    const box = document.getElementById('src-macro-brief');
+    box.innerHTML = '<div class="loading">🧠 DeepSeek 正在解读宏观环境...</div>';
+    try {
+        const r = await api('/api/macro/brief', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbol: srcSymbol(), industry: srcIndustry()})});
+        box.innerHTML = r.ok
+            ? `<div class="msg" style="display:block;background:rgba(139,92,246,.1);color:var(--text);white-space:pre-wrap;line-height:1.7">${r.text}</div>`
+            : `<div class="msg" style="display:block;color:var(--amber)">AI 解读不可用：${r.error}</div>`;
+    } catch (e) { box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${e.message}</div>`; }
+}
+
+async function loadIndustry() {
+    srcLoading('src-industry', '拉取行业板块景气度');
+    try {
+        const d = await api('/api/industry/ranking?limit=20');
+        const one = await api('/api/industry/' + srcSymbol());
+        const b = one.board || {};
+        document.getElementById('src-industry').innerHTML = `
+            <div style="margin:12px 0 4px;font-weight:700">🏭 行业景气度
+                ${b.name ? `<span class="hint">${srcSymbol()} 属于 <b>${b.name}</b>，景气度 ${b.prosperity}/100，排名 ${one.rank}/${one.total}</span>` : `<span class="hint">${one.note||''}</span>`}
+                <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="industryBrief()">🧠 AI 解读</button></div>
+            ${b.name ? `<div class="stat-grid">
+                <div class="stat"><div class="k">今日涨跌</div><div class="v ${b.pct>0?'pos':'neg'}">${b.pct>0?'+':''}${b.pct}%</div></div>
+                <div class="stat"><div class="k">5日</div><div class="v ${b.pct5>0?'pos':'neg'}">${b.pct5>0?'+':''}${b.pct5}%</div></div>
+                <div class="stat"><div class="k">20日</div><div class="v ${b.pct20>0?'pos':'neg'}">${b.pct20>0?'+':''}${b.pct20}%</div></div>
+                <div class="stat"><div class="k">主力净流入</div><div class="v ${b.main_inflow>0?'pos':'neg'}">${(b.main_inflow||0).toFixed(0)}万</div></div>
+                <div class="stat"><div class="k">换手/量比</div><div class="v">${b.turnover_rate}% / ${b.volume_ratio}</div></div>
+                <div class="stat"><div class="k">涨跌家数</div><div class="v"><span class="pos">${b.up_count}</span> / <span class="neg">${b.down_count}</span></div></div>
+            </div>` : ''}
+            <div style="margin-top:8px;font-size:12px;color:var(--muted)">全市场景气度 Top 20（腾讯行业板块实时）：</div>
+            <table><thead><tr><th>#</th><th>行业</th><th>今日</th><th>5日</th><th>20日</th><th>景气度</th><th>领涨股</th></tr></thead><tbody>
+            ${(d.ranking||[]).map((x,i)=>`<tr>
+                <td>${i+1}</td><td>${x.name}</td>
+                <td class="${x.pct>0?'pos':'neg'}">${x.pct>0?'+':''}${x.pct}%</td>
+                <td class="${x.pct5>0?'pos':'neg'}">${x.pct5>0?'+':''}${x.pct5}%</td>
+                <td class="${x.pct20>0?'pos':'neg'}">${x.pct20>0?'+':''}${x.pct20}%</td>
+                <td><b>${x.prosperity}</b></td>
+                <td>${x.leader&&x.leader.name?`${x.leader.name} <span class="${x.leader.pct>0?'pos':'neg'}">${x.leader.pct>0?'+':''}${x.leader.pct}%</span>`:'-'}</td>
+            </tr>`).join('')}</tbody></table>
+            <div id="src-industry-brief"></div>`;
+    } catch (e) { srcErr('src-industry', '行业数据获取失败：' + e.message); }
+}
+
+async function industryBrief() {
+    const box = document.getElementById('src-industry-brief');
+    box.innerHTML = '<div class="loading">🧠 DeepSeek 正在分析行业景气度...</div>';
+    try {
+        const r = await api('/api/industry/brief', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbol: srcSymbol(), industry: srcIndustry()})});
+        box.innerHTML = r.ok
+            ? `<div class="msg" style="display:block;background:rgba(139,92,246,.1);color:var(--text);white-space:pre-wrap;line-height:1.7">${r.text}</div>`
+            : `<div class="msg" style="display:block;color:var(--amber)">AI 解读不可用：${r.error}</div>`;
+    } catch (e) { box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${e.message}</div>`; }
+}
+
+async function loadSentiment() {
+    srcLoading('src-sentiment', '抓取新闻公告并做情感打分');
+    try {
+        const d = await api('/api/sentiment/' + srcSymbol());
+        const col = d.avg > 0.15 ? 'var(--green)' : (d.avg < -0.15 ? 'var(--red)' : 'var(--muted)');
+        const rcol = d.risk_level === '高' ? 'var(--red)' : (d.risk_level === '中' ? 'var(--amber)' : 'var(--green)');
+        document.getElementById('src-sentiment').innerHTML = `
+            <div style="margin:12px 0 4px;font-weight:700">📰 舆情情感分析
+                <span class="hint">引擎：${d.engine==='deepseek'?'DeepSeek 语义打分':'中文金融情感词典'}</span>
+                <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="sentimentBrief()">🧠 AI 解读</button></div>
+            <div class="stat-grid">
+                <div class="stat"><div class="k">样本数</div><div class="v">${d.count}</div></div>
+                <div class="stat"><div class="k">情感均值</div><div class="v" style="color:${col}">${d.avg}</div></div>
+                <div class="stat"><div class="k">倾向</div><div class="v" style="color:${col}">${d.label}</div></div>
+                <div class="stat"><div class="k">舆情风险</div><div class="v" style="color:${rcol}">${d.risk_level}</div></div>
+                <div class="stat"><div class="k">正/负/中</div><div class="v"><span class="pos">${d.pos}</span>/<span class="neg">${d.neg}</span>/${d.neutral}</div></div>
+            </div>
+            <table><thead><tr><th>情感</th><th>分值</th><th>类型</th><th>事件</th><th>标题</th><th>时间</th></tr></thead><tbody>
+            ${(d.items||[]).map(it=>`<tr>
+                <td style="color:${it.final>0.15?'var(--green)':(it.final<-0.15?'var(--red)':'var(--muted)')}">${it.label}</td>
+                <td>${it.final>0?'+':''}${it.final}</td><td>${it.kind}</td><td>${it.event||'-'}</td>
+                <td>${it.url?`<a href="${it.url}" target="_blank" style="color:var(--blue)">${(it.title||'').slice(0,52)}</a>`:(it.title||'').slice(0,52)}</td>
+                <td style="font-size:11px;color:var(--muted)">${(it.date||'').slice(0,16)}</td>
+            </tr>`).join('')}</tbody></table>
+            <div id="src-sentiment-brief"></div>`;
+    } catch (e) { srcErr('src-sentiment', '舆情数据获取失败：' + e.message); }
+}
+
+async function sentimentBrief() {
+    const box = document.getElementById('src-sentiment-brief');
+    box.innerHTML = '<div class="loading">🧠 DeepSeek 正在解读舆情...</div>';
+    try {
+        const r = await api('/api/sentiment/brief', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbol: srcSymbol()})});
+        box.innerHTML = r.ok
+            ? `<div class="msg" style="display:block;background:rgba(139,92,246,.1);color:var(--text);white-space:pre-wrap;line-height:1.7">${r.text}</div>`
+            : `<div class="msg" style="display:block;color:var(--amber)">AI 解读不可用：${r.error}</div>`;
+    } catch (e) { box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${e.message}</div>`; }
+}
+
+async function loadReports() {
+    srcLoading('src-reports', '拉取券商研报');
+    try {
+        const d = await api('/api/reports/' + srcSymbol());
+        const r = d.ratings || {};
+        const dist = Object.entries(r.dist||{}).map(([k,v])=>`${k} ${v}`).join(' · ') || '无';
+        document.getElementById('src-reports').innerHTML = `
+            <div style="margin:12px 0 4px;font-weight:700">📚 券商研报数据库
+                <span class="hint">东财研报中心</span>
+                <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="reportsBrief()">🧠 AI 汇总</button></div>
+            <div class="stat-grid">
+                <div class="stat"><div class="k">近半年研报</div><div class="v">${r.total||0} 篇</div></div>
+                <div class="stat"><div class="k">评级分布</div><div class="v" style="font-size:13px">${dist}</div></div>
+                <div class="stat"><div class="k">关注机构</div><div class="v" style="font-size:13px">${(r.top_orgs||[]).map(x=>`${x[0]}(${x[1]})`).join('、')||'-'}</div></div>
+            </div>
+            <table><thead><tr><th>日期</th><th>机构</th><th>评级</th><th>标题</th></tr></thead><tbody>
+            ${(d.reports||[]).map(x=>`<tr>
+                <td style="font-size:12px">${x.date}</td><td>${x.org}</td>
+                <td>${x.rating||'-'}</td>
+                <td>${x.url?`<a href="${x.url}" target="_blank" style="color:var(--blue)">${(x.title||'').slice(0,60)}</a>`:(x.title||'').slice(0,60)}</td>
+            </tr>`).join('')}</tbody></table>
+            <div id="src-reports-brief"></div>`;
+    } catch (e) { srcErr('src-reports', '研报数据获取失败：' + e.message); }
+}
+
+async function reportsBrief() {
+    const box = document.getElementById('src-reports-brief');
+    box.innerHTML = '<div class="loading">🧠 DeepSeek 正在汇总研报观点...</div>';
+    try {
+        const r = await api('/api/reports/brief', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbol: srcSymbol(), industry: srcIndustry()})});
+        box.innerHTML = r.ok
+            ? `<div class="msg" style="display:block;background:rgba(139,92,246,.1);color:var(--text);white-space:pre-wrap;line-height:1.7">${r.text}</div>`
+            : `<div class="msg" style="display:block;color:var(--amber)">AI 汇总不可用：${r.error}</div>`;
+    } catch (e) { box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${e.message}</div>`; }
+}
+
+async function loadNightlyParams() {
+    srcLoading('src-nightly', '读取自迭代参数');
+    try {
+        const d = await api('/api/nightly/params');
+        const its = await api('/api/nightly/iterations?limit=5');
+        document.getElementById('src-nightly').innerHTML = `
+            <div style="margin:12px 0 4px;font-weight:700">🌙 夜间自迭代机制
+                <span class="hint">每天 02:00 自动跑；也可手动触发</span>
+                <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="runNightly(1)">演练（不生效）</button>
+                <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="runNightly(0)">立即迭代</button>
+                <button class="ghost" style="padding:1px 8px;font-size:11px" onclick="resetNightly()">恢复默认</button>
+            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">上次生效时间：${d.updated||'（尚未迭代过，全部为默认值）'}</div>
+            <table><thead><tr><th>参数</th><th>说明</th><th>当前值</th><th>默认值</th><th>允许范围</th><th>状态</th></tr></thead><tbody>
+            ${(d.params||[]).map(p=>`<tr>
+                <td style="font-size:11px">${p.param}</td><td>${p.label}</td>
+                <td><b>${p.current}</b></td><td style="color:var(--muted)">${p.default}</td>
+                <td style="font-size:11px">${p.min} ~ ${p.max}</td>
+                <td>${p.changed?'<span style="color:var(--amber)">已调整</span>':'<span style="color:var(--muted)">默认</span>'}</td>
+            </tr>`).join('')}</tbody></table>
+            <div style="margin-top:8px;font-size:12px;color:var(--muted)">最近迭代记录：</div>
+            ${(its.iterations||[]).length ? `<table><thead><tr><th>#</th><th>时间</th><th>引擎</th><th>触发</th><th>结论</th><th></th></tr></thead><tbody>
+            ${its.iterations.map(i=>`<tr><td>${i.id}</td>
+                <td style="font-size:12px">${new Date(i.started*1000).toLocaleString('zh-CN')}</td>
+                <td>${i.engine==='deepseek'?'🧠 DeepSeek':'规则'}</td><td>${i.trigger}</td>
+                <td>${i.summary||''}</td>
+                <td><button class="ghost" style="padding:1px 8px;font-size:11px" onclick="viewIteration(${i.id})">详情</button></td></tr>`).join('')}
+            </tbody></table>` : '<p style="color:var(--muted)">暂无迭代记录，点「立即迭代」试一次</p>'}
+            <div id="src-nightly-detail"></div>`;
+    } catch (e) { srcErr('src-nightly', '自迭代数据获取失败：' + e.message); }
+}
+
+async function runNightly(dry) {
+    const box = document.getElementById('src-nightly-detail');
+    if (box) box.innerHTML = `<div class="loading">🧠 DeepSeek 正在分析运行数据并生成调参建议${dry?'（演练模式）':'（将写入生效）'}，请稍候...</div>`;
+    try {
+        const r = await api('/api/nightly/run', {method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({dry_run: !!dry})});
+        const props = r.proposals||[];
+        const applied = r.applied||[];
+        if (box) box.innerHTML = `
+            <div class="panel" style="background:var(--panel);margin-top:8px">
+                <div style="font-weight:700">迭代 #${r.id} 完成 · ${r.engine==='deepseek'?'DeepSeek':'规则引擎'} · 生效 ${applied.length} 条</div>
+                <p style="color:var(--muted);font-size:12px">${r.summary}</p>
+                ${props.length ? `<table><thead><tr><th>参数</th><th>原值</th><th>建议值</th><th>生效值</th><th>理由</th><th>置信度</th></tr></thead><tbody>
+                ${props.map((p,i)=>{const a=applied.find(x=>x.param===p.param);return `<tr>
+                    <td style="font-size:11px">${p.param}</td><td>${p.from}</td><td>${p.to_raw}</td>
+                    <td>${a?`<b style="color:var(--amber)">${a.to}</b>`:'<span style="color:var(--muted)">未改动</span>'}</td>
+                    <td>${p.reason||''}</td><td>${p.confidence??'-'}</td></tr>`;}).join('')}</tbody></table>`
+                : '<p style="color:var(--muted)">本轮没有需要调整的参数（说明当前参数与运行数据匹配良好）。</p>'}
+                ${(r.notes||[]).length?`<div style="font-size:12px;color:var(--amber)">${r.notes.join('<br>')}</div>`:''}
+            </div>`;
+        loadNightlyParams();
+    } catch (e) { if (box) box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">迭代失败：${e.message}</div>`; }
+}
+
+async function resetNightly() {
+    await api('/api/nightly/reset', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    loadNightlyParams();
+}
+
+async function viewIteration(id) {
+    const box = document.getElementById('src-nightly-detail');
+    box.innerHTML = '<div class="loading">加载中...</div>';
+    const d = await api('/api/nightly/iterations/' + id);
+    const acc = ((d.evidence||{}).items||{}).accuracy||[];
+    box.innerHTML = `<div class="panel" style="background:var(--panel);margin-top:8px">
+        <div style="font-weight:700">迭代 #${d.id} 详情</div>
+        <div style="font-size:12px;color:var(--muted);margin:6px 0">证据：${acc.map(a=>`${a.symbol} MAPE ${a.mape}%/方向 ${a.dir_acc}`).join('；')||'（无准确率样本）'}</div>
+        <pre style="white-space:pre-wrap;font-size:12px;max-height:340px;overflow:auto">${JSON.stringify({proposals:d.proposals,applied:d.applied},null,1)}</pre>
+    </div>`;
+}
+
+function loadAllSources() {
+    loadLLMStatus();
+    loadMacro();
+    loadIndustry();
+    loadSentiment();
+    loadReports();
+    loadNightlyParams();
+}
+
 // ---------- 需求实现对照表 ----------
 var reqCache = null;
 async function loadRequirements() {
@@ -2042,6 +2385,7 @@ function loadOverview() {
             <button class="ghost" onclick="closeRecModal()">✕ 关闭</button>
         </div>
         <div id="rm-summary" style="color:var(--muted);margin-bottom:10px;padding:8px 12px;background:var(--panel2);border-radius:6px"></div>
+        <div id="rm-ai"></div>
         <div class="stat-grid" id="rm-breakdown" style="margin-bottom:10px"></div>
         <div class="panel" style="background:var(--panel2);margin-bottom:10px">
             <h2 style="font-size:13px">推荐理由</h2>

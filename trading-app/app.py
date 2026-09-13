@@ -22,15 +22,21 @@ import backtest
 import buysell
 import committee
 import compliance
+import deepseek
 import fundamentals
 import global_market
 import indicators as ind
+import industry
 import kronos_service
+import macro
 import market
+import nightly
 import notify
 import recommend
 import requirements_map
+import research_db
 import research_report
+import sentiment
 from agents import ROLES as AGENT_ROLES
 from agents import llm as llm_adapter
 from signals import forecast_direction_signals, indicator_signals
@@ -74,6 +80,11 @@ def _float_arg(name, default, lo=None, hi=None):
     if hi is not None:
         v = min(v, hi)
     return v
+
+
+def _now_str():
+    import time as _t
+    return _t.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _load_with_indicators(symbol, bars=600, force=False):
@@ -698,6 +709,208 @@ def api_research_requirements():
     return jsonify(requirements_map.all_requirements())
 
 
+@app.route("/api/llm/status")
+def api_llm_status():
+    return jsonify(deepseek.status())
+
+
+@app.route("/api/llm/config", methods=["GET", "POST"])
+def api_llm_config():
+    if request.method == "GET":
+        cfg = deepseek.load_config()
+        cfg.pop("api_key", None)
+        cfg["key_masked"] = deepseek.status().get("key_masked")
+        return jsonify(cfg)
+    data = request.get_json() or {}
+    kw = {}
+    for k in ("model", "base_url", "temperature", "max_tokens", "concurrency", "cache_ttl", "timeout"):
+        if k in data:
+            kw[k] = data[k]
+    if data.get("api_key"):
+        kw["api_key"] = data["api_key"]
+        kw["enabled"] = True
+    if data.get("enabled") is not None:
+        kw["enabled"] = bool(data["enabled"])
+    deepseek.save_config(**kw)
+    return jsonify({"ok": True, "status": deepseek.status()})
+
+
+@app.route("/api/llm/test", methods=["POST"])
+def api_llm_test():
+    """探活：发一条最小请求验证 DeepSeek 是否可用。"""
+    res = deepseek.chat([{"role": "system", "content": "你是一个测试助手。"},
+                         {"role": "user", "content": "只回复四个字：连接正常"}],
+                        max_tokens=20, tag="ping", use_cache=False)
+    return jsonify({"ok": res["ok"], "reply": res["text"].strip()[:60],
+                    "error": res["error"], "latency": round(res["latency"], 2),
+                    "status": deepseek.status()})
+
+
+# ---- 宏观 / 利率 ----
+
+@app.route("/api/macro")
+def api_macro():
+    return jsonify(macro.snapshot())
+
+
+@app.route("/api/macro/brief", methods=["POST"])
+def api_macro_brief():
+    data = request.get_json() or {}
+    sym = str(data.get("symbol") or "").strip()
+    res = macro.llm_brief(sym, data.get("industry") or "")
+    res["snapshot"] = macro.snapshot()
+    return jsonify(res)
+
+
+# ---- 行业景气度 ----
+
+@app.route("/api/industry/ranking")
+def api_industry_ranking():
+    limit = _int_arg("limit", 30, 1, 200)
+    return jsonify({"ranking": industry.ranking(limit), "generated": _now_str()})
+
+
+@app.route("/api/industry/<symbol>")
+def api_industry_one(symbol):
+    return jsonify(industry.industry_for(symbol))
+
+
+@app.route("/api/industry/brief", methods=["POST"])
+def api_industry_brief():
+    data = request.get_json() or {}
+    return jsonify(industry.llm_brief(str(data.get("symbol") or "").strip(),
+                                      data.get("industry") or ""))
+
+
+# ---- 舆情情感分析 ----
+
+@app.route("/api/sentiment/<symbol>")
+def api_sentiment(symbol):
+    use_llm = request.args.get("llm", "1") != "0"
+    return jsonify(sentiment.analyze(symbol, use_llm=use_llm))
+
+
+@app.route("/api/sentiment/brief", methods=["POST"])
+def api_sentiment_brief():
+    data = request.get_json() or {}
+    sym = str(data.get("symbol") or "").strip()
+    if not sym:
+        return jsonify({"error": "请提供 symbol"}), 400
+    result = sentiment.analyze(sym, use_llm=True)
+    brief = sentiment.llm_brief(result)
+    brief["result"] = result
+    return jsonify(brief)
+
+
+# ---- 券商研报数据库 ----
+
+@app.route("/api/reports/<symbol>")
+def api_reports(symbol):
+    days = _int_arg("days", 180, 7, 730)
+    limit = _int_arg("limit", 15, 1, 50)
+    return jsonify({"symbol": symbol, "reports": research_db.stock_reports(symbol, days, limit),
+                    "ratings": research_db.ratings_summary(symbol, days)})
+
+
+@app.route("/api/reports/industry")
+def api_reports_industry():
+    industry_name = request.args.get("industry") or ""
+    days = _int_arg("days", 60, 7, 365)
+    return jsonify({"industry": industry_name,
+                    "reports": research_db.industry_reports(industry_name, days, 15),
+                    "strategy": research_db.strategy_reports(30, 8)})
+
+
+@app.route("/api/reports/brief", methods=["POST"])
+def api_reports_brief():
+    data = request.get_json() or {}
+    return jsonify(research_db.llm_brief(str(data.get("symbol") or "").strip(),
+                                         data.get("industry") or ""))
+
+
+# ---- 夜间自迭代 ----
+
+@app.route("/api/nightly/params")
+def api_nightly_params():
+    return jsonify({"params": nightly.param_table(), "updated": nightly.load_tuning().get("updated"),
+                    "last_iteration": nightly.load_tuning().get("last_iteration")})
+
+
+@app.route("/api/nightly/iterations")
+def api_nightly_iterations():
+    return jsonify({"iterations": nightly.list_iterations(_int_arg("limit", 20, 1, 100))})
+
+
+@app.route("/api/nightly/iterations/<int:rid>")
+def api_nightly_iteration(rid):
+    it = nightly.get_iteration(rid)
+    if not it:
+        return jsonify({"error": "记录不存在"}), 404
+    return jsonify(it)
+
+
+@app.route("/api/nightly/run", methods=["POST"])
+def api_nightly_run():
+    """手动触发一次自迭代（dry_run=1 只给建议不生效）。"""
+    data = request.get_json() or {}
+    dry = bool(data.get("dry_run"))
+    res = nightly.run_iteration(trigger="manual", dry_run=dry)
+    return jsonify(res)
+
+
+@app.route("/api/nightly/reset", methods=["POST"])
+def api_nightly_reset():
+    nightly.reset_tuning()
+    return jsonify({"ok": True, "params": nightly.param_table()})
+
+
+# ---- 买卖点 AI 解读 ----
+
+@app.route("/api/buysell/reading", methods=["POST"])
+def api_buysell_reading():
+    data = request.get_json() or {}
+    sym = str(data.get("symbol") or "").strip()
+    if not sym:
+        return jsonify({"error": "请提供 symbol"}), 400
+    try:
+        df = market.fetch_kline(sym, period=data.get("period") or "day",
+                                bars=_int_arg("bars", 400, 60, 800))
+        fc = None
+        if data.get("forecast", True):
+            try:
+                fc = kronos_service.forecast(sym, df, lookback=400, pred_len=30)
+            except Exception:
+                fc = None
+        plan = buysell.buy_sell_plan(df, forecast=fc)
+    except Exception as e:
+        return jsonify({"error": f"计划生成失败：{e}"}), 400
+
+    extra = {}
+    try:
+        extra["industry"] = industry.industry_for(sym)
+    except Exception:
+        pass
+    try:
+        extra["sentiment"] = sentiment.analyze(sym, use_llm=True, limit=6)
+    except Exception:
+        pass
+    try:
+        extra["macro"] = (macro.snapshot().get("cards") or [])
+    except Exception:
+        pass
+    if fc:
+        extra["forecast"] = (f"{fc.get('change_pct'):+.1f}%（误差带 ±"
+                             f"{((fc.get('confidence') or {}).get('mae_pct', 0.15)) * 100:.0f}%）")
+    name = ""
+    try:
+        name = (market.fetch_realtime_one(sym) or {}).get("name") or ""
+    except Exception:
+        pass
+    res = buysell.llm_reading(plan, symbol=sym, name=name, extra=extra)
+    res["plan"] = plan
+    return jsonify(res)
+
+
 @app.route("/api/research/meeting", methods=["POST"])
 def api_research_meeting():
     """Run a full 4-round research committee meeting."""
@@ -1177,10 +1390,31 @@ def _monitor_loop():
             print(f"[monitor] error: {e}")
 
 
+def _nightly_loop():
+    """夜间自迭代：每天 02:00 自动跑一次（DeepSeek 根据真实运行数据调参）。"""
+    time.sleep(90)  # 等启动稳定
+    while True:
+        try:
+            last = nightly.load_tuning().get("last_run_ts") or 0
+            if nightly.should_run_now(last, hour=2):
+                print("[nightly] 开始夜间自迭代 ...")
+                res = nightly.run_iteration(trigger="schedule")
+                cfg = nightly.load_tuning()
+                cfg["last_run_ts"] = time.time()
+                nightly.save_tuning(cfg)
+                print(f"[nightly] 完成：{res['summary']}")
+            time.sleep(300)
+        except Exception as e:
+            print(f"[nightly] error: {e}")
+            time.sleep(600)
+
+
 def _start_monitor():
     import threading
     t = threading.Thread(target=_monitor_loop, daemon=True)
     t.start()
+    t2 = threading.Thread(target=_nightly_loop, daemon=True)
+    t2.start()
 
 
 if __name__ == "__main__":
@@ -1191,10 +1425,12 @@ if __name__ == "__main__":
     account.init_db()
     alerts.init_tables()
     auto_trade.init_tables()
+    nightly.init_tables()
     _start_monitor()
     print("=" * 52)
     print("  Kronos Trading App")
     print("  URL: http://localhost:7071")
+    print(f"  DeepSeek: {'已连接 ' + deepseek.status()['model'] if deepseek.available() else '未配置（回退规则引擎）'}")
     print("=" * 52)
 
     # Open the browser shortly after the server is up.

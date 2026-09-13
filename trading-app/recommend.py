@@ -168,6 +168,17 @@ def recommend(top_n: int = 5, use_forecast: bool = True, force: bool = False,
             ps, prs = _score_forecast(sym)
 
         total = ms + ts + fs + ps
+        # 夜间自迭代生效的权重（DeepSeek 依据实际准确率调整）
+        try:
+            import nightly
+            wm = nightly.get_param("recommend.w_momentum")
+            wt = nightly.get_param("recommend.w_technical")
+            wf = nightly.get_param("recommend.w_fundamental")
+            wp = nightly.get_param("recommend.w_forecast")
+            wsum = (wm + wt + wf + wp) or 1.0
+            total = (ms * wm + ts * wt + fs * wf + ps * wp) / wsum * 4.0
+        except Exception:
+            pass
         mrs = []
         if it["pct"] > 0 and vr >= 1.5:
             mrs.append(f"放量上涨(涨幅{it['pct']:+.1f}%量比{vr:.1f})")
@@ -203,9 +214,56 @@ def recommend(top_n: int = 5, use_forecast: bool = True, force: bool = False,
         r["summary"] = (f"第{i}名 {r['name']}：现涨{r['pct']:+.1f}% 量比{r['volume_ratio']:.1f} {mv_s}，"
                         f"评分{r['score']:.1f}，理由：{'；'.join(r['reasons'][:3]) or '暂无'}")
 
+    # DeepSeek 逐票点评 + 整体策略（并发，失败自动跳过）
+    llm_meta = {"available": False, "commented": 0}
+    try:
+        import deepseek
+        llm_meta["available"] = deepseek.available()
+        if deepseek.available() and top:
+            from concurrent.futures import ThreadPoolExecutor
+
+            def comment(r):
+                ind = {}
+                try:
+                    import industry
+                    ind = industry.industry_for(r["symbol"])
+                except Exception:
+                    pass
+                b = ind.get("board") or {}
+                user = (
+                    f"【标的】{r['name']}（{r['symbol']}）  现价 {r['price']}  今日 {r['pct']:+.2f}%\n"
+                    f"【四维评分】动量 {r['breakdown']['momentum']} / 技术 {r['breakdown']['technical']} / "
+                    f"基本面 {r['breakdown']['fundamental']} / Kronos预测 {r['breakdown']['forecast']}，"
+                    f"综合 {r['score']}\n"
+                    f"【量化理由】{'；'.join(r['reasons'][:5]) or '无'}\n"
+                    f"【所属行业】{ind.get('industry') or '未知'}"
+                    + (f"，景气度 {b.get('prosperity')}/100（排名 {ind.get('rank')}/{ind.get('total')}），"
+                       f"行业今日 {b.get('pct'):+.2f}%、5日 {b.get('pct5'):+.2f}%" if b else "")
+                    + f"\n【换手率】{r.get('turnover')}%  【PE】{r.get('pe')}  【PB】{r.get('pb')}"
+                )
+                res = deepseek.chat_json(
+                    "你是短线交易点评人。基于给定的真实量化数据，用 80~140 字说明这只股票"
+                    "**为什么可能进榜**、**关键观察点**与**主要风险**。"
+                    "只能引用给出的数据，禁止编造；禁止保本/稳赚/必涨表述；不要写免责声明。"
+                    '只输出 JSON：{"comment":"点评","watch":"关键观察点","risk":"主要风险"}',
+                    user, temperature=0.5, max_tokens=500, tag="rec_comment", use_cache=True)
+                return res if isinstance(res, dict) else None
+
+            with ThreadPoolExecutor(max_workers=min(4, len(top))) as ex:
+                results = list(ex.map(comment, top))
+            for r, c in zip(top, results):
+                if c and c.get("comment"):
+                    r["ai_comment"] = str(c["comment"])[:400]
+                    r["ai_watch"] = str(c.get("watch") or "")[:150]
+                    r["ai_risk"] = str(c.get("risk") or "")[:150]
+                    llm_meta["commented"] += 1
+    except Exception as e:
+        llm_meta["error"] = str(e)[:120]
+
     data = {"ok": True, "recommendations": top,
             "generated": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "pool_size": len(gainers), "source": "全市场涨幅榜"}
+            "pool_size": len(gainers), "source": "全市场涨幅榜",
+            "llm": llm_meta}
     with _cache_lock:
         _cache[key] = {"ts": time.time(), "data": data}
     return data
