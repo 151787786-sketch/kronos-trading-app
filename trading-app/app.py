@@ -15,9 +15,13 @@ from flask import Flask, jsonify, render_template, request
 import account
 import accuracy
 import alerts
+import analytics
+import audit
 import auto_trade
 import backtest
 import buysell
+import committee
+import compliance
 import fundamentals
 import global_market
 import indicators as ind
@@ -25,6 +29,9 @@ import kronos_service
 import market
 import notify
 import recommend
+import research_report
+from agents import ROLES as AGENT_ROLES
+from agents import llm as llm_adapter
 from signals import forecast_direction_signals, indicator_signals
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -664,6 +671,132 @@ def api_news():
         return jsonify({"news": recommend.daily_news(limit=limit, force=force)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ==== 投研智能体（数字员工团队）====================================================
+
+
+@app.route("/api/research/agents")
+def api_research_agents():
+    """List the 9 digital-employee roles."""
+    return jsonify({
+        "agents": [{"id": r.id, "name": r.name, "title": r.title,
+                    "focus": r.focus, "stance": r.stance, "is_chair": r.is_chair}
+                   for r in AGENT_ROLES],
+        "llm": {"available": llm_adapter.is_available(),
+                "engine": "llm" if llm_adapter.is_available() else "rule"},
+    })
+
+
+@app.route("/api/research/meeting", methods=["POST"])
+def api_research_meeting():
+    """Run a full 4-round research committee meeting."""
+    data = request.get_json() or {}
+    symbols = data.get("symbols") or []
+    if isinstance(symbols, str):
+        symbols = [s.strip() for s in symbols.split(",") if s.strip()]
+    if not symbols:
+        # default: current watchlist (max 20)
+        symbols = [w["symbol"] for w in account.get_watchlist()][:20]
+    if not symbols:
+        return jsonify({"error": "请提供标的（symbols）或先添加自选股"}), 400
+    if len(symbols) > 20:
+        symbols = symbols[:20]
+    with_forecast = data.get("forecast", True)
+    name = str(data.get("name", "")).strip() or None
+    try:
+        minutes = committee.run_committee(symbols, session_name=name,
+                                         with_forecast=bool(with_forecast))
+        outputs = research_report.build_all(minutes)
+        return jsonify({"ok": True, "minutes": minutes, "outputs": outputs})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"投研会执行失败: {e}"}), 500
+
+
+@app.route("/api/research/sessions")
+def api_research_sessions():
+    """List past research sessions (audit trail index)."""
+    return jsonify({"sessions": audit.list_sessions()})
+
+
+@app.route("/api/research/sessions/<int:sid>")
+def api_research_session(sid):
+    """Full audit trail of one session."""
+    s = audit.get_session(sid)
+    if not s:
+        return jsonify({"error": "会话不存在"}), 404
+    return jsonify(s)
+
+
+@app.route("/api/research/sessions/<int:sid>", methods=["DELETE"])
+def api_research_session_delete(sid):
+    audit.delete_session(sid)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/research/analytics", methods=["POST"])
+def api_research_analytics():
+    """Professional analytics layer: correlation / attribution / monte-carlo / risk / rebalance."""
+    data = request.get_json() or {}
+    symbols = data.get("symbols") or []
+    if isinstance(symbols, str):
+        symbols = [s.strip() for s in symbols.split(",") if s.strip()]
+    if not symbols:
+        return jsonify({"error": "请提供标的"}), 400
+    symbols = symbols[:20]
+    out = {}
+    try:
+        out["correlation"] = analytics.correlation_matrix(symbols)
+    except Exception as e:
+        out["correlation"] = {"error": str(e)}
+    try:
+        out["attribution"] = analytics.attribution(symbols)
+    except Exception as e:
+        out["attribution"] = {"error": str(e)}
+    try:
+        n_sim = _int_arg("n_sim", 10000, 1000, 50000)
+        out["monte_carlo"] = analytics.monte_carlo(symbols, n_sim=n_sim, horizon=30)
+    except Exception as e:
+        out["monte_carlo"] = {"error": str(e)}
+    try:
+        out["risk_scan"] = analytics.risk_scan(symbols)
+    except Exception as e:
+        out["risk_scan"] = {"error": str(e)}
+    try:
+        out["rebalance"] = analytics.build_rebalance_list(symbols)
+    except Exception as e:
+        out["rebalance"] = {"error": str(e)}
+    return jsonify(out)
+
+
+@app.route("/api/research/compliance", methods=["POST"])
+def api_research_compliance():
+    """Scan arbitrary text for compliance violations."""
+    data = request.get_json() or {}
+    text = str(data.get("text", ""))
+    return jsonify(compliance.scan_text(text))
+
+
+@app.route("/api/research/llm", methods=["GET", "POST"])
+def api_research_llm():
+    """Get/set LLM adapter config (预留 DeepSeek 等)."""
+    if request.method == "GET":
+        cfg = llm_adapter.load_config()
+        cfg["api_key"] = "***" if cfg.get("api_key") else ""
+        cfg["available"] = llm_adapter.is_available()
+        return jsonify(cfg)
+    data = request.get_json() or {}
+    cfg = llm_adapter.save_config(
+        enabled=data.get("enabled"),
+        provider=data.get("provider"),
+        api_key=data.get("api_key") if data.get("api_key") != "***" else None,
+        base_url=data.get("base_url"),
+        model=data.get("model"),
+    )
+    return jsonify({"ok": True, "available": llm_adapter.is_available(),
+                    "model": cfg.get("model")})
 
 
 @app.route("/api/account")

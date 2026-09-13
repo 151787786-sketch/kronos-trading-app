@@ -171,6 +171,7 @@ tr:hover { background: var(--panel2); }
             <div class="tabs">
                 <button class="active" data-tab="tab-chart">K线 + 指标 + 预测</button>
                 <button data-tab="tab-overview">📋 盘前速览</button>
+                <button data-tab="tab-research">🏛️ 投研会</button>
                 <button data-tab="tab-recommend">⭐ 荐股</button>
                 <button data-tab="tab-fund">基本面</button>
                 <button data-tab="tab-buysell">买卖点</button>
@@ -181,6 +182,90 @@ tr:hover { background: var(--panel2); }
                 <button data-tab="tab-auto">自动接管</button>
                 <button data-tab="tab-backtest">策略回测</button>
                 <button data-tab="tab-orders">交易记录</button>
+            </div>
+
+            <!-- tab-research: 投研智能体（数字员工团队） -->
+            <div class="tab-pane" id="tab-research">
+                <div class="msg" style="display:block;background:rgba(59,130,246,.1);color:var(--blue)">
+                    🏛️ 9 位数字员工将围绕标的开展 <b>4 轮圆桌会议</b>：独立闭门 → 圆桌辩论 → 交叉互评（幻觉排查）→ 共识裁决。
+                    结论含假设/置信度/分歧点，并与 Kronos 预测交叉校验。仅供研究参考，不构成投资建议。
+                </div>
+                <div class="form-row">
+                    <div class="field"><label>标的（逗号分隔，最多 20 只；留空=用自选股）</label>
+                        <input type="text" id="rs-symbols" placeholder="如 600585,002202">
+                    </div>
+                    <div class="field"><label>会议名称</label><input type="text" id="rs-name" placeholder="可选"></div>
+                    <div class="field"><label>Kronos 预测</label>
+                        <select id="rs-forecast"><option value="1" selected>包含（更准但慢）</option><option value="0">不含（快）</option></select>
+                    </div>
+                    <div style="display:flex;align-items:end"><button class="green" onclick="runMeeting()">🏛️ 召开投研会</button></div>
+                </div>
+                <div id="rs-loading" class="loading hidden">⏳ 数字员工团队正在开会（约 10~60 秒，含 Kronos 预测更久）...</div>
+
+                <div id="rs-result" style="display:none">
+                    <!-- 裁决摘要 -->
+                    <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                        <h2>⚖️ 主理人裁决 <span class="hint" id="rs-meta"></span></h2>
+                        <div class="stat-grid">
+                            <div class="stat"><div class="k">最终结论</div><div class="v" id="rs-verdict">-</div></div>
+                            <div class="stat"><div class="k">团队置信度</div><div class="v" id="rs-conf">-</div></div>
+                            <div class="stat"><div class="k">加权立场</div><div class="v" id="rs-stance">-</div></div>
+                            <div class="stat"><div class="k">重大分歧</div><div class="v" id="rs-disagree">-</div></div>
+                            <div class="stat"><div class="k">预测冲突</div><div class="v" id="rs-conflict">-</div></div>
+                        </div>
+                        <p id="rs-verdict-text" style="margin-top:8px;line-height:1.7"></p>
+                    </div>
+
+                    <!-- 冲突高亮 -->
+                    <div id="rs-conflict-box" class="panel" style="display:none;background:rgba(239,68,68,.08);border-color:var(--red);margin-bottom:10px">
+                        <h2 style="color:var(--red)">🔴 与 Kronos 预测冲突（高亮）</h2>
+                        <div id="rs-conflict-list"></div>
+                    </div>
+
+                    <!-- 四轮纪要 -->
+                    <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                        <h2>📜 四轮会议纪要</h2>
+                        <div id="rs-rounds"></div>
+                    </div>
+
+                    <!-- 专业分析 -->
+                    <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                        <h2>📊 专业分析层 <span class="hint">蒙特卡洛 / 风险扫描 / 相关性</span></h2>
+                        <div id="rs-analytics"></div>
+                    </div>
+
+                    <!-- 调仓清单 -->
+                    <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                        <h2>📋 结构化调仓清单 <span class="hint">可复制 JSON</span>
+                            <button class="ghost" style="padding:2px 8px;font-size:11px" onclick="downloadJson()">下载JSON</button>
+                        </h2>
+                        <div id="rs-rebalance"></div>
+                    </div>
+
+                    <!-- 合规 -->
+                    <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                        <h2>🛡️ 合规审查</h2>
+                        <div id="rs-compliance"></div>
+                    </div>
+
+                    <!-- 输出物下载 -->
+                    <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                        <h2>📥 输出物</h2>
+                        <div class="form-row">
+                            <button class="ghost" onclick="downloadMd('minutes')">下载会议纪要 (MD)</button>
+                            <button class="ghost" onclick="downloadMd('report')">下载分析报告 (MD)</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 历史会话（审计回溯） -->
+                <div class="panel" style="background:var(--panel2)">
+                    <h2>🗂️ 历史投研会 <span class="hint">全流程审计留痕</span>
+                        <button class="ghost" style="padding:2px 8px;font-size:11px" onclick="loadSessions()">刷新</button>
+                    </h2>
+                    <div id="rs-sessions"><div class="loading">加载中...</div></div>
+                </div>
+                <div class="msg" id="rs-msg"></div>
             </div>
 
             <!-- tab-overview: daily overview -->
@@ -1503,6 +1588,7 @@ document.querySelectorAll('.tabs button').forEach(btn=>{
         if (btn.dataset.tab==='tab-auto') { loadAutoRules(); loadAutoLogs(); }
         if (btn.dataset.tab==='tab-recommend') { loadRecommend(); loadDailyNews(); }
         if (btn.dataset.tab==='tab-overview') loadOverview();
+        if (btn.dataset.tab==='tab-research') loadSessions();
     });
 });
 
@@ -1627,6 +1713,207 @@ function loadDailyNews() {
                 </div>
             </div>`).join('');
     }).catch(()=>{ document.getElementById('news-list').innerHTML = '<p style="color:var(--muted)">要闻加载失败</p>'; });
+}
+
+// ---------- 投研会（数字员工团队）----------
+let lastResearch = null;
+
+function rsPanel(title, body, color) {
+    return `<div style="background:var(--panel2);border:1px solid var(--border);border-left:3px solid ${color||'var(--blue)'};border-radius:6px;padding:10px;margin-bottom:8px">${body}</div>`;
+}
+
+async function runMeeting() {
+    const symbols = document.getElementById('rs-symbols').value.trim();
+    const name = document.getElementById('rs-name').value.trim();
+    const fc = document.getElementById('rs-forecast').value === '1';
+    document.getElementById('rs-loading').classList.remove('hidden');
+    document.getElementById('rs-result').style.display = 'none';
+    try {
+        const r = await api('/api/research/meeting', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({symbols: symbols ? symbols.split(',').map(s=>s.trim()).filter(Boolean) : [],
+                                  name, forecast: fc}),
+        });
+        if (r.error) { showMsg('rs-msg', r.error, false); return; }
+        lastResearch = r;
+        renderResearch(r);
+        showMsg('rs-msg', `投研会 #${r.minutes.session_id} 完成，用时 ${r.minutes.elapsed_s}s`, true);
+        loadSessions();
+    } catch(e) { showMsg('rs-msg', '会议失败: '+e.message, false); }
+    finally { document.getElementById('rs-loading').classList.add('hidden'); }
+}
+
+function renderResearch(r) {
+    const m = r.minutes, o = r.outputs, R = m.rounds, v = R.round3_verdict;
+    document.getElementById('rs-meta').textContent = `#${m.session_id} · ${m.symbols.join('/')} · ${m.created} · ${m.elapsed_s}s`;
+    const vd = document.getElementById('rs-verdict');
+    vd.textContent = v.verdict;
+    vd.className = 'v ' + (v.verdict.includes('偏多') ? 'pos' : (v.verdict.includes('偏空') ? 'neg' : ''));
+    document.getElementById('rs-conf').textContent = v.confidence;
+    document.getElementById('rs-stance').textContent = v.avg_stance;
+    document.getElementById('rs-disagree').textContent = (v.disagreements||[]).length;
+    document.getElementById('rs-conflict').textContent = (v.conflicts||[]).length;
+    document.getElementById('rs-verdict-text').innerHTML = v.text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+
+    // conflicts
+    const cb = document.getElementById('rs-conflict-box');
+    if ((v.conflicts||[]).length) {
+        cb.style.display = 'block';
+        document.getElementById('rs-conflict-list').innerHTML = v.conflicts.map(c =>
+            `<div style="padding:6px 0;border-bottom:1px solid var(--border)">
+                <b>${c.name} (${c.symbol})</b>：多 Agent 结论「${c.agent_verdict}」
+                <span style="color:var(--red)">vs Kronos「${c.kronos_prediction} ${c.kronos_change_pct>0?'+':''}${c.kronos_change_pct}%」</span>
+                <div style="color:var(--muted);font-size:12px">${c.note}</div>
+            </div>`).join('');
+    } else cb.style.display = 'none';
+
+    // rounds
+    let html = '';
+    html += `<h3 style="font-size:13px;color:#fff;margin:8px 0 6px">第 0 轮 · 独立闭门输出（${R.round0_independent.length} 位）</h3>`;
+    html += R.round0_independent.map(op => rsPanel(op.role_name, `
+        <div style="display:flex;justify-content:space-between">
+            <b>${op.role_name}</b>
+            <span class="${op.view==='偏多'?'pos':(op.view==='偏空'?'neg':'')}">${op.view}（置信 ${op.confidence}｜强度 ${op.stance_score}）</span>
+        </div>
+        ${op.evidence.length?`<div style="margin-top:6px;font-size:12px"><b>论据：</b>${op.evidence.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
+        ${op.risks.length?`<div style="margin-top:4px;font-size:12px;color:var(--amber)"><b>风险点：</b>${op.risks.map(e=>`<div>· ${e}</div>`).join('')}</div>`:''}
+        ${op.assumptions.length?`<div style="margin-top:4px;font-size:11px;color:var(--muted)"><b>假设：</b>${op.assumptions.join('；')}</div>`:''}
+    `, op.view==='偏多'?'var(--green)':(op.view==='偏空'?'var(--red)':'var(--muted)'))).join('');
+
+    html += `<h3 style="font-size:13px;color:#fff;margin:12px 0 6px">第 1 轮 · 圆桌辩论（${R.round1_debate.length} 组）</h3>`;
+    html += R.round1_debate.length ? R.round1_debate.slice(0,8).map(d => rsPanel('辩论', `
+        <div><b>${d.challenger}</b>(${d.challenger_view}) → <b>${d.respondent}</b>(${d.respondent_view})
+        <span style="color:var(--muted);font-size:11px">${d.mode||''}</span></div>
+        <div style="margin-top:5px;font-size:12px">${d.challenges.map(c=>`<div>❓ ${c}</div>`).join('')}</div>
+        <div style="margin-top:4px;font-size:12px;color:var(--blue)">${d.defense.map(c=>`<div>💬 ${c}</div>`).join('')}</div>
+    `, 'var(--amber)')).join('') : '<p style="color:var(--muted)">本轮无交锋</p>';
+
+    html += `<h3 style="font-size:13px;color:#fff;margin:12px 0 6px">第 2 轮 · 交叉互评（幻觉排查 ${R.round2_review.length} 条）</h3>`;
+    const withFindings = R.round2_review.filter(x=>x.findings.length);
+    html += withFindings.length ? withFindings.slice(0,8).map(rv => rsPanel('互评', `
+        <div><b>${rv.reviewer}</b> 评 <b>${rv.target}</b>：<span style="color:var(--amber)">${rv.verdict}</span>
+        ${rv.mandatory?'<span style="color:var(--muted);font-size:11px">（审计强制）</span>':''}</div>
+        ${rv.findings.map(f=>`<div style="font-size:12px;margin-top:3px">⚠️ <b>[${f.type}]</b> ${f.detail}</div>`).join('')}
+    `, 'var(--amber)')).join('') : '<p style="color:var(--muted)">未发现需修正问题</p>';
+
+    document.getElementById('rs-rounds').innerHTML = html;
+
+    // analytics
+    const a = o.analytics || {};
+    const mc = a.monte_carlo || {}, rs = a.risk_scan || {}, corr = a.correlation || {}, at = a.attribution || {};
+    let ah = '';
+    if (mc.return_dist) {
+        ah += `<h3 style="font-size:13px;color:#fff;margin:6px 0">蒙特卡洛（${mc.n_sim} 次，视界 ${mc.horizon_bars} 根）</h3>
+        <table><thead><tr><th>分位</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th></tr></thead>
+        <tbody><tr><td>组合收益</td><td>${mc.return_dist.p5}%</td><td>${mc.return_dist.p25}%</td><td><b>${mc.return_dist.p50}%</b></td><td>${mc.return_dist.p75}%</td><td>${mc.return_dist.p95}%</td></tr></tbody></table>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">期望 ${mc.return_dist.mean}% · 亏损概率 <b>${mc.prob_loss_pct}%</b> · 回撤中位 ${mc.drawdown_dist.p50}% / P95 ${mc.drawdown_dist.p95}%</div>`;
+    }
+    if (rs.items) {
+        ah += `<h3 style="font-size:13px;color:#fff;margin:10px 0 6px">风险扫描（高 ${rs.summary.high} / 中 ${rs.summary.medium} / 低 ${rs.summary.low}）</h3>
+        <table><thead><tr><th>标的</th><th>等级</th><th>风险点</th></tr></thead><tbody>
+        ${rs.items.map(i=>`<tr><td>${i.name||i.symbol}</td><td class="${i.level==='高'?'neg':''}">${i.level}</td><td style="text-align:left">${(i.risks||[]).join('；')||'未触发阈值'}</td></tr>`).join('')}
+        </tbody></table>`;
+    }
+    if (corr.symbols && corr.symbols.length > 1) {
+        ah += `<h3 style="font-size:13px;color:#fff;margin:10px 0 6px">相关性矩阵</h3>
+        <table><thead><tr><th></th>${corr.symbols.map(s=>`<th>${s}</th>`).join('')}</tr></thead><tbody>
+        ${corr.symbols.map((s,i)=>`<tr><td>${s}</td>${corr.matrix[i].map(v=>`<td class="${Math.abs(v)>=0.7?'neg':''}">${v}</td>`).join('')}</tr>`).join('')}
+        </tbody></table>
+        ${(corr.high_corr_pairs||[]).length?`<div style="font-size:12px;color:var(--amber);margin-top:4px">⚠️ 高相关对（|r|≥0.7）：${corr.high_corr_pairs.map(p=>`${p.name_a}↔${p.name_b}(${p.corr})`).join('、')}</div>`:''}`;
+    }
+    if (at.items && at.items.length) {
+        ah += `<h3 style="font-size:13px;color:#fff;margin:10px 0 6px">归因分析（${at.weighting}）</h3>
+        <table><thead><tr><th>标的</th><th>区间收益</th><th>年化波动</th></tr></thead><tbody>
+        ${at.items.map(i=>`<tr><td>${i.name}</td><td class="${pctCls(i.return_pct)}">${i.return_pct>0?'+':''}${i.return_pct}%</td><td>${i.volatility_pct}%</td></tr>`).join('')}
+        </tbody></table>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">组合（等权）区间收益 ${at.portfolio_return_pct}%</div>`;
+    }
+    // 回测质检（治理模块）
+    const bq = a.backtest_quality || {};
+    if (bq.items && bq.items.length) {
+        const s = bq.summary || {};
+        ah += `<h3 style="font-size:13px;color:#fff;margin:12px 0 6px">回测质检（投研结论历史验证）</h3>
+        <div style="font-size:13px;margin-bottom:6px">${bq.verdict}</div>
+        <table><thead><tr><th>标的</th><th>策略收益</th><th>基准</th><th>胜率</th><th>最大回撤</th><th>交易数</th></tr></thead><tbody>
+        ${bq.items.map(i=>i.error
+            ? `<tr><td>${i.symbol}</td><td colspan="5" style="color:var(--muted)">回测失败</td></tr>`
+            : `<tr><td>${i.name}</td><td class="${pctCls(i.total_return_pct)}">${i.total_return_pct}%</td>
+               <td>${i.benchmark_return_pct}%</td><td>${i.win_rate_pct}%</td>
+               <td class="neg">${i.max_drawdown_pct}%</td><td>${i.trades}</td></tr>`).join('')}
+        </tbody></table>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">平均收益 ${s.avg_total_return_pct}% · 平均胜率 ${s.avg_win_rate_pct}% · 跑赢买入持有 ${s.beats_buy_and_hold} 只</div>`;
+    }
+    document.getElementById('rs-analytics').innerHTML = ah || '<p style="color:var(--muted)">无数据</p>';
+
+    // rebalance
+    const reb = o.rebalance || {};
+    document.getElementById('rs-rebalance').innerHTML = `
+        <table><thead><tr><th>标的</th><th>方向</th><th>现价</th><th>买入区间</th><th>止损</th><th>止盈</th><th>Kronos预测</th></tr></thead><tbody>
+        ${(reb.items||[]).map(it=>`<tr>
+            <td>${it.name} <span style="color:var(--muted);font-size:11px">${it.symbol}</span></td>
+            <td class="${it.direction==='BUY'?'pos':(it.direction==='SELL'?'neg':'')}">${({BUY:'买入',SELL:'卖出',HOLD:'持有'})[it.direction]||it.direction}</td>
+            <td>${fmt(it.price)}</td>
+            <td>${(it.price_range||[]).filter(x=>x!=null).map(x=>fmt(x)).join(' ~ ')||'-'}</td>
+            <td class="neg">${fmt(it.stop_loss)}</td>
+            <td class="pos">${fmt(it.take_profit)}</td>
+            <td>${it.kronos_change_pct!=null?(it.kronos_change_pct>0?'+':'')+it.kronos_change_pct+'%':'-'}</td>
+        </tr>`).join('')}
+        </tbody></table>`;
+
+    // compliance
+    const c = o.compliance || {};
+    document.getElementById('rs-compliance').innerHTML = `
+        <div style="font-size:13px;color:${c.ok?'var(--green)':'var(--red)'}">${c.ok?'✅':'⚠️'} ${c.summary}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">
+            禁词规则 ${c.checked.forbidden_patterns} 条 · 扫描文本 ${c.checked.scanned_texts} 段 ·
+            假设标注 ${c.checked.has_assumptions?'✓':'✗'} · 置信度 ${c.checked.has_confidence?'✓':'✗'} ·
+            分歧 ${c.checked.disagreements} · 冲突 ${c.checked.conflicts}
+        </div>
+        ${(c.issues||[]).length?`<div style="margin-top:6px">${c.issues.map(i=>`<div style="font-size:12px;color:${i.level==='严重'?'var(--red)':'var(--amber)'}">[${i.level}] ${i.type}：${i.detail}</div>`).join('')}</div>`:''}`;
+
+    document.getElementById('rs-result').style.display = 'block';
+}
+
+function downloadMd(kind) {
+    if (!lastResearch) return;
+    const txt = kind === 'minutes' ? lastResearch.outputs.minutes_md : lastResearch.outputs.report_md;
+    const blob = new Blob([txt], {type:'text/markdown;charset=utf-8'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `投研${kind==='minutes'?'纪要':'报告'}_${lastResearch.minutes.session_id}.md`;
+    a.click(); a.remove();
+}
+function downloadJson() {
+    if (!lastResearch) return;
+    const blob = new Blob([JSON.stringify(lastResearch.outputs.rebalance, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `调仓清单_${lastResearch.minutes.session_id}.json`;
+    a.click(); a.remove();
+}
+
+async function loadSessions() {
+    try {
+        const r = await api('/api/research/sessions');
+        const box = document.getElementById('rs-sessions');
+        if (!r.sessions || !r.sessions.length) { box.innerHTML = '<p style="color:var(--muted)">暂无历史会议</p>'; return; }
+        box.innerHTML = `<table><thead><tr><th>#</th><th>名称</th><th>标的</th><th>状态</th><th>时间</th><th>操作</th></tr></thead><tbody>
+        ${r.sessions.map(s=>`<tr>
+            <td>${s.id}</td><td>${s.name||'-'}</td><td>${(s.symbols||[]).join(',')}</td>
+            <td>${s.status==='finished'?'✅ 完成':'⏳ 进行中'}</td>
+            <td>${new Date(s.created*1000).toLocaleString('zh-CN')}</td>
+            <td><button class="ghost" style="padding:2px 8px;font-size:11px" onclick="viewSession(${s.id})">审计回溯</button></td>
+        </tr>`).join('')}</tbody></table>`;
+    } catch(e) {}
+}
+
+async function viewSession(sid) {
+    const s = await api('/api/research/sessions/' + sid);
+    if (s.error) { showMsg('rs-msg', s.error, false); return; }
+    const rounds = {};
+    (s.entries||[]).forEach(e => { rounds[e.round] = (rounds[e.round]||0)+1; });
+    const detail = Object.entries(rounds).map(([k,v])=>`${k}: ${v} 条`).join(' · ');
+    alert(`投研会 #${sid} 审计留痕\n\n名称: ${s.name}\n标的: ${(s.symbols||[]).join(',')}\n状态: ${s.status}\n留痕: ${detail}\n\n（完整留痕可在 /api/research/sessions/${sid} 查看，含每轮发言原文）`);
 }
 
 // ---------- 盘前速览 ----------

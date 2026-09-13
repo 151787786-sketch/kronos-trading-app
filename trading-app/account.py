@@ -132,12 +132,12 @@ def init_db():
         conn.execute("DROP TABLE account_old")
     pcols = [r[1] for r in conn.execute("PRAGMA table_info(positions)").fetchall()]
     has_account = "account_id" in pcols
-    # detect legacy UNIQUE(symbol) constraint via the table's auto index
-    idx = [r[1] for r in conn.execute("PRAGMA index_list(positions)").fetchall()]
-    has_legacy_unique = any(i.startswith("sqlite_autoindex_positions") for i in idx)
     # clean up any leftover rename target from an interrupted migration
     conn.execute("DROP TABLE IF EXISTS positions_old")
-    if not has_account or has_legacy_unique:
+    # Only the absence of account_id marks a legacy table. (Checking the autoindex
+    # name is unreliable: the new UNIQUE(account_id, symbol) creates the same
+    # sqlite_autoindex_positions_1 name, which would re-trigger a rebuild forever.)
+    if not has_account:
         # rebuild positions table to get UNIQUE(account_id, symbol)
         conn.execute("ALTER TABLE positions RENAME TO positions_old")
         conn.execute("""
@@ -154,7 +154,7 @@ def init_db():
         """)
         conn.execute("""
             INSERT INTO positions (account_id, symbol, name, shares, avg_cost, updated_at)
-            SELECT COALESCE(account_id, 1), symbol, name, shares, avg_cost, updated_at FROM positions_old
+            SELECT 1, symbol, name, shares, avg_cost, updated_at FROM positions_old
         """)
         conn.execute("DROP TABLE positions_old")
     ocols = [r[1] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
