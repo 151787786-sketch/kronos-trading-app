@@ -1,0 +1,12 @@
+{
+  "alerts": {
+    "surge_pct": 2.5
+  },
+  "recommend": {
+    "w_forecast": 0.15,
+    "w_technical": 0.35
+  },
+  "updated": "2026-09-15 02:10:06",
+  "last_iteration": 14,
+  "last_run_ts": 1789409406.1656232
+}

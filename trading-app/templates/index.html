@@ -9,11 +9,20 @@
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root {
-    --bg: #0f1115; --panel: #1a1d24; --panel2: #22262f; --border: #2e3440;
-    --text: #d8dee9; --muted: #8a93a5;
+    /* AeroShards 主色板（与背景碎片动画同源） */
+    --bg: #120F17;
+    --shard: #896ABD;
+    --accent: #A855F7;
+    --panel-solid: #1B1526;
+    /* 玻璃面板：模糊掉背景碎片，同时保证数据可读（实测面板区 p95 亮度 < 95） */
+    --panel: rgba(22, 17, 33, .86);
+    --panel2: rgba(46, 36, 66, .62);
+    --border: rgba(137, 106, 189, .26);
+    --border-strong: rgba(168, 85, 247, .45);
+    --text: #E9E3F5; --muted: #9A90B4;
     /* 语义色：green/red 用于「成功/失败、通过/风险」等非涨跌含义，不随配色方案切换 */
     --green: #22c55e; --red: #ef4444;
-    --blue: #3b82f6; --amber: #f59e0b;
+    --blue: #A855F7; --amber: #F5A524;
     /* 涨跌色：默认 A 股习惯 —— 红涨绿跌 */
     --up: #ef4444; --up-bg: rgba(239,68,68,.15); --up-bg-strong: rgba(239,68,68,.18);
     --down: #22c55e; --down-bg: rgba(34,197,94,.15); --down-bg-strong: rgba(34,197,94,.18);
@@ -24,14 +33,30 @@ html[data-scheme="western"] {
     --down: #ef4444; --down-bg: rgba(239,68,68,.15); --down-bg-strong: rgba(239,68,68,.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 14px; }
-.topbar { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: var(--panel); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+body { background: var(--bg); color: var(--text); font-family: "Microsoft YaHei", "PingFang SC", sans-serif; font-size: 14px; min-height: 100vh; }
+/* 背景碎片画布 + Spline 3D 层：固定在最后面，都不挡交互 */
+#aero-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; pointer-events: none; }
+#spline-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+#spline-bg canvas { width: 100%; height: 100%; display: block; }
+/* 背景设置面板 */
+#bg-panel { position: fixed; top: 62px; right: 20px; z-index: 30; width: 380px; display: none;
+    background: rgba(22,17,33,.96); border: 1px solid var(--border-strong); border-radius: 12px;
+    padding: 14px; box-shadow: 0 18px 48px rgba(0,0,0,.6); backdrop-filter: blur(16px); }
+#bg-panel h3 { font-size: 13px; color: #fff; margin-bottom: 10px; }
+#bg-panel .row { margin-bottom: 10px; }
+#bg-panel label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+#bg-panel .seg { display: flex; gap: 6px; }
+#bg-panel .seg button { flex: 1; font-size: 12px; padding: 7px 8px; }
+#bg-panel .seg button.on { background: linear-gradient(135deg, var(--accent) 0%, #7C3AED 100%); }
+#bg-panel .hint { font-size: 11px; color: var(--muted); line-height: 1.7; }
+.topbar, .wrap { position: relative; z-index: 1; }
+.topbar { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: rgba(22, 17, 32, .82); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
 .topbar h1 { font-size: 18px; color: #fff; }
 .topbar h1 span { color: var(--blue); }
 .badge { background: var(--panel2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; color: var(--muted); font-size: 12px; }
 .wrap { display: grid; grid-template-columns: 300px 1fr; gap: 14px; padding: 14px 20px; }
 .left { display: flex; flex-direction: column; gap: 14px; }
-.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 .panel h2 { font-size: 14px; margin-bottom: 10px; color: #fff; display: flex; justify-content: space-between; align-items: center; }
 .panel h2 .hint { color: var(--muted); font-weight: normal; font-size: 11px; }
 input[type=text], input[type=number], select {
@@ -39,10 +64,10 @@ input[type=text], input[type=number], select {
     padding: 7px 10px; border-radius: 6px; width: 100%; margin: 4px 0;
 }
 button {
-    background: var(--blue); color: #fff; border: none; padding: 8px 14px;
-    border-radius: 6px; cursor: pointer; font-size: 13px; transition: opacity .15s;
+    background: linear-gradient(135deg, var(--accent) 0%, #7C3AED 100%); color: #fff; border: none; padding: 8px 14px;
+    border-radius: 6px; cursor: pointer; font-size: 13px; transition: opacity .15s, box-shadow .15s;
 }
-button:hover { opacity: .85; }
+button:hover { opacity: .9; box-shadow: 0 0 14px rgba(168,85,247,.45); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 button.green { background: var(--green); }
 button.red { background: var(--red); }
@@ -80,7 +105,7 @@ tr:hover { background: var(--panel2); }
 .chart-box.small { height: 200px; }
 .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
 .tabs button { background: var(--panel2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px 6px 0 0; }
-.tabs button.active { background: var(--blue); color: #fff; }
+.tabs button.active { background: linear-gradient(135deg, var(--accent) 0%, #7C3AED 100%); color: #fff; box-shadow: 0 0 16px rgba(168,85,247,.4); }
 .tab-pane { display: none; }
 .tab-pane.active { display: block; }
 .form-row { display: flex; gap: 8px; align-items: end; margin: 6px 0; }
@@ -101,6 +126,45 @@ tr:hover { background: var(--panel2); }
 </head>
 <body>
 
+<!-- AeroShards 背景碎片（WebGL，本地零依赖）—— 固定在最后面，不阻挡任何交互 -->
+<canvas id="aero-bg" aria-hidden="true"></canvas>
+<!-- Spline 3D 场景层（可选，需要场景地址；失败会自动切回上面的碎片背景） -->
+<div id="spline-bg" aria-hidden="true"></div>
+
+<!-- 背景设置面板 -->
+<div id="bg-panel">
+    <h3>🎨 背景设置</h3>
+    <div class="row">
+        <label>背景模式</label>
+        <div class="seg">
+            <button class="ghost" id="bg-mode-shards" onclick="setBgMode('shards')">碎片动画</button>
+            <button class="ghost" id="bg-mode-spline" onclick="setBgMode('spline')">Spline 3D</button>
+        </div>
+    </div>
+    <div class="row">
+        <label>Spline 场景地址（scene.splinecode）</label>
+        <input type="text" id="bg-scene-url" placeholder="https://prod.spline.design/xxxxx/scene.splinecode">
+        <div style="display:flex;gap:6px;margin-top:6px">
+            <button class="ghost" style="flex:1;font-size:12px" onclick="applySceneUrl()">应用</button>
+            <button class="ghost" style="flex:1;font-size:12px" onclick="clearSceneUrl()">清空</button>
+        </div>
+    </div>
+    <div class="row">
+        <div class="hint" id="bg-status">状态：-</div>
+    </div>
+    <div class="row">
+        <div class="hint">
+            场景地址获取方式：在 <b>spline.design</b> 打开你的场景 → <b>Export</b> → 选 <b>Code / React</b> →
+            复制其中的 <code>scene</code> 链接（形如 <code>https://prod.spline.design/&lt;id&gt;/scene.splinecode</code>）。
+            <br><br>
+            ⚠️ 该链接指向 Spline 的 CDN，国内网络<b>时通时断</b>；加载失败会自动切回本地碎片背景，不会白屏。
+        </div>
+    </div>
+    <div style="text-align:right;margin-top:6px">
+        <button class="ghost" style="font-size:12px" onclick="toggleBgPanel(false)">关闭</button>
+    </div>
+</div>
+
 <div class="topbar">
     <h1>Kronos <span>股票交易助手</span></h1>
     <div class="badge" id="model-badge">模型未加载</div>
@@ -108,6 +172,8 @@ tr:hover { background: var(--panel2); }
     <div class="badge" id="cache-badge">缓存 -</div>
     <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
             title="切换涨跌配色：A股习惯红涨绿跌 / 欧美习惯绿涨红跌">🔴涨🟢跌（A股）</button>
+    <button class="ghost" id="fx-toggle" style="font-size:12px" onclick="toggleBgPanel()"
+            title="背景设置：本地碎片动画 / Spline 3D 场景">🎨 背景</button>
     <div style="flex:1"></div>
     <label style="color:var(--muted);font-size:12px">模型</label>
     <select id="model-select-top" style="width:180px" onchange="loadModelFromTop()">
@@ -118,7 +184,7 @@ tr:hover { background: var(--panel2); }
 </div>
 
 <!-- global market strip -->
-<div style="display:flex;gap:14px;padding:8px 20px;background:var(--panel);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap" id="global-strip">
+<div style="display:flex;gap:14px;padding:8px 20px;background:rgba(22,17,32,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--border);overflow-x:auto;white-space:nowrap" id="global-strip">
     <span style="color:var(--muted);font-size:12px;align-self:center">🌐 外围:</span>
     <span style="color:var(--muted)">加载中...</span>
 </div>
@@ -725,6 +791,134 @@ tr:hover { background: var(--panel2); }
     </div>
 </div>
 
+<script src="/static/aero-shards.js"></script>
+<script src="/static/background.js"></script>
+<script>
+// ---------- AeroShards 背景碎片 ----------
+// 原 React 写法（组件市场版）：
+//   <AeroShards backgroundColor="#120F17" shardColor="#896ABD" accentColor="#A855F7"
+//               placement="full" flow="stream" material="pearl" detail="balanced"
+//               effect="none" scale={1} spread={1} depth={1} speed={1} spin={1}
+//               interaction="repel" density={1.5} shardSize={1.1} stretch={1}
+//               turbulence={1} glow={1} edgeSoftness={2} bloom={0.5} grain={0.05}
+//               chromaticAberration={0.0075} transitionDuration={1}
+//               interactionRadius={1.5} interactionStrength={0.5}
+//               rippleIntensity={1} holdToGather={true} />
+// 本项目是纯 vanilla JS，无 React 构建链，故用 static/aero-shards.js 做了等价实现，
+// 参数名与语义完全一致，下面这份配置与上面逐项对应。
+var SHARDS_CONFIG = {
+    backgroundColor: '#120F17',
+    shardColor: '#896ABD',
+    accentColor: '#A855F7',
+    placement: 'full',
+    flow: 'stream',
+    material: 'pearl',
+    detail: 'balanced',
+    effect: 'none',
+    scale: 1,
+    spread: 1,
+    depth: 1,
+    speed: 1,
+    spin: 1,
+    interaction: 'repel',
+    density: 1.5,
+    shardSize: 1.1,
+    stretch: 1,
+    turbulence: 1,
+    glow: 1,
+    edgeSoftness: 2,
+    bloom: 0.5,
+    grain: 0.05,
+    chromaticAberration: 0.0075,
+    transitionDuration: 1,
+    interactionRadius: 1.5,
+    interactionStrength: 0.5,
+    rippleIntensity: 1,
+    holdToGather: true
+};
+var shards = null;
+window.shards = null;
+
+function updateBgPanel() {
+    var Bg = window.SplineBackground;
+    if (!Bg) return;
+    var on = function (id, active) {
+        var b = document.getElementById(id);
+        if (b) b.className = active ? '' : 'ghost';
+    };
+    on('bg-mode-shards', Bg.mode !== 'spline');
+    on('bg-mode-spline', Bg.mode === 'spline');
+    var inp = document.getElementById('bg-scene-url');
+    if (inp && document.activeElement !== inp) inp.value = Bg.scene || '';
+    var st = document.getElementById('bg-status');
+    if (st) {
+        var label = { idle: '待机', loading: '⏳ 加载中', ready: '✅ 正常', error: '⚠️ 已降级' }[Bg.status] || Bg.status;
+        var extra = Bg.statusText ? '：' + Bg.statusText : '';
+        st.innerHTML = '状态：' + label + extra;
+        st.style.color = Bg.status === 'error' ? 'var(--amber)' : (Bg.status === 'ready' ? 'var(--green)' : 'var(--muted)');
+    }
+}
+
+function toggleBgPanel(force) {
+    var p = document.getElementById('bg-panel');
+    if (!p) return;
+    var show = force === undefined ? p.style.display !== 'block' : force;
+    p.style.display = show ? 'block' : 'none';
+    if (show) updateBgPanel();
+}
+
+function setBgMode(mode) {
+    if (window.SplineBackground) window.SplineBackground.setMode(mode);
+    updateBgPanel();
+}
+
+function applySceneUrl() {
+    var inp = document.getElementById('bg-scene-url');
+    if (!inp) return;
+    var url = (inp.value || '').trim();
+    if (!window.SplineBackground) return;
+    window.SplineBackground.setScene(url);
+    if (url && window.SplineBackground.mode !== 'spline') window.SplineBackground.setMode('spline');
+    updateBgPanel();
+}
+
+function clearSceneUrl() {
+    var inp = document.getElementById('bg-scene-url');
+    if (inp) inp.value = '';
+    if (window.SplineBackground) window.SplineBackground.setScene('');
+    updateBgPanel();
+}
+
+function startShards() {
+    if (!window.AeroShards) return;
+    if (!shards) { shards = AeroShards.create('aero-bg', SHARDS_CONFIG); window.shards = shards; }
+    else shards.start();
+}
+
+(function initBackground() {
+    startShards();
+    // 尊重系统的「减少动态效果」偏好
+    var reduce = false;
+    try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+    if (reduce) {
+        SHARDS_CONFIG.speed = 0.12;
+        SHARDS_CONFIG.turbulence = 0.3;
+        SHARDS_CONFIG.spin = 0.2;
+    }
+    if (window.SplineBackground) {
+        window.SplineBackground.onStatus = updateBgPanel;
+        window.SplineBackground.init();
+        updateBgPanel();
+    }
+    document.addEventListener('click', function (e) {
+        var p = document.getElementById('bg-panel');
+        var btn = document.getElementById('fx-toggle');
+        if (!p || p.style.display !== 'block') return;
+        if (p.contains(e.target) || (btn && btn.contains(e.target))) return;
+        p.style.display = 'none';
+    });
+})();
+</script>
 <script>
 // ---------- 涨跌配色方案（A股：红涨绿跌 / 欧美：绿涨红跌）----------
 function schemeColor(kind) {
@@ -1040,9 +1234,9 @@ function drawChart(k, indicator, predLen, seq) {
 
     const traces = [candle];
     const layout = {
-        paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'},
-        xaxis:{rangeslider:{visible:false}, gridcolor:'#2e3440'},
-        yaxis:{gridcolor:'#2e3440', title:'价格'},
+        paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
+        xaxis:{rangeslider:{visible:false}, gridcolor:'rgba(137,106,189,.18)'},
+        yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'价格'},
         margin:{l:50,r:20,t:30,b:30},
         height:420, dragmode:'pan'
     };
@@ -1057,12 +1251,12 @@ function drawChart(k, indicator, predLen, seq) {
         });
     } else if (indicator === 'rsi') {
         traces.push({x, y:bars.map(b=>b.rsi), type:'scatter', mode:'lines', name:'RSI', yaxis:'y2', line:{color:'#f59e0b'}});
-        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:'#2e3440', showgrid:false};
+        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:'rgba(137,106,189,.18)', showgrid:false};
     } else if (indicator === 'kdj') {
         ['kdj_k','kdj_d','kdj_j'].forEach((m,i)=>{
             traces.push({x, y:bars.map(b=>b[m]), type:'scatter', mode:'lines', name:m, yaxis:'y2', line:{width:1.2, color:['#3b82f6','#f59e0b','#a78bfa'][i]}});
         });
-        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:'#2e3440', showgrid:false};
+        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:'rgba(137,106,189,.18)', showgrid:false};
     } else if (indicator === 'macd') {
         const dif = bars.map(b=>b.dif), dea = bars.map(b=>b.dea), macd = bars.map(b=>b.macd);
         const colors = macd.map(v=>v>=0?inc.color:dec.color);
@@ -1071,7 +1265,7 @@ function drawChart(k, indicator, predLen, seq) {
             {x, y:dif, type:'scatter', mode:'lines', name:'DIF', yaxis:'y2', line:{width:1, color:'#3b82f6'}},
             {x, y:dea, type:'scatter', mode:'lines', name:'DEA', yaxis:'y2', line:{width:1, color:'#f59e0b'}}
         );
-        layout.yaxis2 = {overlaying:'y', side:'right', gridcolor:'#2e3440', showgrid:false};
+        layout.yaxis2 = {overlaying:'y', side:'right', gridcolor:'rgba(137,106,189,.18)', showgrid:false};
     }
 
     // Kronos forecast
@@ -1215,8 +1409,8 @@ async function runBacktest() {
     document.getElementById('bt-avg').textContent = fmt(r.avg_pnl);
     const eqTrace = {x:r.dates, y:r.equity, type:'scatter', mode:'lines', name:'策略收益', line:{color:'#3b82f6'}};
     const bmTrace = {x:r.dates, y:r.benchmark, type:'scatter', mode:'lines', name:'买入持有（基准）', line:{color:'#8a93a5', dash:'dash'}};
-    Plotly.react('bt-chart', [eqTrace, bmTrace], {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'},
-        margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:'#2e3440'}, yaxis:{gridcolor:'#2e3440', title:'资产'}});
+    Plotly.react('bt-chart', [eqTrace, bmTrace], {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
+        margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'资产'}});
     const tdiv = document.getElementById('bt-trades');
     if (r.trades.length) {
         tdiv.innerHTML = `<h2 style="font-size:14px;margin:10px 0">交易明细（${r.trades.length} 笔）</h2>
@@ -1325,8 +1519,8 @@ async function runAccuracy() {
             traces.push({x:[rd.start_date, rd.end_date], y:[rd.last_close, rd.actual_end], mode:'lines+markers',
                 name:`轮次${rd.round} 实际`, line:{color:colors[i%5], width:2}});
         });
-        Plotly.react('ac-chart', traces, {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'},
-            margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:'#2e3440'}, yaxis:{gridcolor:'#2e3440', title:'价格'}});
+        Plotly.react('ac-chart', traces, {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
+            margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'价格'}});
         document.getElementById('ac-table-wrap').innerHTML = `
             <h2 style="font-size:14px;margin:10px 0">逐轮明细（共 ${r.rounds} 轮，用时 ${r.elapsed}s）</h2>
             <table><thead><tr><th>轮次</th><th>验证区间</th><th>起点价</th><th>预测终点</th><th>实际终点</th><th>MAE</th><th>方向准确</th></tr></thead><tbody>
@@ -1350,8 +1544,8 @@ async function runCompare() {
         if (r.error) { showMsg('cp-msg', r.error, false); return; }
         const traces = r.symbols.map(s=>({x:s.dates, y:s.normalized, type:'scatter', mode:'lines',
             name:`${s.name} (${s.return_pct>0?'+':''}${s.return_pct}%)`, line:{width:1.6}}));
-        Plotly.react('cp-chart', traces, {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'},
-            margin:{l:50,r:20,t:30,b:30}, height:360, xaxis:{gridcolor:'#2e3440'}, yaxis:{gridcolor:'#2e3440', title:'累计涨跌幅 %'},
+        Plotly.react('cp-chart', traces, {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
+            margin:{l:50,r:20,t:30,b:30}, height:360, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'累计涨跌幅 %'},
             hovermode:'x unified'});
         document.getElementById('cp-table-wrap').innerHTML = `
             <h2 style="font-size:14px;margin:10px 0">区间表现对比</h2>
@@ -1378,15 +1572,15 @@ async function runCompareForecast() {
         const pcts = r.results.map(x=>x.change_pct);
         const colors = pcts.map(p=>p>=0?schemeColor('up'):schemeColor('down'));
         Plotly.react('cpf-bar', [{x:names, y:pcts, type:'bar', marker:{color:colors}, text:pcts.map(p=>(p>0?'+':'')+p+'%'), textposition:'outside'}],
-            {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'}, margin:{l:50,r:20,t:30,b:50},
-             height:260, yaxis:{title:'预测涨跌幅 %', gridcolor:'#2e3440'}});
+            {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'}, margin:{l:50,r:20,t:30,b:50},
+             height:260, yaxis:{title:'预测涨跌幅 %', gridcolor:'rgba(137,106,189,.18)'}});
         // normalized forecast curves
         const traces = r.results.map(x=>{
             const base = x.last_close;
             return {x:x.dates, y:x.close.map(c=>(c/base-1)*100), type:'scatter', mode:'lines', name:`${x.name}`};
         });
-        Plotly.react('cpf-chart', traces, {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'},
-            margin:{l:50,r:20,t:30,b:30}, height:320, xaxis:{gridcolor:'#2e3440'}, yaxis:{title:'预测累计涨跌 %', gridcolor:'#2e3440'}});
+        Plotly.react('cpf-chart', traces, {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
+            margin:{l:50,r:20,t:30,b:30}, height:320, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{title:'预测累计涨跌 %', gridcolor:'rgba(137,106,189,.18)'}});
         document.getElementById('cpf-table-wrap').innerHTML = `
             <h2 style="font-size:14px;margin:10px 0">预测结果对比（${period} 周期，未来 ${predLen} 根）</h2>
             <table><thead><tr><th>股票</th><th>当前价</th><th>预测终点</th><th>预测涨跌</th></tr></thead><tbody>
@@ -1776,7 +1970,7 @@ function drawMiniChart(symbol, elId) {
         Plotly.react(elId, [{x:b.map(x=>x.timestamps), open:b.map(x=>x.open), high:b.map(x=>x.high),
             low:b.map(x=>x.low), close:b.map(x=>x.close), type:'candlestick',
             increasing:{color:schemeColor('up')}, decreasing:{color:schemeColor('down')}}],
-            {paper_bgcolor:'#1a1d24', plot_bgcolor:'#1a1d24', font:{color:'#d8dee9'},
+            {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
              margin:{l:40,r:10,t:10,b:20}, xaxis:{rangeslider:{visible:false}}, height:280, showlegend:false});
     });
 }

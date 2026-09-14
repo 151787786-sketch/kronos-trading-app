@@ -47,6 +47,8 @@
 | 📚 **券商研报库** | 东财研报中心：个股研报 / 行业研报 / 策略报告 + **评级分布统计**（如「买入 32 / 增持 7 / 持有 3」）+ DeepSeek 一致预期汇总 |
 | 🌙 **夜间自迭代** | 每天 02:00 自动运行（也可手动）：收集真实运行数据（样本外 MAPE / 方向准确率 / 告警频次 / 自动交易成功率）→ DeepSeek 提出调参建议 → **范围与步长双重钳制**后写入 `tuning.json` → 全量留痕，可一键回滚。已生效参数**真的会改变**报警阈值、风控阈值与荐股权重 |
 | 涨跌配色 | **默认 A 股习惯：红涨绿跌**（与行情软件一致）。顶栏一键切换为欧美习惯（绿涨红跌），选择记在浏览器里。K 线、涨跌幅、盈亏、买卖方向、Kronos 预测柱状图全部跟随；「成功/失败、通过/风险高低」这类**非涨跌语义**固定用绿/红，不受配色影响 |
+| 🎨 **界面主题** | 深紫玻璃拟态：底色 `#120F17`、主色 `#A855F7`、碎片色 `#896ABD`。面板为半透明玻璃（`rgba(22,17,33,.86)` + 背景模糊），实测主内容区 p95 亮度 **54**（暗且干净）—— 背景再花也不影响读数据 |
+| ✨ **背景动画** | 两种模式，顶栏「🎨 背景」切换：<br>① **碎片动画**（默认，本地 WebGL，**零网络依赖**）——`AeroShards` 的 vanilla 移植：珍珠碎片、流动、鼠标排斥、按住聚拢、泛光 / 颗粒 / 色差全部按原参数实现<br>② **Spline 3D 场景**（可选）——用本地 `@splinetool/runtime` 渲染，需填场景地址；**加载失败自动切回碎片背景，绝不白屏** |
 | 外围市场 | 美股三大指数 / 恒指 / 国企指数 / 日经225 / KOSPI 实时，顶部常驻条 |
 | 赛道分组 | 自选股按 AI/新能源/消费/周期分组，每组显示热度（均涨/涨跌家数/领涨股） |
 | 行情与指标 | 日线 + 1/5/15/30/60 分钟线，MA/MACD/RSI/KDJ/BOLL 叠加 |
@@ -187,6 +189,46 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 ```
 
 > 合计 **214 项自动化测试**，全部通过。双击 `运行测试.bat` 可一键跑完。
+
+## 🎨 界面主题与背景动画
+
+### 主题色板
+| 用途 | 值 |
+|---|---|
+| 页面底色 | `#120F17` |
+| 碎片色 | `#896ABD` |
+| 主色/强调 | `#A855F7` |
+| 面板（玻璃） | `rgba(22,17,33,.86)` + `backdrop-filter: blur(16px)` |
+| 边框 | `rgba(137,106,189,.26)` |
+| 正文 / 次要文字 | `#E9E3F5` / `#9A90B4` |
+
+### 背景模式一：碎片动画（默认）
+`AeroShards` 的零依赖 vanilla 移植（`trading-app/static/aero-shards.js`，WebGL 着色器实现）。
+原 React 组件的全部参数一一对应，默认值与用户给定配置完全一致：
+
+```js
+{ backgroundColor:'#120F17', shardColor:'#896ABD', accentColor:'#A855F7',
+  placement:'full', flow:'stream', material:'pearl', detail:'balanced', effect:'none',
+  scale:1, spread:1, depth:1, speed:1, spin:1, interaction:'repel',
+  density:1.5, shardSize:1.1, stretch:1, turbulence:1, glow:1, edgeSoftness:2,
+  bloom:0.5, grain:0.05, chromaticAberration:0.0075, transitionDuration:1,
+  interactionRadius:1.5, interactionStrength:0.5, rippleIntensity:1, holdToGather:true }
+```
+
+### 背景模式二：Spline 3D 场景（可选）
+- 渲染引擎 `@splinetool/runtime` **已下载到本地**（`static/vendor/spline-runtime.js`，约 2MB），
+  运行时**不依赖任何 CDN**，也不会因为网络抖动而白屏
+- 适配层 `static/spline-scene.js` 保持与原 React 组件**同名同参数**：
+  `SplineScene({ scene, className })`，同样有「加载中 → 就绪」的状态切换与 `.loader` 兜底
+- 场景地址获取：在 [spline.design](https://spline.design) 打开场景 → **Export** → **Code / React** →
+  复制 `scene` 链接（形如 `https://prod.spline.design/<id>/scene.splinecode`）
+- 填写位置：顶栏「🎨 背景」→ 粘贴地址 → 「应用」；也支持 `?bg=spline&scene=<url>` 直达
+- ⚠️ **该地址指向 Spline 的 CDN，国内网络时通时断**。加载失败会在 15 秒内判定并
+  **自动切回本地碎片背景**，状态栏显示「⚠️ 已降级：<原因>」，页面始终可用
+
+### 配色方案切换
+- `?scheme=cn`（A股红涨绿跌，默认）/ `?scheme=western`（欧美绿涨红跌）
+- 顶栏 `🔴涨🟢跌（A股）` 按钮一键切换，选择存在浏览器里
 
 ## 🎨 涨跌配色说明（重要）
 
