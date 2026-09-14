@@ -106,3 +106,4 @@ _scratch/
 *.png
 !trading-app/**/*.png
 !examples/yuce/*.png
+trading-app/logs/

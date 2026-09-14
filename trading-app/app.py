@@ -12,34 +12,62 @@ import sys
 import pandas as pd
 from flask import Flask, jsonify, render_template, request
 
-import account
-import accuracy
-import alerts
-import analytics
-import audit
-import auto_trade
-import backtest
-import buysell
-import committee
-import compliance
-import deepseek
-import fundamentals
-import global_market
-import indicators as ind
-import industry
-import kronos_service
-import macro
-import market
-import nightly
-import notify
-import recommend
-import requirements_map
-import research_db
-import research_report
-import sentiment
-from agents import ROLES as AGENT_ROLES
-from agents import llm as llm_adapter
-from signals import forecast_direction_signals, indicator_signals
+# ---------------------------------------------------------------- 日志
+# 同时输出到控制台 + trading-app/logs/app.log（崩溃后仍可回溯）
+_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+
+
+def _setup_logging():
+    import logging
+    from logging.handlers import RotatingFileHandler
+    os.makedirs(_LOG_DIR, exist_ok=True)
+    root = logging.getLogger()
+    if any(isinstance(h, RotatingFileHandler) for h in root.handlers):
+        return
+    root.setLevel(logging.INFO)
+    fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    try:
+        fh = RotatingFileHandler(os.path.join(_LOG_DIR, "app.log"),
+                                 maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8")
+        fh.setFormatter(fmt)
+        root.addHandler(fh)
+    except Exception:
+        pass
+    sh = logging.StreamHandler(sys.stdout)
+    sh.setFormatter(fmt)
+    root.addHandler(sh)
+
+
+_setup_logging()
+
+import account  # noqa: E402
+import accuracy  # noqa: E402
+import alerts  # noqa: E402
+import analytics  # noqa: E402
+import audit  # noqa: E402
+import auto_trade  # noqa: E402
+import backtest  # noqa: E402
+import buysell  # noqa: E402
+import committee  # noqa: E402
+import compliance  # noqa: E402
+import deepseek  # noqa: E402
+import fundamentals  # noqa: E402
+import global_market  # noqa: E402
+import indicators as ind  # noqa: E402
+import industry  # noqa: E402
+import kronos_service  # noqa: E402
+import macro  # noqa: E402
+import market  # noqa: E402
+import nightly  # noqa: E402
+import notify  # noqa: E402
+import recommend  # noqa: E402
+import requirements_map  # noqa: E402
+import research_db  # noqa: E402
+import research_report  # noqa: E402
+import sentiment  # noqa: E402
+from agents import ROLES as AGENT_ROLES  # noqa: E402
+from agents import llm as llm_adapter  # noqa: E402
+from signals import forecast_direction_signals, indicator_signals  # noqa: E402
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, ROOT)
@@ -49,6 +77,22 @@ app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # reject bodies > 1 MB
 # 模板改动立即生效（debug=False 时 Jinja 默认会缓存模板，改了 index.html 不重启看不到）
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.jinja_env.auto_reload = True
+
+
+@app.errorhandler(Exception)
+def _handle_unexpected(e):
+    """未捕获异常写入日志（附带堆栈），页面返回友好提示而不是裸 500。"""
+    import logging
+    import traceback
+    from werkzeug.exceptions import HTTPException
+    if isinstance(e, HTTPException):
+        return e
+    logging.getLogger("app").error("未处理异常: %s\n%s", e, traceback.format_exc())
+    if request.path.startswith("/api/"):
+        return jsonify({"error": f"服务内部错误：{e}"}), 500
+    return (f"<h3>服务内部错误</h3><pre>{e}</pre>"
+            f"<p>详细堆栈已写入 trading-app/logs/app.log</p>"), 500
+
 
 # ---- helpers ----------------------------------------------------------------
 
@@ -1417,24 +1461,73 @@ def _start_monitor():
     t2.start()
 
 
+def _port_in_use(host: str, port: int) -> bool:
+    import socket
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.6)
+    try:
+        return s.connect_ex((host, port)) == 0
+    finally:
+        s.close()
+
+
 if __name__ == "__main__":
+    import logging
     import threading
     import time
     import webbrowser
+
+    log = logging.getLogger("app")
+    PORT = int(os.environ.get("KRONOS_PORT", "7071"))
+    HOST = "127.0.0.1"
+    URL = f"http://localhost:{PORT}"
 
     account.init_db()
     alerts.init_tables()
     auto_trade.init_tables()
     nightly.init_tables()
+
+    if _port_in_use(HOST, PORT):
+        print("=" * 52)
+        print(f"  端口 {PORT} 已被占用 —— 可能服务已经在运行了。")
+        print(f"  直接打开浏览器访问：{URL}")
+        print("  如果不是本程序占用的，可以改端口后重试：")
+        print(f"      set KRONOS_PORT=7072 && python app.py")
+        print("=" * 52)
+        try:
+            webbrowser.open(URL)
+        except Exception:
+            pass
+        sys.exit(0)
+
     _start_monitor()
-    print("=" * 52)
-    print("  Kronos Trading App")
-    print("  URL: http://localhost:7071")
-    print(f"  DeepSeek: {'已连接 ' + deepseek.status()['model'] if deepseek.available() else '未配置（回退规则引擎）'}")
-    print("=" * 52)
+
+    banner = [
+        "=" * 52,
+        "  Kronos Trading App",
+        f"  URL: {URL}",
+        f"  DeepSeek: {'已连接 ' + deepseek.status()['model'] if deepseek.available() else '未配置（回退规则引擎）'}",
+        f"  日志: {os.path.join(_LOG_DIR, 'app.log')}",
+        "=" * 52,
+    ]
+    for line in banner:
+        print(line)
+        log.info(line.strip())
 
     # Open the browser shortly after the server is up.
-    threading.Timer(2.0, lambda: webbrowser.open("http://localhost:7071")).start()
+    # 由 .bat 启动时它自己会开浏览器（设了 KRONOS_NO_BROWSER=1），避免弹出两个标签页。
+    if not os.environ.get("KRONOS_NO_BROWSER"):
+        threading.Timer(2.0, lambda: webbrowser.open(URL)).start()
 
-    app.run(host="127.0.0.1", port=7071, debug=False, use_reloader=False)
+    try:
+        app.run(host=HOST, port=PORT, debug=False, use_reloader=False, threaded=True)
+    except KeyboardInterrupt:
+        log.info("收到 Ctrl+C，服务停止")
+    except Exception as e:
+        log.exception("服务异常退出: %s", e)
+        print(f"\n[错误] 服务异常退出：{e}")
+        print(f"详细堆栈见 {os.path.join(_LOG_DIR, 'app.log')}")
+        raise SystemExit(1)
+    finally:
+        log.info("服务已停止")
 
