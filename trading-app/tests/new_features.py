@@ -254,6 +254,39 @@ try:
 except Exception as e:
     check("适配层可读取", False, str(e)[:80])
 
+print("\n=== 11. Gateway Flow 流线背景（默认） ===")
+check("流线画布存在", 'id="flow-bg"' in page)
+check("抖动网点存在（原版 dither overlay）", 'id="dither"' in page)
+check("引入流线引擎", '/static/gateway-flow.js' in page)
+check("默认背景为流线（background.js 里 mode 默认 flow）",
+      "mode: 'flow'" in __import__("urllib.request", fromlist=["x"]).urlopen(
+          BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
+check("三个背景模式按钮齐全",
+      all(f'id="bg-mode-{m}"' in page for m in ("flow", "shards", "spline")))
+check("主题为 Gateway 黑白色板",
+      '--bg: #000000' in page and '--text: #cbd5e1' in page and '--muted: #64748b' in page)
+check("面板保留玻璃模糊", 'backdrop-filter: blur(12px)' in page)
+check("签名细节：hover 渐变扫光边框", 'mask-composite: exclude' in page)
+check("涨跌色未被主题改动（仍红涨绿跌）",
+      bool(_re.search(r"--up:\s*#ef4444", page)) and bool(_re.search(r"--down:\s*#22c55e", page)))
+
+try:
+    with urllib.request.urlopen(urllib.request.Request(BASE + "/static/gateway-flow.js"), timeout=30) as resp:
+        gf = resp.read().decode("utf-8", "replace")
+    check("流线引擎可访问且非空", len(gf) > 3000, f"{len(gf)} bytes")
+    check("保留原版 80 条流线基数", "BASE_PATHS = 80" in gf)
+    check("保留原版虚线样式 [1,4]", "BASE_DASH = [1, 4]" in gf)
+    check("保留原版线宽 1.2", "BASE_LINE_WIDTH = 1.2" in gf)
+    check("保留点击爆破交互", "explosions" in gf and "addEventListener('click'" in gf)
+    check("保留贝塞尔汇聚中心", "bezierCurveTo" in gf and "centerX" in gf)
+    check("参数与原组件同名",
+          all(k in gf for k in ("density", "strokeWidth", "opacity",
+                                "hue", "saturation", "brightness")))
+    check("零外部依赖（无 CDN / React / Tailwind）",
+          "http://" not in gf and "https://" not in gf and "import " not in gf)
+except Exception as e:
+    check("流线引擎可读取", False, str(e)[:80])
+
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")
 if FAILURES:

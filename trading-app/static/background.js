@@ -1,15 +1,19 @@
 /*!
- * 背景管理器：在「本地碎片动画」与「Spline 3D 场景」之间切换，并保证永不把页面搞黑。
+ * 背景管理器：三种背景之间切换，并保证永不把页面搞黑。
  *
- *   - 默认 = 本地碎片动画（AeroShards，零网络依赖，永远可用）
- *   - 选 Spline 时必须提供场景地址；加载失败/超时/被墙 → 自动切回碎片动画并给出提示
- *   - 所有选择记在 localStorage；支持 URL 参数直达：?bg=shards|spline&scene=<url>
+ *   flow   —— Gateway Flow 流线（默认）：黑底 + 白色虚线汇聚到中心 + 粒子 + 点击爆破
+ *   shards —— AeroShards 碎片（本地 WebGL）
+ *   spline —— Spline 3D 场景（需场景地址；失败自动降级）
+ *
+ * 加载失败/超时/被墙 → 自动切回流线背景并给出提示。所有选择记在 localStorage；
+ * 支持 URL 参数直达：?bg=flow|shards|spline&scene=<url>
  */
 (function (global) {
     'use strict';
 
     var LS_BG = 'kronos_bg_mode';
     var LS_SCENE = 'kronos_spline_scene';
+    var VALID = { flow: 1, shards: 1, spline: 1 };
 
     function qs(name) {
         try { return new URLSearchParams(location.search || '').get(name) || ''; }
@@ -26,10 +30,10 @@
     }
 
     var Bg = {
-        mode: 'shards',
+        mode: 'flow',
         scene: '',
         handle: null,
-        status: 'idle',      // idle | loading | ready | error
+        status: 'idle',
         statusText: '',
         onStatus: null,
 
@@ -38,7 +42,8 @@
             var s = qs('scene');
             if (m) lsSet(LS_BG, m);
             if (s) lsSet(LS_SCENE, s);
-            this.mode = ls(LS_BG, 'shards');
+            var saved = ls(LS_BG, 'flow');
+            this.mode = VALID[saved] ? saved : 'flow';
             this.scene = ls(LS_SCENE, '');
             this.apply();
         },
@@ -50,6 +55,7 @@
         },
 
         setMode: function (mode) {
+            if (!VALID[mode]) mode = 'flow';
             this.mode = mode;
             lsSet(LS_BG, mode);
             this.apply();
@@ -61,20 +67,25 @@
             if (this.mode === 'spline') this.apply();
         },
 
-        _showShards: function (show) {
-            var c = document.getElementById('aero-bg');
-            if (c) c.style.display = show ? 'block' : 'none';
-            if (show && global.shards && !global.shards.running) {
-                try { global.shards.start(); } catch (e) {}
-            } else if (!show && global.shards) {
-                try { global.shards.pause(); } catch (e) {}
-            }
+        _layer: function (id, show) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = show ? 'block' : 'none';
         },
 
-        _fallbackToShards: function (reason) {
-            this._destroySpline();
-            this._showShards(true);
-            this._report('error', reason);
+        /** 显示指定层，并暂停其它层的渲染循环（省电） */
+        _activate: function (which) {
+            this._layer('flow-bg', which === 'flow');
+            this._layer('aero-bg', which === 'shards');
+            this._layer('spline-bg', which === 'spline');
+
+            if (global.flow) {
+                if (which === 'flow') { try { global.flow.start(); global.flow.resize(); } catch (e) {} }
+                else { try { global.flow.pause(); } catch (e) {} }
+            }
+            if (global.shards) {
+                if (which === 'shards') { try { global.shards.start(); global.shards.resize(); } catch (e) {} }
+                else { try { global.shards.pause(); } catch (e) {} }
+            }
         },
 
         _destroySpline: function () {
@@ -86,41 +97,53 @@
             if (host) host.innerHTML = '';
         },
 
+        /** 任何异常都退回流线背景 —— 页面永远可用 */
+        _fallback: function (reason) {
+            this._destroySpline();
+            this._activate('flow');
+            this._report('error', reason);
+        },
+
         apply: function () {
             var self = this;
-            if (this.mode !== 'spline') {
+
+            if (this.mode === 'flow') {
                 this._destroySpline();
-                this._showShards(true);
-                this._report('ready', '本地碎片动画');
+                this._activate('flow');
+                this._report('ready', '流线背景');
                 return;
             }
+
+            if (this.mode === 'shards') {
+                this._destroySpline();
+                this._activate('shards');
+                this._report('ready', '碎片背景');
+                return;
+            }
+
+            // spline
             if (!this.scene) {
-                this._fallbackToShards('未填写场景地址，已使用本地碎片背景');
+                this._fallback('未填写场景地址，已使用流线背景');
                 return;
             }
-            this._showShards(false);
-            var host = document.getElementById('spline-bg');
-            if (!host) {
-                this._fallbackToShards('缺少容器');
-                return;
-            }
+            this._activate('spline');
             this._report('loading', '正在加载 3D 场景…');
 
             import('/static/spline-scene.js').then(function (mod) {
                 self._destroySpline();
-                self.handle = mod.SplineScene.mount(host, {
+                self.handle = mod.SplineScene.mount(document.getElementById('spline-bg'), {
                     scene: self.scene,
                     className: 'spline-canvas',
                     onState: function (state, detail) {
                         if (state === 'ready') {
                             self._report('ready', 'Spline 3D 场景已加载');
                         } else if (state === 'error') {
-                            self._fallbackToShards(detail);
+                            self._fallback(detail);
                         }
                     }
                 });
             }).catch(function (e) {
-                self._fallbackToShards('模块加载失败：' + ((e && e.message) || e));
+                self._fallback('模块加载失败：' + ((e && e.message) || e));
             });
         }
     };

@@ -1,4 +1,4 @@
-# Kronos 股票交易助手
+﻿# Kronos 股票交易助手
 
 <p align="center">
   <img src="https://img.shields.io/badge/Kronos-AAAI_2026-9cf" alt="Kronos"/>
@@ -47,8 +47,8 @@
 | 📚 **券商研报库** | 东财研报中心：个股研报 / 行业研报 / 策略报告 + **评级分布统计**（如「买入 32 / 增持 7 / 持有 3」）+ DeepSeek 一致预期汇总 |
 | 🌙 **夜间自迭代** | 每天 02:00 自动运行（也可手动）：收集真实运行数据（样本外 MAPE / 方向准确率 / 告警频次 / 自动交易成功率）→ DeepSeek 提出调参建议 → **范围与步长双重钳制**后写入 `tuning.json` → 全量留痕，可一键回滚。已生效参数**真的会改变**报警阈值、风控阈值与荐股权重 |
 | 涨跌配色 | **默认 A 股习惯：红涨绿跌**（与行情软件一致）。顶栏一键切换为欧美习惯（绿涨红跌），选择记在浏览器里。K 线、涨跌幅、盈亏、买卖方向、Kronos 预测柱状图全部跟随；「成功/失败、通过/风险高低」这类**非涨跌语义**固定用绿/红，不受配色影响 |
-| 🎨 **界面主题** | 深紫玻璃拟态：底色 `#120F17`、主色 `#A855F7`、碎片色 `#896ABD`。面板为半透明玻璃（`rgba(22,17,33,.86)` + 背景模糊），实测主内容区 p95 亮度 **54**（暗且干净）—— 背景再花也不影响读数据 |
-| ✨ **背景动画** | 两种模式，顶栏「🎨 背景」切换：<br>① **碎片动画**（默认，本地 WebGL，**零网络依赖**）——`AeroShards` 的 vanilla 移植：珍珠碎片、流动、鼠标排斥、按住聚拢、泛光 / 颗粒 / 色差全部按原参数实现<br>② **Spline 3D 场景**（可选）——用本地 `@splinetool/runtime` 渲染，需填场景地址；**加载失败自动切回碎片背景，绝不白屏** |
+| 🎨 **界面主题** | **Gateway Flow 黑白玻璃拟态**：纯黑底 `#000000`、石板灰文字 `#cbd5e1`/`#64748b`、白色强调与极细描边 `rgba(255,255,255,.07)`。面板为半透明玻璃（`rgba(4,6,10,.82)` + 背景模糊），hover 时出现**渐变扫光边框**（mask 挖空实现，原版签名细节）。实测主内容区 p95 亮度 **42** —— 背景再花也不影响读数据 |
+| ✨ **背景动画** | 三种模式，顶栏「🎨 背景」切换：<br>① **流线**（默认，纯 Canvas 2D，**零依赖零网络**）——`GatewayFlow` 的 vanilla 移植：左右各 40 条白色虚线贝塞尔曲线汇聚到画面中心，每线上有 3×3 白色粒子流动，**点击产生环形冲击把粒子推开**；另有全局抖动网点（dither overlay）做胶片质感<br>② **碎片**——`AeroShards` 的 WebGL 移植：珍珠质感碎片、流动、鼠标排斥、按住聚拢、泛光 / 颗粒 / 色差<br>③ **Spline 3D**——用本地 `@splinetool/runtime` 渲染，需填场景地址；**任何失败都自动切回流线背景，绝不白屏** |
 | 外围市场 | 美股三大指数 / 恒指 / 国企指数 / 日经225 / KOSPI 实时，顶部常驻条 |
 | 赛道分组 | 自选股按 AI/新能源/消费/周期分组，每组显示热度（均涨/涨跌家数/领涨股） |
 | 行情与指标 | 日线 + 1/5/15/30/60 分钟线，MA/MACD/RSI/KDJ/BOLL 叠加 |
@@ -106,7 +106,7 @@ pip install -r requirements.txt -r trading-app\requirements.txt
 ### 3. K线 + 指标 + 预测（📈 tab）
 - 周期切换：日线 / 60/30/15/5/1 分钟
 - 指标叠加：MA5/10/20/60、BOLL、MACD、RSI、KDJ
-- **Kronos 预测**：紫色曲线为未来 30/60/120 根预测，含 ±15% 误差带与准确率提示
+- **Kronos 预测**：灰色曲线为未来 30/60/120 根预测，含 ±15% 误差带与准确率提示
 - 右侧 **📄 导出报告**：下载预测明细 CSV
 
 ### 4. 自动荐股（⭐ tab）—— 全市场扫描
@@ -192,19 +192,35 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 
 ## 🎨 界面主题与背景动画
 
-### 主题色板
+### 主题色板（取自 Gateway Flow / Nexus Gateway）
 | 用途 | 值 |
 |---|---|
-| 页面底色 | `#120F17` |
-| 碎片色 | `#896ABD` |
-| 主色/强调 | `#A855F7` |
-| 面板（玻璃） | `rgba(22,17,33,.86)` + `backdrop-filter: blur(16px)` |
-| 边框 | `rgba(137,106,189,.26)` |
-| 正文 / 次要文字 | `#E9E3F5` / `#9A90B4` |
+| 页面底色 | `#000000` |
+| 正文 / 次要文字 | `#cbd5e1` / `#64748b` |
+| 面板（玻璃） | `rgba(4,6,10,.82)` + `backdrop-filter: blur(12px)` |
+| 边框 / 强调边框 | `rgba(255,255,255,.07)` / `rgba(255,255,255,.28)` |
+| 按钮 | 近黑 `#0a0a0a` + 细白边，hover 时边框提亮并带外发光 |
+| 激活标签 | 白底黑字（`rgba(255,255,255,.94)`） |
+| 字体 | Inter → HarmonyOS Sans SC → 微软雅黑，字重 300，小标题大写 + 字距 |
 
-### 背景模式一：碎片动画（默认）
-`AeroShards` 的零依赖 vanilla 移植（`trading-app/static/aero-shards.js`，WebGL 着色器实现）。
-原 React 组件的全部参数一一对应，默认值与用户给定配置完全一致：
+> 涨跌配色**不受主题影响**：红涨绿跌（A 股习惯）始终有效，见下方说明。
+
+### 背景模式一：流线（默认）
+`GatewayFlow` 的零依赖 vanilla 移植（`trading-app/static/gateway-flow.js`，Canvas 2D）。
+原组件用 React + iframe(srcDoc) + Tailwind + GSAP 包装，核心就是一段 canvas 动画 —— 这里只把那
+段核心原样搬出来，参数与语义保持一致：
+
+```js
+{ mode:'dark', speed:1, size:1, gap:2, length:1, density:1, strokeWidth:1,
+  opacity:1, hue:0, saturation:1, brightness:1, interactive:true }
+```
+
+保留的原版特征：**80 条**贝塞尔流线（左右各半）、虚线 `[1, 4]`、线宽 `1.2`、
+每线一颗 **3×3** 白色粒子、**点击产生环形冲击**把附近粒子推开、全局抖动网点。
+
+### 背景模式二：碎片（可选）
+`AeroShards` 的 vanilla 移植（`static/aero-shards.js`，WebGL 着色器）。
+原 React 组件的全部参数一一对应：
 
 ```js
 { backgroundColor:'#120F17', shardColor:'#896ABD', accentColor:'#A855F7',
@@ -215,7 +231,7 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
   interactionRadius:1.5, interactionStrength:0.5, rippleIntensity:1, holdToGather:true }
 ```
 
-### 背景模式二：Spline 3D 场景（可选）
+### 背景模式三：Spline 3D 场景（可选）
 - 渲染引擎 `@splinetool/runtime` **已下载到本地**（`static/vendor/spline-runtime.js`，约 2MB），
   运行时**不依赖任何 CDN**，也不会因为网络抖动而白屏
 - 适配层 `static/spline-scene.js` 保持与原 React 组件**同名同参数**：
@@ -224,11 +240,13 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
   复制 `scene` 链接（形如 `https://prod.spline.design/<id>/scene.splinecode`）
 - 填写位置：顶栏「🎨 背景」→ 粘贴地址 → 「应用」；也支持 `?bg=spline&scene=<url>` 直达
 - ⚠️ **该地址指向 Spline 的 CDN，国内网络时通时断**。加载失败会在 15 秒内判定并
-  **自动切回本地碎片背景**，状态栏显示「⚠️ 已降级：<原因>」，页面始终可用
+  **自动切回流线背景**，状态栏显示「⚠️ 已降级：<原因>」，页面始终可用
 
-### 配色方案切换
-- `?scheme=cn`（A股红涨绿跌，默认）/ `?scheme=western`（欧美绿涨红跌）
-- 顶栏 `🔴涨🟢跌（A股）` 按钮一键切换，选择存在浏览器里
+### 切换方式
+- 顶栏「🎨 背景」→ 选 流线 / 碎片 / Spline，选择存在浏览器里
+- URL 直达：`?bg=flow` / `?bg=shards` / `?bg=spline&scene=<url>`
+- 配色方案：`?scheme=cn`（A股红涨绿跌，默认）/ `?scheme=western`（欧美绿涨红跌），
+  也可点顶栏 `🔴涨🟢跌（A股）` 按钮切换
 
 ## 🎨 涨跌配色说明（重要）
 
