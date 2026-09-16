@@ -351,6 +351,21 @@ try:
 except Exception as e:
     check("银河引擎可读取", False, str(e)[:80])
 
+print("\n=== 14. 界面缩放（字号 1.5 倍） ===")
+check("html 使用 zoom 缩放变量", 'html { zoom: var(--ui-scale, 1.5); }' in page)
+check("默认缩放 1.5", "SCALE_DEFAULT = 1.5" in page)
+check("顶栏有缩放控件", 'id="scale-label"' in page and "stepScale(-0.1)" in page and "stepScale(0.1)" in page)
+check("缩放值持久化到 localStorage", "kronos_ui_scale" in page)
+check("支持 ?scale= 直达参数", "location.search" in page and "parseFloat(q)" in page)
+check("缩放后通知背景层重新适配", "window[k].resize" in page or "typeof window[k].resize" in page)
+# 放大后不能把整页撑破：这几条是防止布局溢出的关键守卫
+check("网格列用 minmax(0,1fr) 而非 1fr", "grid-template-columns: 300px minmax(0, 1fr)" in page)
+check("网格子项 min-width:0（否则宽表格撑破整页）", ".wrap > * { min-width: 0; }" in page)
+check("顶栏允许换行（放大后不溢出）", "flex-wrap: wrap" in page)
+check("面板内表格可横向滚动", ".panel { overflow-x: auto; }" in page)
+check("长文本表格允许换行", ".wrap-cells th, .wrap-cells td { white-space: normal" in page)
+check("需求对照表已用 wrap-cells", 'class="wrap-cells"' in page)
+
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")
 if FAILURES:

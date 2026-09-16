@@ -43,6 +43,10 @@ html[data-scheme="western"] {
     --down: #ef4444; --down-bg: rgba(239,68,68,.15); --down-bg-strong: rgba(239,68,68,.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+/* 界面缩放：默认 1.5 倍（字号、间距、图表同步放大，等价于浏览器 150% 缩放）。
+   用 zoom 而不是逐个改 font-size —— 布局会跟着一起放大，不会出现文字溢出。
+   顶栏「🔍」可调，选择记在浏览器里。 */
+html { zoom: var(--ui-scale, 1.5); }
 body { color: var(--bone); font-size: 14px; min-height: 100vh;
     font-family: "IBM Plex Sans", Inter, "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -118,14 +122,17 @@ body { color: var(--bone); font-size: 14px; min-height: 100vh;
 #bg-panel .seg button.on { background: var(--retina); color: #000; border-color: var(--retina); box-shadow: 0 0 18px rgba(0,255,65,.4); }
 #bg-panel .hint { font-size: 11px; color: var(--muted); line-height: 1.75; }
 .topbar, .wrap { position: relative; z-index: 1; }
-.topbar { display: flex; align-items: center; gap: 14px; padding: 11px 20px; background: hsla(0,0%,3%,.82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-strong); position: sticky; top: 0; z-index: 10;
+.topbar { display: flex; align-items: center; flex-wrap: wrap; row-gap: 8px; gap: 14px; padding: 11px 20px; background: hsla(0,0%,3%,.82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-strong); position: sticky; top: 0; z-index: 10;
     box-shadow: 0 1px 0 rgba(0,255,65,.12), 0 8px 30px rgba(0,0,0,.6); }
 .topbar h1 { font-size: 15px; color: var(--bone-bright); font-weight: 400; letter-spacing: .16em; text-transform: uppercase;
     font-family: "JetBrains Mono", ui-monospace, monospace; }
 .topbar h1 span { color: var(--retina); text-shadow: 0 0 6px rgba(0,255,65,.55), 0 0 18px rgba(0,255,65,.25); }
 .badge { background: rgba(0,255,65,.05); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; color: var(--muted); font-size: 11px; letter-spacing: .06em;
     font-family: "JetBrains Mono", ui-monospace, monospace; }
-.wrap { display: grid; grid-template-columns: 300px 1fr; gap: 14px; padding: 14px 20px; }
+.wrap { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 14px; padding: 14px 20px; }
+/* 关键：网格子项必须能收缩到内容以下，否则 nowrap 的宽表格会把整页撑破
+   （1fr 默认是 minmax(auto,1fr)，auto 下限 = 内容最小宽度） */
+.wrap > * { min-width: 0; }
 .left { display: flex; flex-direction: column; gap: 14px; }
 .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); position: relative;
     box-shadow: inset 0 1px 0 rgba(215,227,219,.03), 0 4px 24px rgba(0,0,0,.5); }
@@ -162,6 +169,10 @@ button.ghost { background: rgba(0,255,65,.03); border: 1px solid var(--border); 
 button.ghost:hover { background: rgba(0,255,65,.08); border-color: rgba(0,255,65,.45); color: var(--retina); box-shadow: 0 0 12px rgba(0,255,65,.18); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
+/* 长文本表格（需求对照、投研纪要等）允许换行，否则界面放大后会被 nowrap 撑破 */
+.wrap-cells th, .wrap-cells td { white-space: normal; word-break: break-word; }
+/* 面板内表格过宽时在面板内横向滚动，不撑破整页 */
+.panel { overflow-x: auto; }
 th { color: var(--muted); font-weight: normal; font-size: 10px; text-transform: uppercase; letter-spacing: .14em; font-family: "JetBrains Mono", ui-monospace, monospace; }
 td:first-child, th:first-child { text-align: left; }
 tr:hover { background: rgba(0,255,65,.035); }
@@ -271,7 +282,14 @@ tr:hover { background: rgba(0,255,65,.035); }
     <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
             title="切换涨跌配色：A股习惯红涨绿跌 / 欧美习惯绿涨红跌">🔴涨🟢跌（A股）</button>
     <button class="ghost" id="fx-toggle" style="font-size:12px" onclick="toggleBgPanel()"
-            title="背景设置：本地碎片动画 / Spline 3D 场景">🎨 背景</button>
+            title="背景设置：银河 / 赛博网格 / 流线 / 碎片 / Spline 3D">🎨 背景</button>
+    <span style="display:inline-flex;align-items:center;gap:2px">
+        <button class="ghost" style="font-size:12px;padding:6px 9px" onclick="stepScale(-0.1)"
+                title="界面缩小">A−</button>
+        <span class="mono" id="scale-label" style="font-size:11px;color:var(--muted);min-width:42px;text-align:center">150%</span>
+        <button class="ghost" style="font-size:12px;padding:6px 9px" onclick="stepScale(0.1)"
+                title="界面放大">A+</button>
+    </span>
     <div style="flex:1"></div>
     <label style="color:var(--muted);font-size:12px">模型</label>
     <select id="model-select-top" style="width:180px" onchange="loadModelFromTop()">
@@ -1093,6 +1111,45 @@ function toggleScheme() {
     const cur = document.documentElement.getAttribute('data-scheme') === 'western' ? 'western' : 'cn';
     applyScheme(cur === 'western' ? 'cn' : 'western');
 }
+
+// ---------- 界面缩放（默认 1.5 倍） ----------
+var SCALE_MIN = 0.8, SCALE_MAX = 2.5, SCALE_DEFAULT = 1.5;
+
+function uiScale() {
+    try {
+        var q = new URLSearchParams(location.search || '').get('scale');
+        if (q) {
+            var qv = parseFloat(q);
+            if (!isNaN(qv) && qv >= SCALE_MIN && qv <= SCALE_MAX) return qv;
+        }
+    } catch (e) {}
+    try {
+        var v = parseFloat(localStorage.getItem('kronos_ui_scale'));
+        if (!isNaN(v) && v >= SCALE_MIN && v <= SCALE_MAX) return v;
+    } catch (e) {}
+    return SCALE_DEFAULT;
+}
+
+function applyScale(v) {
+    v = Math.min(SCALE_MAX, Math.max(SCALE_MIN, Math.round(v * 100) / 100));
+    document.documentElement.style.setProperty('--ui-scale', v);
+    try { localStorage.setItem('kronos_ui_scale', String(v)); } catch (e) {}
+    var lab = document.getElementById('scale-label');
+    if (lab) lab.textContent = Math.round(v * 100) + '%';
+    // 缩放后画布尺寸变了，通知背景层重新适配
+    setTimeout(function () {
+        ['galaxy', 'flow', 'shards'].forEach(function (k) {
+            if (window[k] && typeof window[k].resize === 'function') {
+                try { window[k].resize(); } catch (e) {}
+            }
+        });
+        try { window.dispatchEvent(new Event('resize')); } catch (e) {}
+    }, 60);
+}
+
+function stepScale(delta) { applyScale(uiScale() + delta); }
+
+applyScale(uiScale());
 
 let currentSymbol = null;
 let lastRecLLM = {};
@@ -2693,7 +2750,7 @@ async function loadRequirements() {
                 : '<span style="color:var(--red);font-weight:600">❌ 未实现</span>';
         box.innerHTML = r.modules.map(m => `
             <div style="margin:12px 0 6px;font-weight:700;color:var(--blue);border-left:3px solid var(--blue);padding-left:8px">${m.module}</div>
-            <table><thead><tr><th style="width:34%">需求原文</th><th style="width:22%">实现位置（代码）</th><th style="width:24%">网页可见位置</th><th style="width:8%">状态</th></tr></thead><tbody>
+            <table class="wrap-cells"><thead><tr><th style="width:34%">需求原文</th><th style="width:22%">实现位置（代码）</th><th style="width:24%">网页可见位置</th><th style="width:8%">状态</th></tr></thead><tbody>
             ${m.items.map(it => `<tr>
                 <td>${it.req}</td>
                 <td style="font-size:11px;color:var(--muted)">${it.where}</td>

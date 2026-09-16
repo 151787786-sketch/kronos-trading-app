@@ -287,6 +287,18 @@ twinkleIntensity / rotationSpeed / autoCenterRepulsion / transparent / lightMode
 - ⚠️ **该地址指向 Spline 的 CDN，国内网络时通时断**。加载失败会在 15 秒内判定并
   **自动切回赛博网格**，状态栏显示「⚠️ 已降级：<原因>」，页面始终可用
 
+### 界面缩放（字号放大）
+- **默认 1.5 倍**：用 CSS `zoom` 而不是逐个改 `font-size` —— 字号、间距、图表一起等比放大，
+  等价于浏览器 150% 缩放，**不会出现文字溢出**（页内共 160 处硬编码 `font-size`，逐个改必然破版）
+- 顶栏 `A−` / `A+` 实时调整（80% ~ 250%），当前值显示在中间，选择记在浏览器里
+- URL 直达：`?scale=1.5` / `?scale=1.2` / `?scale=2`
+- 放大后可能撑破布局的三处已处理：
+  - 顶栏 `flex-wrap: wrap`（控件多时自动换行）
+  - `.wrap` 用 `minmax(0, 1fr)` + 子项 `min-width: 0`（`1fr` 的下限是内容最小宽度，
+    `nowrap` 的宽表格会把整页撑出横向滚动条）
+  - `.panel { overflow-x: auto }` + 长文本表格 `.wrap-cells` 允许换行
+- 实测（iframe 注入测量 DOM）：150% 下 `documentElement.scrollWidth - clientWidth = 0`，**无横向溢出**
+
 ### 切换方式
 - 顶栏「🎨 背景」→ 选 银河 / 赛博网格 / 流线 / 碎片 / Spline，选择存在浏览器里
 - URL 直达：`?bg=galaxy` / `?bg=cyber` / `?bg=flow` / `?bg=shards` / `?bg=spline&scene=<url>`
