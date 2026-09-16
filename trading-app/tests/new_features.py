@@ -257,8 +257,8 @@ except Exception as e:
 print("\n=== 11. Gateway Flow 流线背景 ===")
 check("流线画布存在", 'id="flow-bg"' in page)
 check("引入流线引擎", '/static/gateway-flow.js' in page)
-check("四个背景模式按钮齐全",
-      all(f'id="bg-mode-{m}"' in page for m in ("cyber", "flow", "shards", "spline")))
+check("五个背景模式按钮齐全",
+      all(f'id="bg-mode-{m}"' in page for m in ("galaxy", "cyber", "flow", "shards", "spline")))
 check("面板保留玻璃模糊", 'backdrop-filter: blur(12px)' in page)
 check("涨跌色未被主题改动（仍红涨绿跌）",
       bool(_re.search(r"--up:\s*#ef4444", page)) and bool(_re.search(r"--down:\s*#22c55e", page)))
@@ -306,9 +306,50 @@ check("滚动条染成霓虹绿", '::-webkit-scrollbar-thumb { background: rgba(
 check("等宽字体 JetBrains Mono", 'JetBrains Mono' in page)
 check("body 双径向辉光（左上紫 / 右下绿）",
       'rgba(112, 36, 255, .10)' in page and 'rgba(0, 255, 65, .08)' in page)
-check("默认背景为赛博网格",
-      "mode: 'cyber'" in __import__("urllib.request", fromlist=["x"]).urlopen(
+check("默认背景为银河 Galaxy",
+      "mode: 'galaxy'" in __import__("urllib.request", fromlist=["x"]).urlopen(
           BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
+
+print("\n=== 13. Galaxy 银河背景（ReactBits 移植） ===")
+check("银河画布存在", 'id="galaxy-bg"' in page)
+check("引入银河引擎", '/static/galaxy.js' in page)
+# 用户给定的 props 必须原样落地
+check("density = 1.5", 'density: 1.5' in page)
+check("glowIntensity = 0.5", 'glowIntensity: 0.5' in page)
+check("saturation = 0.8", 'saturation: 0.8' in page)
+check("hueShift = 240", 'hueShift: 240' in page)
+check("mouseRepulsion = true", 'mouseRepulsion: true' in page)
+check("mouseInteraction = true", 'mouseInteraction: true' in page)
+
+try:
+    with urllib.request.urlopen(urllib.request.Request(BASE + "/static/galaxy.js"), timeout=30) as resp:
+        gx = resp.read().decode("utf-8", "replace")
+    check("银河引擎可访问且非空", len(gx) > 6000, f"{len(gx)} bytes")
+    # 原版 shader 关键常量
+    check("保留 NUM_LAYER 4 层", "#define NUM_LAYER 4.0" in gx)
+    check("保留 Star 光芒函数", "float Star(vec2 uv, float flare)" in gx)
+    check("保留 StarLayer 网格采样（3×3）", "vec3 StarLayer(vec2 uv)" in gx and "int y = -1; y <= 1" in gx)
+    check("保留 Hash21 噪声", "float Hash21(vec2 p)" in gx)
+    check("保留 hsv2rgb 色相旋转", "vec3 hsv2rgb(vec3 c)" in gx)
+    check("保留 MAT45 射线矩阵", "#define MAT45 mat2(0.7071" in gx)
+    check("保留鼠标排斥分支", "uMouseRepulsion > 0.5" in gx and "uRepulsionStrength" in gx)
+    check("保留鼠标位移分支（非排斥模式）", "mouseOffset" in gx)
+    check("保留自适应旋转 autoRot", "autoRot" in gx)
+    check("保留闪烁 twinkle", "uTwinkleIntensity" in gx)
+    # 原版全部 props 默认值
+    check("原版默认值齐全（hueShift 140 / starSpeed 0.5 / speed 1 / repulsionStrength 2）",
+          "hueShift: 140" in gx and "starSpeed: 0.5" in gx and "speed: 1.0" in gx
+          and "repulsionStrength: 2" in gx)
+    check("保留透明模式 alpha 输出", "uTransparent > 0.5" in gx and "smoothstep(0.0, 0.3, alpha)" in gx)
+    check("保留浅色模式分支", "uLightMode > 0.5" in gx)
+    # 移植修正
+    check("修复 GLSL ES 1.0 浮点循环问题（改 int 循环）",
+          "for (int li = 0; li < 4; li++)" in gx)
+    check("零第三方依赖（不含 ogl / import）",
+          "from 'ogl'" not in gx and "import " not in gx and "require(" not in gx)
+    check("本地自包含（无 CDN 引用）", "http://" not in gx and "https://" not in gx)
+except Exception as e:
+    check("银河引擎可读取", False, str(e)[:80])
 
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")

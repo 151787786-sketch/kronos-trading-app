@@ -95,7 +95,8 @@ body { color: var(--bone); font-size: 14px; min-height: 100vh;
     background: linear-gradient(0deg, var(--electro), transparent) 100% 100% / 1px 16px no-repeat,
                 linear-gradient(270deg, var(--electro), transparent) 100% 100% / 16px 1px no-repeat; }
 /* 背景层：流线画布 + 碎片画布 + Spline 3D，都固定在最底层且不挡交互 */
-#flow-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; pointer-events: none; }
+#galaxy-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; pointer-events: none; }
+#flow-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #aero-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #spline-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #spline-bg canvas { width: 100%; height: 100%; display: block; }
@@ -218,7 +219,8 @@ tr:hover { background: rgba(0,255,65,.035); }
 <div id="noise" aria-hidden="true"></div>
 <div id="scanlines" aria-hidden="true"></div>
 <div id="vignette" aria-hidden="true"></div>
-<!-- 备用背景层（Gateway 流线 / AeroShards 碎片 / Spline 3D），默认隐藏 -->
+<!-- 备用背景层（Galaxy 星云 / Gateway 流线 / AeroShards 碎片 / Spline 3D） -->
+<canvas id="galaxy-bg" aria-hidden="true"></canvas>
 <canvas id="flow-bg" aria-hidden="true"></canvas>
 <canvas id="aero-bg" aria-hidden="true"></canvas>
 <div id="spline-bg" aria-hidden="true"></div>
@@ -230,7 +232,8 @@ tr:hover { background: rgba(0,255,65,.035); }
     <div class="row">
         <label>背景模式</label>
         <div class="seg">
-            <button class="ghost" id="bg-mode-cyber" onclick="setBgMode('cyber')">赛博网格（默认）</button>
+            <button class="ghost" id="bg-mode-galaxy" onclick="setBgMode('galaxy')">银河（默认）</button>
+            <button class="ghost" id="bg-mode-cyber" onclick="setBgMode('cyber')">赛博网格</button>
             <button class="ghost" id="bg-mode-flow" onclick="setBgMode('flow')">流线</button>
             <button class="ghost" id="bg-mode-shards" onclick="setBgMode('shards')">碎片</button>
             <button class="ghost" id="bg-mode-spline" onclick="setBgMode('spline')">Spline 3D</button>
@@ -886,6 +889,7 @@ tr:hover { background: rgba(0,255,65,.035); }
     </div>
 </div>
 
+<script src="/static/galaxy.js"></script>
 <script src="/static/gateway-flow.js"></script>
 <script src="/static/aero-shards.js"></script>
 <script src="/static/background.js"></script>
@@ -934,7 +938,24 @@ var SHARDS_CONFIG = {
 };
 var shards = null;
 var flow = null;
+var galaxy = null;
 window.shards = null;
+
+// Galaxy 参数（与用户给定的 <Galaxy ... /> 一致，其余走原组件默认值）
+//   <Galaxy mouseRepulsion={true} mouseInteraction={true} density={1.5}
+//           glowIntensity={0.5} saturation={0.8} hueShift={240} />
+var GALAXY_CONFIG = {
+    mouseRepulsion: true,
+    mouseInteraction: true,
+    density: 1.5,
+    glowIntensity: 0.5,
+    saturation: 0.8,
+    hueShift: 240
+    // 其余用 galaxy.js 里的原版默认值：
+    // focal [0.5,0.5] / rotation [1,0] / starSpeed 0.5 / speed 1.0 /
+    // repulsionStrength 2 / twinkleIntensity 0.3 / rotationSpeed 0.1 /
+    // autoCenterRepulsion 0 / transparent true / lightMode false
+};
 
 // Gateway Flow 默认参数（与原组件 GatewayFlowProps 默认值逐项一致）
 var FLOW_CONFIG = {
@@ -955,7 +976,7 @@ var FLOW_CONFIG = {
 function updateBgPanel() {
     var Bg = window.SplineBackground;
     if (!Bg) return;
-    ['cyber', 'flow', 'shards', 'spline'].forEach(function (m) {
+    ['galaxy', 'cyber', 'flow', 'shards', 'spline'].forEach(function (m) {
         var b = document.getElementById('bg-mode-' + m);
         if (b) b.className = Bg.mode === m ? '' : 'ghost';
     });
@@ -999,6 +1020,12 @@ function clearSceneUrl() {
     updateBgPanel();
 }
 
+function startGalaxy() {
+    if (!window.GalaxyBackground) return;
+    if (!galaxy) { galaxy = GalaxyBackground.create('galaxy-bg', GALAXY_CONFIG); window.galaxy = galaxy; }
+    else galaxy.start();
+}
+
 function startFlow() {
     if (!window.GatewayFlow) return;
     if (!flow) { flow = GatewayFlow.create('flow-bg', FLOW_CONFIG); window.flow = flow; }
@@ -1016,12 +1043,16 @@ function startShards() {
     var reduce = false;
     try { reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
     if (reduce) {
+        GALAXY_CONFIG.speed = 0.25;
+        GALAXY_CONFIG.rotationSpeed = 0.03;
+        GALAXY_CONFIG.twinkleIntensity = 0.1;
         FLOW_CONFIG.speed = 0.25;
         FLOW_CONFIG.density = 0.6;
         SHARDS_CONFIG.speed = 0.12;
         SHARDS_CONFIG.turbulence = 0.3;
         SHARDS_CONFIG.spin = 0.2;
     }
+    startGalaxy();
     startFlow();
     startShards();
     if (window.SplineBackground) {

@@ -13,7 +13,7 @@
 
     var LS_BG = 'kronos_bg_mode';
     var LS_SCENE = 'kronos_spline_scene';
-    var VALID = { cyber: 1, flow: 1, shards: 1, spline: 1 };
+    var VALID = { galaxy: 1, cyber: 1, flow: 1, shards: 1, spline: 1 };
 
     function qs(name) {
         try { return new URLSearchParams(location.search || '').get(name) || ''; }
@@ -30,7 +30,7 @@
     }
 
     var Bg = {
-        mode: 'cyber',
+        mode: 'galaxy',
         scene: '',
         handle: null,
         status: 'idle',
@@ -42,8 +42,8 @@
             var s = qs('scene');
             if (m) lsSet(LS_BG, m);
             if (s) lsSet(LS_SCENE, s);
-            var saved = ls(LS_BG, 'cyber');
-            this.mode = VALID[saved] ? saved : 'cyber';
+            var saved = ls(LS_BG, 'galaxy');
+            this.mode = VALID[saved] ? saved : 'galaxy';
             this.scene = ls(LS_SCENE, '');
             this.apply();
         },
@@ -55,7 +55,7 @@
         },
 
         setMode: function (mode) {
-            if (!VALID[mode]) mode = 'cyber';
+            if (!VALID[mode]) mode = 'galaxy';
             this.mode = mode;
             lsSet(LS_BG, mode);
             this.apply();
@@ -75,24 +75,32 @@
         /** 显示指定层，并暂停其它层的渲染循环（省电）
          *  cyber 模式用纯 CSS 叠加层（网格/胶噪/扫描线/暗角），零 JS 开销 */
         _activate: function (which) {
-            var dom = ['flow-bg', 'aero-bg', 'spline-bg'];
+            var dom = ['galaxy-bg', 'flow-bg', 'aero-bg', 'spline-bg'];
             dom.forEach(function (id) {
                 var el = document.getElementById(id);
                 if (!el) return;
-                var on = (id === 'flow-bg' && which === 'flow')
+                var on = (id === 'galaxy-bg' && which === 'galaxy')
+                      || (id === 'flow-bg' && which === 'flow')
                       || (id === 'aero-bg' && which === 'shards')
                       || (id === 'spline-bg' && which === 'spline');
                 el.style.display = on ? 'block' : 'none';
             });
-            // cyber 的背景由 body 渐变提供，叠加层只在 cyber 模式显示
-            ['substrate', 'noise', 'scanlines', 'vignette'].forEach(function (id) {
+            // cyber：绿色网格 + 胶噪 + 扫描线 + 暗角
+            // galaxy：保留胶噪/扫描线/暗角，但去掉绿色网格（否则和星空打架）
+            var sub = document.getElementById('substrate');
+            if (sub) sub.style.display = which === 'cyber' ? 'block' : 'none';
+            ['noise', 'scanlines', 'vignette'].forEach(function (id) {
                 var el = document.getElementById(id);
-                if (el) el.style.display = which === 'cyber' ? 'block' : 'none';
+                if (el) el.style.display = (which === 'cyber' || which === 'galaxy') ? 'block' : 'none';
             });
             // Gateway 模式的抖动网点只在 flow 模式显示
             var d = document.getElementById('dither');
             if (d) d.style.display = which === 'flow' ? 'block' : 'none';
 
+            if (global.galaxy) {
+                if (which === 'galaxy') { try { global.galaxy.start(); global.galaxy.resize(); } catch (e) {} }
+                else { try { global.galaxy.pause(); } catch (e) {} }
+            }
             if (global.flow) {
                 if (which === 'flow') { try { global.flow.start(); global.flow.resize(); } catch (e) {} }
                 else { try { global.flow.pause(); } catch (e) {} }
@@ -115,12 +123,19 @@
         /** 任何异常都退回默认背景 —— 页面永远可用 */
         _fallback: function (reason) {
             this._destroySpline();
-            this._activate('cyber');
+            this._activate('galaxy');
             this._report('error', reason);
         },
 
         apply: function () {
             var self = this;
+
+            if (this.mode === 'galaxy') {
+                this._destroySpline();
+                this._activate('galaxy');
+                this._report('ready', '银河背景');
+                return;
+            }
 
             if (this.mode === 'cyber') {
                 this._destroySpline();

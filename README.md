@@ -48,7 +48,7 @@
 | 🌙 **夜间自迭代** | 每天 02:00 自动运行（也可手动）：收集真实运行数据（样本外 MAPE / 方向准确率 / 告警频次 / 自动交易成功率）→ DeepSeek 提出调参建议 → **范围与步长双重钳制**后写入 `tuning.json` → 全量留痕，可一键回滚。已生效参数**真的会改变**报警阈值、风控阈值与荐股权重 |
 | 涨跌配色 | **默认 A 股习惯：红涨绿跌**（与行情软件一致）。顶栏一键切换为欧美习惯（绿涨红跌），选择记在浏览器里。K 线、涨跌幅、盈亏、买卖方向、Kronos 预测柱状图全部跟随；「成功/失败、通过/风险高低」这类**非涨跌语义**固定用绿/红，不受配色影响 |
 | 🎨 **界面主题** | **赛博终端风**（色板取自 [me.dufengyun.xyz](https://me.dufengyun.xyz/)）：纯黑底 + 骨白 `#d7e3db` 正文 + **霓虹绿 `#00ff41`** 主强调 + **电紫 `#7024ff`** 次强调 + 金 `#d9ad62`。绿色网格衬底 / 胶噪 / 扫描线 / 暗角四层叠加，霓虹辉光标题（含故障字 glitch）、四角括号、等宽字体标签、染绿的滚动条。实测主内容区 p95 亮度 **42** —— 背景再花也不影响读数据 |
-| ✨ **背景动画** | 四种模式，顶栏「🎨 背景」切换：<br>① **赛博网格**（默认，纯 CSS，**零依赖零网络**）——绿色 48px 网格 + 胶噪 + 扫描线 + 暗角，原站同款<br>② **流线**——`GatewayFlow` vanilla 移植：左右各 40 条白色虚线贝塞尔曲线汇聚到中心，每线一颗 3×3 白色粒子，**点击产生环形冲击推开粒子**<br>③ **碎片**——`AeroShards` WebGL 移植：珍珠碎片、鼠标排斥、按住聚拢、泛光/颗粒/色差<br>④ **Spline 3D**——本地 `@splinetool/runtime` 渲染，需填场景地址<br>**任何失败都自动切回赛博网格，绝不白屏** |
+| ✨ **背景动画** | 五种模式，顶栏「🎨 背景」切换：<br>① **银河**（默认，WebGL，**零依赖**）——ReactBits `<Galaxy />` 的 vanilla 移植：4 层星空网格 + 光芒 + 闪烁 + 鼠标排斥，参数 density 1.5 / glowIntensity 0.5 / saturation 0.8 / hueShift 240<br>② **赛博网格**（纯 CSS）——绿色 48px 网格 + 胶噪 + 扫描线 + 暗角，原站同款<br>③ **流线**——`GatewayFlow` vanilla 移植：左右各 40 条白色虚线贝塞尔曲线汇聚到中心，每线一颗 3×3 白色粒子，**点击产生环形冲击推开粒子**<br>④ **碎片**——`AeroShards` WebGL 移植：珍珠碎片、鼠标排斥、按住聚拢、泛光/颗粒/色差<br>⑤ **Spline 3D**——本地 `@splinetool/runtime` 渲染，需填场景地址<br>**任何失败都自动切回赛博网格，绝不白屏** |
 | 外围市场 | 美股三大指数 / 恒指 / 国企指数 / 日经225 / KOSPI 实时，顶部常驻条 |
 | 赛道分组 | 自选股按 AI/新能源/消费/周期分组，每组显示热度（均涨/涨跌家数/领涨股） |
 | 行情与指标 | 日线 + 1/5/15/30/60 分钟线，MA/MACD/RSI/KDJ/BOLL 叠加 |
@@ -225,10 +225,32 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 >
 > 涨跌配色**不受主题影响**：红涨绿跌（A 股习惯）始终有效，见下方说明。
 
-### 背景模式一：赛博网格（默认）
-纯 CSS 实现，零 JS、零依赖、零网络：`#substrate` + `#noise` + `#scanlines` + `#vignette` 四层叠加。
+### 背景模式一：银河 Galaxy（默认）
+ReactBits `<Galaxy />` 的零依赖 vanilla 移植（`trading-app/static/galaxy.js`）。
+原组件依赖 `ogl`，这里直接用原生 WebGL 复刻同一份 fragment shader，渲染结果一致但不引入依赖。
 
-### 背景模式二：流线
+```js
+// 与用户给定的 props 一致，其余走原组件默认值
+{ mouseRepulsion: true, mouseInteraction: true, density: 1.5,
+  glowIntensity: 0.5, saturation: 0.8, hueShift: 240 }
+```
+
+原版全部 props 都保留：`focal / rotation / starSpeed / density / hueShift / speed /
+mouseInteraction / glowIntensity / saturation / mouseRepulsion / repulsionStrength /
+twinkleIntensity / rotationSpeed / autoCenterRepulsion / transparent / lightMode`。
+
+> ⚠️ 提示：`hueShift` 是**色相旋转**，不是"色号"。实测同一份其余参数下：
+> `0` → 暖绿、`140`（原组件默认）→ **蓝色**、`240`（当前值）→ **暖玫瑰色**。
+> 想要经典蓝色银河，把 `hueShift` 改成 `140` 即可。
+
+> 移植修正：原版 shader 用 `float` 作循环计数器，严格 GLSL ES 1.0 不允许（部分驱动会编译失败），
+> 已改成常量边界的 `int` 循环，其余 shader 代码逐行保持一致。
+
+### 背景模式二：赛博网格
+纯 CSS 实现，零 JS、零依赖、零网络：`#substrate` + `#noise` + `#scanlines` + `#vignette` 四层叠加。
+银河模式下保留胶噪 / 扫描线 / 暗角，但**隐藏绿色网格**（否则和星空打架）。
+
+### 背景模式三：流线
 `GatewayFlow` 的零依赖 vanilla 移植（`trading-app/static/gateway-flow.js`，Canvas 2D）。
 原组件用 React + iframe(srcDoc) + Tailwind + GSAP 包装，核心就是一段 canvas 动画 —— 这里只把那
 段核心原样搬出来，参数与语义保持一致：
@@ -241,7 +263,7 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 保留的原版特征：**80 条**贝塞尔流线（左右各半）、虚线 `[1, 4]`、线宽 `1.2`、
 每线一颗 **3×3** 白色粒子、**点击产生环形冲击**把附近粒子推开、全局抖动网点。
 
-### 背景模式三：碎片
+### 背景模式四：碎片
 `AeroShards` 的 vanilla 移植（`static/aero-shards.js`，WebGL 着色器）。
 原 React 组件的全部参数一一对应：
 
@@ -254,7 +276,7 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
   interactionRadius:1.5, interactionStrength:0.5, rippleIntensity:1, holdToGather:true }
 ```
 
-### 背景模式四：Spline 3D 场景
+### 背景模式五：Spline 3D 场景
 - 渲染引擎 `@splinetool/runtime` **已下载到本地**（`static/vendor/spline-runtime.js`，约 2MB），
   运行时**不依赖任何 CDN**，也不会因为网络抖动而白屏
 - 适配层 `static/spline-scene.js` 保持与原 React 组件**同名同参数**：
@@ -266,8 +288,8 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
   **自动切回赛博网格**，状态栏显示「⚠️ 已降级：<原因>」，页面始终可用
 
 ### 切换方式
-- 顶栏「🎨 背景」→ 选 赛博网格 / 流线 / 碎片 / Spline，选择存在浏览器里
-- URL 直达：`?bg=cyber` / `?bg=flow` / `?bg=shards` / `?bg=spline&scene=<url>`
+- 顶栏「🎨 背景」→ 选 银河 / 赛博网格 / 流线 / 碎片 / Spline，选择存在浏览器里
+- URL 直达：`?bg=galaxy` / `?bg=cyber` / `?bg=flow` / `?bg=shards` / `?bg=spline&scene=<url>`
 - 配色方案：`?scheme=cn`（A股红涨绿跌，默认）/ `?scheme=western`（欧美绿涨红跌），
   也可点顶栏 `🔴涨🟢跌（A股）` 按钮切换
 
