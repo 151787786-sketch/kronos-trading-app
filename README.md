@@ -1,4 +1,4 @@
-﻿# Kronos 股票交易助手
+# Kronos 股票交易助手
 
 <p align="center">
   <img src="https://img.shields.io/badge/Kronos-AAAI_2026-9cf" alt="Kronos"/>
@@ -47,8 +47,8 @@
 | 📚 **券商研报库** | 东财研报中心：个股研报 / 行业研报 / 策略报告 + **评级分布统计**（如「买入 32 / 增持 7 / 持有 3」）+ DeepSeek 一致预期汇总 |
 | 🌙 **夜间自迭代** | 每天 02:00 自动运行（也可手动）：收集真实运行数据（样本外 MAPE / 方向准确率 / 告警频次 / 自动交易成功率）→ DeepSeek 提出调参建议 → **范围与步长双重钳制**后写入 `tuning.json` → 全量留痕，可一键回滚。已生效参数**真的会改变**报警阈值、风控阈值与荐股权重 |
 | 涨跌配色 | **默认 A 股习惯：红涨绿跌**（与行情软件一致）。顶栏一键切换为欧美习惯（绿涨红跌），选择记在浏览器里。K 线、涨跌幅、盈亏、买卖方向、Kronos 预测柱状图全部跟随；「成功/失败、通过/风险高低」这类**非涨跌语义**固定用绿/红，不受配色影响 |
-| 🎨 **界面主题** | **Gateway Flow 黑白玻璃拟态**：纯黑底 `#000000`、石板灰文字 `#cbd5e1`/`#64748b`、白色强调与极细描边 `rgba(255,255,255,.07)`。面板为半透明玻璃（`rgba(4,6,10,.82)` + 背景模糊），hover 时出现**渐变扫光边框**（mask 挖空实现，原版签名细节）。实测主内容区 p95 亮度 **42** —— 背景再花也不影响读数据 |
-| ✨ **背景动画** | 三种模式，顶栏「🎨 背景」切换：<br>① **流线**（默认，纯 Canvas 2D，**零依赖零网络**）——`GatewayFlow` 的 vanilla 移植：左右各 40 条白色虚线贝塞尔曲线汇聚到画面中心，每线上有 3×3 白色粒子流动，**点击产生环形冲击把粒子推开**；另有全局抖动网点（dither overlay）做胶片质感<br>② **碎片**——`AeroShards` 的 WebGL 移植：珍珠质感碎片、流动、鼠标排斥、按住聚拢、泛光 / 颗粒 / 色差<br>③ **Spline 3D**——用本地 `@splinetool/runtime` 渲染，需填场景地址；**任何失败都自动切回流线背景，绝不白屏** |
+| 🎨 **界面主题** | **赛博终端风**（色板取自 [me.dufengyun.xyz](https://me.dufengyun.xyz/)）：纯黑底 + 骨白 `#d7e3db` 正文 + **霓虹绿 `#00ff41`** 主强调 + **电紫 `#7024ff`** 次强调 + 金 `#d9ad62`。绿色网格衬底 / 胶噪 / 扫描线 / 暗角四层叠加，霓虹辉光标题（含故障字 glitch）、四角括号、等宽字体标签、染绿的滚动条。实测主内容区 p95 亮度 **42** —— 背景再花也不影响读数据 |
+| ✨ **背景动画** | 四种模式，顶栏「🎨 背景」切换：<br>① **赛博网格**（默认，纯 CSS，**零依赖零网络**）——绿色 48px 网格 + 胶噪 + 扫描线 + 暗角，原站同款<br>② **流线**——`GatewayFlow` vanilla 移植：左右各 40 条白色虚线贝塞尔曲线汇聚到中心，每线一颗 3×3 白色粒子，**点击产生环形冲击推开粒子**<br>③ **碎片**——`AeroShards` WebGL 移植：珍珠碎片、鼠标排斥、按住聚拢、泛光/颗粒/色差<br>④ **Spline 3D**——本地 `@splinetool/runtime` 渲染，需填场景地址<br>**任何失败都自动切回赛博网格，绝不白屏** |
 | 外围市场 | 美股三大指数 / 恒指 / 国企指数 / 日经225 / KOSPI 实时，顶部常驻条 |
 | 赛道分组 | 自选股按 AI/新能源/消费/周期分组，每组显示热度（均涨/涨跌家数/领涨股） |
 | 行情与指标 | 日线 + 1/5/15/30/60 分钟线，MA/MACD/RSI/KDJ/BOLL 叠加 |
@@ -192,20 +192,43 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 
 ## 🎨 界面主题与背景动画
 
-### 主题色板（取自 Gateway Flow / Nexus Gateway）
-| 用途 | 值 |
-|---|---|
-| 页面底色 | `#000000` |
-| 正文 / 次要文字 | `#cbd5e1` / `#64748b` |
-| 面板（玻璃） | `rgba(4,6,10,.82)` + `backdrop-filter: blur(12px)` |
-| 边框 / 强调边框 | `rgba(255,255,255,.07)` / `rgba(255,255,255,.28)` |
-| 按钮 | 近黑 `#0a0a0a` + 细白边，hover 时边框提亮并带外发光 |
-| 激活标签 | 白底黑字（`rgba(255,255,255,.94)`） |
-| 字体 | Inter → HarmonyOS Sans SC → 微软雅黑，字重 300，小标题大写 + 字距 |
+### 主题色板（取自 [me.dufengyun.xyz](https://me.dufengyun.xyz/) 的 `:root`）
+| 变量 | 值 | 用途 |
+|---|---|---|
+| `--retina` | `#00ff41` | **霓虹绿**：主强调、激活态、滚动条、辉光 |
+| `--electro` | `#7024ff` | **电紫**：次强调、四角括号、故障字偏移 |
+| `--ink` | `#000` | 纯黑底 |
+| `--grid` | `rgba(0,255,65,.06)` | 绿色网格线 |
+| `--glass` | `hsla(0,0%,4%,.55)` | 玻璃面板 |
+| `--bone` | `#d7e3db` | 骨白正文 |
+| `--bone-bright` | `#e9f2ec` | 高亮文字 |
+| `--electro-light` | `#b59bff` | 电紫亮色 |
+| `--gold` | `#d9ad62` | 金：三级强调 |
 
+### 原站签名元素（全部 1:1 复刻）
+| 元素 | 实现 |
+|---|---|
+| **绿色网格衬底** | `.bg-substrate` 同款：48×48px 双向 linear-gradient 网格 |
+| **胶噪** | SVG `feTurbulence`（fractalNoise, baseFrequency .9, 2 octaves），opacity `.035` |
+| **扫描线** | `repeating-linear-gradient(180deg, hsla(0,0%,100%,.015) …3px)` + `mix-blend-mode: overlay` |
+| **暗角** | `radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.7) 100%)` |
+| **霓虹辉光** | `.glow-retina` = `#00ff41` + 双层 text-shadow（6px/18px）；`.glow-electro`、`.glow-bone` 同构 |
+| **故障字 glitch** | `::before/::after` 用 `attr(data-text)`，绿紫各偏移 ±1.2px，`clip-path` 上下切分，`mix-blend-mode: screen` |
+| **四角括号** | `.chrome-edge`：左上绿、右下紫的 16px 渐变角标 |
+| **闪烁光标** | `@keyframes blinkCursor` 1s step-end，标题尾部一个绿色下划线 |
+| **霓虹滚动条** | `::-webkit-scrollbar-thumb` 绿色 |
+| **等宽字体** | JetBrains Mono 用于标签、表格表头、按钮、输入框 |
+| **body 双辉光** | 左上紫 `rgba(112,36,255,.10)` + 右下绿 `rgba(0,255,65,.08)` |
+
+> 未搬的一项是原站的 `cursor: none`（隐藏系统光标 + 自定义光标）—— 交易看板需要精确点击，
+> 隐藏光标会显著降低可用性，属于刻意偏离。
+>
 > 涨跌配色**不受主题影响**：红涨绿跌（A 股习惯）始终有效，见下方说明。
 
-### 背景模式一：流线（默认）
+### 背景模式一：赛博网格（默认）
+纯 CSS 实现，零 JS、零依赖、零网络：`#substrate` + `#noise` + `#scanlines` + `#vignette` 四层叠加。
+
+### 背景模式二：流线
 `GatewayFlow` 的零依赖 vanilla 移植（`trading-app/static/gateway-flow.js`，Canvas 2D）。
 原组件用 React + iframe(srcDoc) + Tailwind + GSAP 包装，核心就是一段 canvas 动画 —— 这里只把那
 段核心原样搬出来，参数与语义保持一致：
@@ -218,7 +241,7 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 保留的原版特征：**80 条**贝塞尔流线（左右各半）、虚线 `[1, 4]`、线宽 `1.2`、
 每线一颗 **3×3** 白色粒子、**点击产生环形冲击**把附近粒子推开、全局抖动网点。
 
-### 背景模式二：碎片（可选）
+### 背景模式三：碎片
 `AeroShards` 的 vanilla 移植（`static/aero-shards.js`，WebGL 着色器）。
 原 React 组件的全部参数一一对应：
 
@@ -231,7 +254,7 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
   interactionRadius:1.5, interactionStrength:0.5, rippleIntensity:1, holdToGather:true }
 ```
 
-### 背景模式三：Spline 3D 场景（可选）
+### 背景模式四：Spline 3D 场景
 - 渲染引擎 `@splinetool/runtime` **已下载到本地**（`static/vendor/spline-runtime.js`，约 2MB），
   运行时**不依赖任何 CDN**，也不会因为网络抖动而白屏
 - 适配层 `static/spline-scene.js` 保持与原 React 组件**同名同参数**：
@@ -240,11 +263,11 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
   复制 `scene` 链接（形如 `https://prod.spline.design/<id>/scene.splinecode`）
 - 填写位置：顶栏「🎨 背景」→ 粘贴地址 → 「应用」；也支持 `?bg=spline&scene=<url>` 直达
 - ⚠️ **该地址指向 Spline 的 CDN，国内网络时通时断**。加载失败会在 15 秒内判定并
-  **自动切回流线背景**，状态栏显示「⚠️ 已降级：<原因>」，页面始终可用
+  **自动切回赛博网格**，状态栏显示「⚠️ 已降级：<原因>」，页面始终可用
 
 ### 切换方式
-- 顶栏「🎨 背景」→ 选 流线 / 碎片 / Spline，选择存在浏览器里
-- URL 直达：`?bg=flow` / `?bg=shards` / `?bg=spline&scene=<url>`
+- 顶栏「🎨 背景」→ 选 赛博网格 / 流线 / 碎片 / Spline，选择存在浏览器里
+- URL 直达：`?bg=cyber` / `?bg=flow` / `?bg=shards` / `?bg=spline&scene=<url>`
 - 配色方案：`?scheme=cn`（A股红涨绿跌，默认）/ `?scheme=western`（欧美绿涨红跌），
   也可点顶栏 `🔴涨🟢跌（A股）` 按钮切换
 

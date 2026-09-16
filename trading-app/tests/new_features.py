@@ -254,19 +254,12 @@ try:
 except Exception as e:
     check("适配层可读取", False, str(e)[:80])
 
-print("\n=== 11. Gateway Flow 流线背景（默认） ===")
+print("\n=== 11. Gateway Flow 流线背景 ===")
 check("流线画布存在", 'id="flow-bg"' in page)
-check("抖动网点存在（原版 dither overlay）", 'id="dither"' in page)
 check("引入流线引擎", '/static/gateway-flow.js' in page)
-check("默认背景为流线（background.js 里 mode 默认 flow）",
-      "mode: 'flow'" in __import__("urllib.request", fromlist=["x"]).urlopen(
-          BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
-check("三个背景模式按钮齐全",
-      all(f'id="bg-mode-{m}"' in page for m in ("flow", "shards", "spline")))
-check("主题为 Gateway 黑白色板",
-      '--bg: #000000' in page and '--text: #cbd5e1' in page and '--muted: #64748b' in page)
+check("四个背景模式按钮齐全",
+      all(f'id="bg-mode-{m}"' in page for m in ("cyber", "flow", "shards", "spline")))
 check("面板保留玻璃模糊", 'backdrop-filter: blur(12px)' in page)
-check("签名细节：hover 渐变扫光边框", 'mask-composite: exclude' in page)
 check("涨跌色未被主题改动（仍红涨绿跌）",
       bool(_re.search(r"--up:\s*#ef4444", page)) and bool(_re.search(r"--down:\s*#22c55e", page)))
 
@@ -286,6 +279,36 @@ try:
           "http://" not in gf and "https://" not in gf and "import " not in gf)
 except Exception as e:
     check("流线引擎可读取", False, str(e)[:80])
+
+print("\n=== 12. 赛博终端主题（取自 me.dufengyun.xyz） ===")
+# 原站 :root 变量
+check("--retina 霓虹绿 #00ff41", '--retina: #00ff41' in page)
+check("--electro 电紫 #7024ff", '--electro: #7024ff' in page)
+check("--grid 绿色网格线", '--grid: rgba(0, 255, 65, .06)' in page or '--grid: rgba(0,255,65,.06)' in page)
+check("--glass 玻璃底色", '--glass: hsla(0, 0%, 4%, .55)' in page or '--glass:hsla(0,0%,4%,.55)' in page)
+check("--bone 骨白正文 #d7e3db", '--bone: #d7e3db' in page)
+check("兜底金 #d9ad62", '#d9ad62' in page or '--gold: #d9ad62' in page)
+
+# 原站签名元素
+check("绿色网格衬底 .bg-substrate（48px）", 'id="substrate"' in page and 'background-size: 48px 48px' in page)
+check("胶噪层 SVG feTurbulence", 'id="noise"' in page and 'feTurbulence' in page)
+check("扫描线层 mix-blend-mode:overlay",
+      'id="scanlines"' in page and 'mix-blend-mode: overlay' in page)
+check("暗角层 vignette", 'id="vignette"' in page and 'rgba(0,0,0,.7) 100%' in page)
+check("霓虹辉光三件套 glow-bone/retina/electro",
+      '.glow-bone' in page and '.glow-retina' in page and '.glow-electro' in page)
+check("辉光用 text-shadow 双层",
+      'text-shadow: 0 0 6px rgba(0,255,65,.7), 0 0 18px rgba(0,255,65,.35)' in page)
+check("故障字 glitch（绿/紫双向偏移 + clip-path）",
+      'data-text="KRONOS"' in page and 'mix-blend-mode: screen' in page and 'clip-path: polygon' in page)
+check("闪烁光标 blinkCursor 关键帧", '@keyframes blinkCursor' in page)
+check("滚动条染成霓虹绿", '::-webkit-scrollbar-thumb { background: rgba(0,255,65,.65)' in page)
+check("等宽字体 JetBrains Mono", 'JetBrains Mono' in page)
+check("body 双径向辉光（左上紫 / 右下绿）",
+      'rgba(112, 36, 255, .10)' in page and 'rgba(0, 255, 65, .08)' in page)
+check("默认背景为赛博网格",
+      "mode: 'cyber'" in __import__("urllib.request", fromlist=["x"]).urlopen(
+          BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
 
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")

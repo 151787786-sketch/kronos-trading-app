@@ -9,19 +9,30 @@
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root {
-    /* Gateway Flow（Nexus Gateway）色板：纯黑底 + 石板灰文字 + 白色强调 */
+    /* ==== 风格取自 me.dufengyun.xyz（风云个人站）：赛博终端 ====
+       原站 :root 变量原样搬过来，只把 --grid 名字保留 */
+    --retina: #00ff41;      /* 霓虹绿：主强调 */
+    --electro: #7024ff;     /* 电紫：次强调 */
+    --ink: #000;            /* 纯黑 */
+    --grid: rgba(0, 255, 65, .06);
+    --glass: hsla(0, 0%, 4%, .55);
+    --bone: #d7e3db;        /* 骨白：正文 */
+    --bone-bright: #e9f2ec;
+    --electro-light: #b59bff;
+    --gold: #d9ad62;        /* 金：三级强调 */
+
+    /* 应用层映射 */
     --bg: #000000;
-    --accent: #ffffff;
-    --panel-solid: #05070a;
-    /* 玻璃面板：模糊掉背景流线，保证数据可读 */
-    --panel: rgba(4, 6, 10, .82);
-    --panel2: rgba(30, 41, 59, .46);
-    --border: rgba(255, 255, 255, .07);
-    --border-strong: rgba(255, 255, 255, .28);
-    --text: #cbd5e1; --muted: #64748b;
+    --accent: #00ff41;
+    --panel-solid: #0a0a0a;
+    --panel: hsla(0, 0%, 4%, .62);
+    --panel2: rgba(0, 255, 65, .04);
+    --border: rgba(215, 227, 219, .12);
+    --border-strong: rgba(0, 255, 65, .45);
+    --text: #d7e3db; --muted: rgba(215, 227, 219, .5);
     /* 语义色：green/red 用于「成功/失败、通过/风险」等非涨跌含义，不随配色方案切换 */
     --green: #22c55e; --red: #ef4444;
-    --blue: #94a3b8; --amber: #F5A524;
+    --blue: #b59bff; --amber: #d9ad62;
     /* 涨跌色：默认 A 股习惯 —— 红涨绿跌 */
     --up: #ef4444; --up-bg: rgba(239,68,68,.15); --up-bg-strong: rgba(239,68,68,.18);
     --down: #22c55e; --down-bg: rgba(34,197,94,.15); --down-bg-strong: rgba(34,197,94,.18);
@@ -32,38 +43,93 @@ html[data-scheme="western"] {
     --down: #ef4444; --down-bg: rgba(239,68,68,.15); --down-bg-strong: rgba(239,68,68,.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh;
-    font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
-    -webkit-font-smoothing: antialiased; }
+body { color: var(--bone); font-size: 14px; min-height: 100vh;
+    font-family: "IBM Plex Sans", Inter, "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    /* 原站背景：左上紫、右下绿的径向辉光 + 纯黑 */
+    background:
+        radial-gradient(ellipse at 15% 10%, rgba(112, 36, 255, .10), transparent 55%),
+        radial-gradient(ellipse at 85% 90%, rgba(0, 255, 65, .08), transparent 55%),
+        #000; }
+/* 绿色网格衬底（原站 .bg-substrate，48×48 网格） */
+#substrate { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image: linear-gradient(to right, var(--grid) 1px, transparent 1px),
+                      linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px; }
+/* 胶噪（原站 .noise：SVG feTurbulence，opacity .035） */
+#noise { position: fixed; inset: 0; z-index: 25; pointer-events: none; opacity: .035;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23n)'/></svg>"); }
+/* 扫描线（原站 .scanlines） */
+#scanlines { position: fixed; inset: 0; z-index: 40; pointer-events: none; mix-blend-mode: overlay;
+    background: repeating-linear-gradient(180deg, hsla(0,0%,100%,.015) 0, hsla(0,0%,100%,.015) 1px, transparent 0, transparent 3px); }
+/* 暗角（原站 .vignette） */
+#vignette { position: fixed; inset: 0; z-index: 30; pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,.7) 100%); }
+/* 霓虹滚动条（原站 #00ff41） */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,255,65,.65); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #00ff41; }
+/* 原站辉光三件套 */
+.glow-bone { color: var(--bone-bright); text-shadow: 0 0 10px rgba(0,255,65,.15); }
+.glow-retina { color: var(--retina); text-shadow: 0 0 6px rgba(0,255,65,.7), 0 0 18px rgba(0,255,65,.35); }
+.glow-electro { color: var(--electro-light); text-shadow: 0 0 6px rgba(112,36,255,.8), 0 0 22px rgba(112,36,255,.35); }
+/* 等宽字体（原站 JetBrains Mono） */
+.mono { font-family: "JetBrains Mono", "Fira Code", "Cascadia Mono", ui-monospace, Consolas, monospace; }
+/* 闪烁光标（原站 animate-blinkCursor） */
+@keyframes blinkCursor { 0%, 49% { opacity: 1 } 50%, 100% { opacity: 0 } }
+.blink { animation: blinkCursor 1s step-end infinite; }
+/* 故障字（原站 .glitch：绿/紫双向偏移 + clip-path 切分） */
+.glitch { position: relative; display: inline-block; }
+.glitch::before, .glitch::after {
+    content: attr(data-text); position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; }
+.glitch::before { color: #00ff41; transform: translate(1.2px, 0); clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); }
+.glitch::after { color: #7024ff; transform: translate(-1.2px, 0); clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%); }
+/* 四角括号（原站 .chrome-edge） */
+.chrome-edge::before, .chrome-edge::after {
+    content: ""; position: absolute; width: 16px; height: 16px; pointer-events: none; opacity: .8; }
+.chrome-edge::before { top: -1px; left: -1px;
+    background: linear-gradient(180deg, var(--retina), transparent) 0 0 / 1px 16px no-repeat,
+                linear-gradient(90deg, var(--retina), transparent) 0 0 / 16px 1px no-repeat; }
+.chrome-edge::after { bottom: -1px; right: -1px;
+    background: linear-gradient(0deg, var(--electro), transparent) 100% 100% / 1px 16px no-repeat,
+                linear-gradient(270deg, var(--electro), transparent) 100% 100% / 16px 1px no-repeat; }
 /* 背景层：流线画布 + 碎片画布 + Spline 3D，都固定在最底层且不挡交互 */
 #flow-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; pointer-events: none; }
 #aero-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #spline-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #spline-bg canvas { width: 100%; height: 100%; display: block; }
-/* 抖动网点（原版全局 dither overlay）：2×2 白点阵，极低透明度，只做质感不伤可读性 */
+/* 抖动网点（Gateway 模式的叠加层，切到赛博模式时由背景管理器隐藏） */
 #dither { position: fixed; inset: 0; z-index: 40; pointer-events: none; opacity: .045;
     background-image: url("data:image/svg+xml,%3Csvg%20viewBox%3D%220%200%202%202%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23ffffff%22%2F%3E%3Crect%20x%3D%221%22%20y%3D%221%22%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23ffffff%22%2F%3E%3C%2Fsvg%3E");
-    background-size: 2px 2px; }
+    background-size: 2px 2px; display: none; }
 /* 背景设置面板 */
 #bg-panel { position: fixed; top: 62px; right: 20px; z-index: 45; width: 400px; display: none;
-    background: rgba(3,5,8,.97); border: 1px solid var(--border-strong); border-radius: 14px;
-    padding: 16px; box-shadow: 0 24px 70px rgba(0,0,0,.85); backdrop-filter: blur(18px); }
-#bg-panel h3 { font-size: 12px; color: #fff; margin-bottom: 12px; text-transform: uppercase; letter-spacing: .18em; font-weight: 300; }
+    background: hsla(0, 0%, 3%, .97); border: 1px solid var(--border-strong); border-radius: 4px;
+    padding: 16px; box-shadow: 0 24px 70px rgba(0,0,0,.9), 0 0 30px rgba(0,255,65,.08); backdrop-filter: blur(18px); }
+#bg-panel h3 { font-size: 11px; color: var(--retina); margin-bottom: 12px; text-transform: uppercase; letter-spacing: .18em; font-weight: 400;
+    font-family: "JetBrains Mono", ui-monospace, monospace; text-shadow: 0 0 6px rgba(0,255,65,.5); }
 #bg-panel .row { margin-bottom: 12px; }
-#bg-panel label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .12em; }
-#bg-panel .seg { display: flex; gap: 6px; }
-#bg-panel .seg button { flex: 1; font-size: 12px; padding: 8px; }
-#bg-panel .seg button.on { background: rgba(255,255,255,.94); color: #05070a; border-color: transparent; }
+#bg-panel label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .15em;
+    font-family: "JetBrains Mono", ui-monospace, monospace; }
+#bg-panel .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+#bg-panel .seg button { flex: 1; min-width: 84px; font-size: 11px; padding: 8px; }
+#bg-panel .seg button.on { background: var(--retina); color: #000; border-color: var(--retina); box-shadow: 0 0 18px rgba(0,255,65,.4); }
 #bg-panel .hint { font-size: 11px; color: var(--muted); line-height: 1.75; }
 .topbar, .wrap { position: relative; z-index: 1; }
-.topbar { display: flex; align-items: center; gap: 16px; padding: 12px 20px; background: rgba(2, 4, 7, .84); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
-.topbar h1 { font-size: 17px; color: #fff; font-weight: 300; letter-spacing: .06em; text-transform: uppercase; }
-.topbar h1 span { color: var(--muted); }
-.badge { background: var(--panel2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+.topbar { display: flex; align-items: center; gap: 14px; padding: 11px 20px; background: hsla(0,0%,3%,.82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-strong); position: sticky; top: 0; z-index: 10;
+    box-shadow: 0 1px 0 rgba(0,255,65,.12), 0 8px 30px rgba(0,0,0,.6); }
+.topbar h1 { font-size: 15px; color: var(--bone-bright); font-weight: 400; letter-spacing: .16em; text-transform: uppercase;
+    font-family: "JetBrains Mono", ui-monospace, monospace; }
+.topbar h1 span { color: var(--retina); text-shadow: 0 0 6px rgba(0,255,65,.55), 0 0 18px rgba(0,255,65,.25); }
+.badge { background: rgba(0,255,65,.05); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; color: var(--muted); font-size: 11px; letter-spacing: .06em;
+    font-family: "JetBrains Mono", ui-monospace, monospace; }
 .wrap { display: grid; grid-template-columns: 300px 1fr; gap: 14px; padding: 14px 20px; }
 .left { display: flex; flex-direction: column; gap: 14px; }
-.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); position: relative; }
-/* 原版签名细节：hover 时出现「渐变扫光边框」（用 mask 挖空中心实现） */
+.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); position: relative;
+    box-shadow: inset 0 1px 0 rgba(215,227,219,.03), 0 4px 24px rgba(0,0,0,.5); }
+/* hover 时边框亮起绿色辉光（原站霓虹感） */
+.panel:hover { border-color: rgba(0,255,65,.28); }
 .panel::after, .rec-card::after {
     content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
     background: linear-gradient(110deg, transparent, rgba(255,255,255,.22), transparent);
@@ -74,25 +140,30 @@ body { background: var(--bg); color: var(--text); font-size: 14px; min-height: 1
 .panel h2 { font-size: 13px; margin-bottom: 10px; color: #fff; display: flex; justify-content: space-between; align-items: center; font-weight: 400; letter-spacing: .04em; }
 .panel h2 .hint { color: var(--muted); font-weight: normal; font-size: 11px; }
 input[type=text], input[type=number], select {
-    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
-    padding: 7px 10px; border-radius: 6px; width: 100%; margin: 4px 0;
+    background: hsla(0,0%,3%,.85); border: 1px solid var(--border); color: var(--bone);
+    padding: 7px 10px; border-radius: 2px; width: 100%; margin: 4px 0;
+    font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px;
+}
+input[type=text]:focus, input[type=number]:focus, select:focus {
+    outline: none; border-color: var(--retina); box-shadow: 0 0 14px rgba(0,255,65,.2); caret-color: var(--retina);
 }
 button {
-    position: relative; background: #0a0a0a; color: #fff; border: 1px solid rgba(255,255,255,.10);
-    padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 300;
-    letter-spacing: .04em; transition: border-color .3s, box-shadow .3s, background .3s;
+    position: relative; background: hsla(0,0%,4%,.8); color: var(--bone); border: 1px solid rgba(215,227,219,.18);
+    padding: 8px 14px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 400;
+    letter-spacing: .08em; font-family: "JetBrains Mono", ui-monospace, monospace;
+    transition: border-color .3s, box-shadow .3s, background .3s, color .3s;
 }
-button:hover { background: #111; border-color: rgba(255,255,255,.30); box-shadow: 0 0 22px rgba(255,255,255,.07); }
+button:hover { background: rgba(0,255,65,.08); border-color: var(--retina); box-shadow: 0 0 18px rgba(0,255,65,.25); color: var(--retina); }
 button:disabled { opacity: .4; cursor: not-allowed; }
 button.green { background: var(--green); border-color: transparent; color: #05230f; font-weight: 500; }
 button.red { background: var(--red); border-color: transparent; color: #2a0606; font-weight: 500; }
-button.ghost { background: rgba(255,255,255,.04); border: 1px solid var(--border); color: var(--text); }
-button.ghost:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.24); box-shadow: none; }
+button.ghost { background: rgba(0,255,65,.03); border: 1px solid var(--border); color: var(--text); }
+button.ghost:hover { background: rgba(0,255,65,.08); border-color: rgba(0,255,65,.45); color: var(--retina); box-shadow: 0 0 12px rgba(0,255,65,.18); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
-th { color: var(--muted); font-weight: normal; font-size: 12px; }
+th { color: var(--muted); font-weight: normal; font-size: 10px; text-transform: uppercase; letter-spacing: .14em; font-family: "JetBrains Mono", ui-monospace, monospace; }
 td:first-child, th:first-child { text-align: left; }
-tr:hover { background: var(--panel2); }
+tr:hover { background: rgba(0,255,65,.035); }
 /* 涨跌配色：.pos = 上涨 / .neg = 下跌（颜色由 --up/--down 决定，随红涨绿跌设置切换） */
 .pos { color: var(--up); } .neg { color: var(--down); }
 /* 语义配色：与涨跌无关的判断（好坏、通过/失败、风险高低）固定用 green/red */
@@ -109,19 +180,19 @@ tr:hover { background: var(--panel2); }
 .wl-flag.neg { background:var(--down-bg-strong); color:var(--down); }
 .follow-btn { display:inline-block; font-size:11px; padding:2px 7px; border-radius:4px; background:var(--up-bg); color:var(--up); cursor:pointer; margin-left:4px; }
 .follow-btn:hover { background:var(--up-bg-strong); }
-.rec-card { background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:14px; cursor:pointer; transition:border-color .15s; }
-.rec-card:hover { border-color:var(--blue); }
-.rec-rank { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; border-radius:50%; background:var(--panel2); border:1px solid var(--border); font-size:12px; font-weight:bold; }
-.rec-rank.top { background:rgba(245,158,11,.2); border-color:var(--amber); color:var(--amber); }
+.rec-card { background:hsla(0,0%,4%,.6); border:1px solid var(--border); border-radius:4px; padding:14px; cursor:pointer; transition:border-color .25s, box-shadow .25s; position:relative; }
+.rec-card:hover { border-color: rgba(0,255,65,.4); box-shadow: 0 0 24px rgba(0,255,65,.1); }
+.rec-rank { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; border-radius:2px; background:rgba(0,255,65,.06); border:1px solid var(--border); font-size:11px; font-weight:bold; font-family:"JetBrains Mono", ui-monospace, monospace; color: var(--retina); }
+.rec-rank.top { background:rgba(217,173,98,.16); border-color:var(--gold); color:var(--gold); }
 .signal-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
 .signal-BUY { background: var(--up-bg); color: var(--up); }
 .signal-SELL { background: var(--down-bg); color: var(--down); }
-.signal-HOLD { background: rgba(138,147,165,.15); color: var(--muted); }
+.signal-HOLD { background: rgba(215,227,219,.08); color: var(--muted); }
 .chart-box { height: 420px; }
 .chart-box.small { height: 200px; }
 .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
-.tabs button { background: rgba(255,255,255,.03); border: 1px solid var(--border); color: var(--muted); border-radius: 8px 8px 0 0; font-weight: 300; letter-spacing: .06em; }
-.tabs button.active { background: rgba(255,255,255,.94); color: #05070a; border-color: transparent; font-weight: 500; box-shadow: 0 0 26px rgba(255,255,255,.12); }
+.tabs button { background: hsla(0,0%,4%,.7); border: 1px solid var(--border); color: var(--muted); border-radius: 2px 2px 0 0; font-weight: 400; letter-spacing: .08em; font-size: 12px; font-family:"JetBrains Mono", ui-monospace, monospace; }
+.tabs button.active { background: rgba(0,255,65,.12); color: var(--retina); border-color: var(--retina); border-bottom-color: transparent; box-shadow: 0 0 22px rgba(0,255,65,.28), inset 0 0 18px rgba(0,255,65,.06); text-shadow: 0 0 8px rgba(0,255,65,.6); }
 .tab-pane { display: none; }
 .tab-pane.active { display: block; }
 .form-row { display: flex; gap: 8px; align-items: end; margin: 6px 0; }
@@ -142,13 +213,15 @@ tr:hover { background: var(--panel2); }
 </head>
 <body>
 
-<!-- Gateway Flow 背景（默认）：左右贝塞尔流线汇聚到中心 + 粒子 + 点击爆破 -->
+<!-- 赛博终端叠加层（取自 me.dufengyun.xyz）：绿色网格 / 胶噪 / 扫描线 / 暗角 -->
+<div id="substrate" aria-hidden="true"></div>
+<div id="noise" aria-hidden="true"></div>
+<div id="scanlines" aria-hidden="true"></div>
+<div id="vignette" aria-hidden="true"></div>
+<!-- 备用背景层（Gateway 流线 / AeroShards 碎片 / Spline 3D），默认隐藏 -->
 <canvas id="flow-bg" aria-hidden="true"></canvas>
-<!-- AeroShards 背景碎片（可选） -->
 <canvas id="aero-bg" aria-hidden="true"></canvas>
-<!-- Spline 3D 场景层（可选，需要场景地址；失败会自动切回） -->
 <div id="spline-bg" aria-hidden="true"></div>
-<!-- 全局抖动网点（原版 dither overlay） -->
 <div id="dither" aria-hidden="true"></div>
 
 <!-- 背景设置面板 -->
@@ -157,7 +230,8 @@ tr:hover { background: var(--panel2); }
     <div class="row">
         <label>背景模式</label>
         <div class="seg">
-            <button class="ghost" id="bg-mode-flow" onclick="setBgMode('flow')">流线（默认）</button>
+            <button class="ghost" id="bg-mode-cyber" onclick="setBgMode('cyber')">赛博网格（默认）</button>
+            <button class="ghost" id="bg-mode-flow" onclick="setBgMode('flow')">流线</button>
             <button class="ghost" id="bg-mode-shards" onclick="setBgMode('shards')">碎片</button>
             <button class="ghost" id="bg-mode-spline" onclick="setBgMode('spline')">Spline 3D</button>
         </div>
@@ -187,7 +261,7 @@ tr:hover { background: var(--panel2); }
 </div>
 
 <div class="topbar">
-    <h1>Kronos <span>股票交易助手</span></h1>
+    <h1><span class="glitch" data-text="KRONOS">KRONOS</span> <span>交易终端</span><span class="blink" style="color:var(--retina)">_</span></h1>
     <div class="badge" id="model-badge">模型未加载</div>
     <div class="badge" id="device-badge">设备: -</div>
     <div class="badge" id="cache-badge">缓存 -</div>
@@ -881,7 +955,7 @@ var FLOW_CONFIG = {
 function updateBgPanel() {
     var Bg = window.SplineBackground;
     if (!Bg) return;
-    ['flow', 'shards', 'spline'].forEach(function (m) {
+    ['cyber', 'flow', 'shards', 'spline'].forEach(function (m) {
         var b = document.getElementById('bg-mode-' + m);
         if (b) b.className = Bg.mode === m ? '' : 'ghost';
     });

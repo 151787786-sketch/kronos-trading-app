@@ -13,7 +13,7 @@
 
     var LS_BG = 'kronos_bg_mode';
     var LS_SCENE = 'kronos_spline_scene';
-    var VALID = { flow: 1, shards: 1, spline: 1 };
+    var VALID = { cyber: 1, flow: 1, shards: 1, spline: 1 };
 
     function qs(name) {
         try { return new URLSearchParams(location.search || '').get(name) || ''; }
@@ -30,7 +30,7 @@
     }
 
     var Bg = {
-        mode: 'flow',
+        mode: 'cyber',
         scene: '',
         handle: null,
         status: 'idle',
@@ -42,8 +42,8 @@
             var s = qs('scene');
             if (m) lsSet(LS_BG, m);
             if (s) lsSet(LS_SCENE, s);
-            var saved = ls(LS_BG, 'flow');
-            this.mode = VALID[saved] ? saved : 'flow';
+            var saved = ls(LS_BG, 'cyber');
+            this.mode = VALID[saved] ? saved : 'cyber';
             this.scene = ls(LS_SCENE, '');
             this.apply();
         },
@@ -55,7 +55,7 @@
         },
 
         setMode: function (mode) {
-            if (!VALID[mode]) mode = 'flow';
+            if (!VALID[mode]) mode = 'cyber';
             this.mode = mode;
             lsSet(LS_BG, mode);
             this.apply();
@@ -72,11 +72,26 @@
             if (el) el.style.display = show ? 'block' : 'none';
         },
 
-        /** 显示指定层，并暂停其它层的渲染循环（省电） */
+        /** 显示指定层，并暂停其它层的渲染循环（省电）
+         *  cyber 模式用纯 CSS 叠加层（网格/胶噪/扫描线/暗角），零 JS 开销 */
         _activate: function (which) {
-            this._layer('flow-bg', which === 'flow');
-            this._layer('aero-bg', which === 'shards');
-            this._layer('spline-bg', which === 'spline');
+            var dom = ['flow-bg', 'aero-bg', 'spline-bg'];
+            dom.forEach(function (id) {
+                var el = document.getElementById(id);
+                if (!el) return;
+                var on = (id === 'flow-bg' && which === 'flow')
+                      || (id === 'aero-bg' && which === 'shards')
+                      || (id === 'spline-bg' && which === 'spline');
+                el.style.display = on ? 'block' : 'none';
+            });
+            // cyber 的背景由 body 渐变提供，叠加层只在 cyber 模式显示
+            ['substrate', 'noise', 'scanlines', 'vignette'].forEach(function (id) {
+                var el = document.getElementById(id);
+                if (el) el.style.display = which === 'cyber' ? 'block' : 'none';
+            });
+            // Gateway 模式的抖动网点只在 flow 模式显示
+            var d = document.getElementById('dither');
+            if (d) d.style.display = which === 'flow' ? 'block' : 'none';
 
             if (global.flow) {
                 if (which === 'flow') { try { global.flow.start(); global.flow.resize(); } catch (e) {} }
@@ -97,15 +112,22 @@
             if (host) host.innerHTML = '';
         },
 
-        /** 任何异常都退回流线背景 —— 页面永远可用 */
+        /** 任何异常都退回默认背景 —— 页面永远可用 */
         _fallback: function (reason) {
             this._destroySpline();
-            this._activate('flow');
+            this._activate('cyber');
             this._report('error', reason);
         },
 
         apply: function () {
             var self = this;
+
+            if (this.mode === 'cyber') {
+                this._destroySpline();
+                this._activate('cyber');
+                this._report('ready', '赛博网格');
+                return;
+            }
 
             if (this.mode === 'flow') {
                 this._destroySpline();
