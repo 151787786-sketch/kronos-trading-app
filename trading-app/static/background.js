@@ -13,7 +13,7 @@
 
     var LS_BG = 'kronos_bg_mode';
     var LS_SCENE = 'kronos_spline_scene';
-    var VALID = { galaxy: 1, cyber: 1, flow: 1, shards: 1, spline: 1 };
+    var VALID = { paper: 1, galaxy: 1, cyber: 1, flow: 1, shards: 1, spline: 1 };
 
     function qs(name) {
         try { return new URLSearchParams(location.search || '').get(name) || ''; }
@@ -30,7 +30,7 @@
     }
 
     var Bg = {
-        mode: 'galaxy',
+        mode: 'paper',
         scene: '',
         handle: null,
         status: 'idle',
@@ -42,8 +42,8 @@
             var s = qs('scene');
             if (m) lsSet(LS_BG, m);
             if (s) lsSet(LS_SCENE, s);
-            var saved = ls(LS_BG, 'galaxy');
-            this.mode = VALID[saved] ? saved : 'galaxy';
+            var saved = ls(LS_BG, 'paper');
+            this.mode = VALID[saved] ? saved : 'paper';
             this.scene = ls(LS_SCENE, '');
             this.apply();
         },
@@ -55,7 +55,7 @@
         },
 
         setMode: function (mode) {
-            if (!VALID[mode]) mode = 'galaxy';
+            if (!VALID[mode]) mode = 'paper';
             this.mode = mode;
             lsSet(LS_BG, mode);
             this.apply();
@@ -76,6 +76,8 @@
          *  cyber 模式用纯 CSS 叠加层（网格/胶噪/扫描线/暗角），零 JS 开销 */
         _activate: function (which) {
             var dom = ['galaxy-bg', 'flow-bg', 'aero-bg', 'spline-bg'];
+            var pb = document.getElementById('paper-bg');
+            if (pb) pb.style.display = which === 'paper' ? 'block' : 'none';
             dom.forEach(function (id) {
                 var el = document.getElementById(id);
                 if (!el) return;
@@ -129,6 +131,13 @@
 
         apply: function () {
             var self = this;
+
+            if (this.mode === 'paper') {
+                this._destroySpline();
+                this._activate('paper');
+                this._report('ready', '纸面背景');
+                return;
+            }
 
             if (this.mode === 'galaxy') {
                 this._destroySpline();

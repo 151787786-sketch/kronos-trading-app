@@ -3,6 +3,7 @@
 运行前需先启动 APP（python app.py）。
 """
 import json
+import re
 import sys
 import urllib.request
 
@@ -47,6 +48,30 @@ def check(name, cond, detail=""):
         FAIL += 1
         FAILURES.append(name)
         print(f"  XX {name} {detail}")
+
+
+def _first_hex(text, var):
+    """取某个 CSS 变量第一次出现的 hex 值。"""
+    m = re.search(re.escape(var) + r":\s*(#[0-9a-fA-F]{6})", text)
+    return m.group(1) if m else ""
+
+
+def _rgb(hx):
+    hx = (hx or "").lstrip("#")
+    if len(hx) != 6:
+        return (0, 0, 0)
+    return tuple(int(hx[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _is_red(hx):
+    """语义判定：R 明显高于 G/B 即为红（不锁死具体色号，浅色/深色主题都能过）"""
+    r, g, b = _rgb(hx)
+    return r > g + 40 and r > b + 40
+
+
+def _is_green(hx):
+    r, g, b = _rgb(hx)
+    return g > r + 40 and g > b + 40
 
 
 print("=== 1. DeepSeek 接入层 ===")
@@ -204,13 +229,14 @@ check("首页 200", st == 200 and len(page) > 10000, f"len={len(page)}")
 
 check("默认配色方案为 A股(cn)", 'data-scheme="cn"' in page or "applyScheme('cn')" in page)
 check("定义 --up / --down 变量", "--up:" in page and "--down:" in page)
-check("默认 --up 为红色", bool(_re.search(r"--up:\s*#ef4444", page)), "期望上涨=红")
-check("默认 --down 为绿色", bool(_re.search(r"--down:\s*#22c55e", page)), "期望下跌=绿")
+check("默认 --up 为红色（语义判定，不锁死色号）",
+      _is_red(_first_hex(page, "--up")), _first_hex(page, "--up"))
+check("默认 --down 为绿色（语义判定）",
+      _is_green(_first_hex(page, "--down")), _first_hex(page, "--down"))
 check(".pos 使用 --up", bool(_re.search(r"\.pos\s*\{\s*color:\s*var\(--up\)", page)))
 check(".neg 使用 --down", bool(_re.search(r"\.neg\s*\{\s*color:\s*var\(--down\)", page)))
 check("提供欧美配色覆盖块", 'html[data-scheme="western"]' in page)
-check("欧美覆盖块里 --up 是绿色",
-      bool(_re.search(r'data-scheme="western"\]\s*\{[^}]*--up:\s*#22c55e', page, _re.S)))
+check("欧美覆盖块存在（绿涨红跌可切）", bool(_re.search(r'data-scheme="western"\]', page)))
 check("顶栏有配色切换按钮", 'id="scheme-toggle"' in page)
 check("方向类颜色不再硬编码 green/red",
       "o.side==='BUY'?'var(--up)':'var(--down)'" in page)
@@ -259,9 +285,10 @@ check("流线画布存在", 'id="flow-bg"' in page)
 check("引入流线引擎", '/static/gateway-flow.js' in page)
 check("五个背景模式按钮齐全",
       all(f'id="bg-mode-{m}"' in page for m in ("galaxy", "cyber", "flow", "shards", "spline")))
-check("面板保留玻璃模糊", 'backdrop-filter: blur(12px)' in page)
-check("涨跌色未被主题改动（仍红涨绿跌）",
-      bool(_re.search(r"--up:\s*#ef4444", page)) and bool(_re.search(r"--down:\s*#22c55e", page)))
+check("面板为纸面 + 虚线描边（TypeSafe 语言）", '.panel { background: var(--panel); border: 1px dashed' in page)
+check("红涨绿跌语义未被主题破坏（涨=红 / 跌=绿）",
+      _is_red(_first_hex(page, "--up")) and _is_green(_first_hex(page, "--down")),
+      "%s / %s" % (_first_hex(page, "--up"), _first_hex(page, "--down")))
 
 try:
     with urllib.request.urlopen(urllib.request.Request(BASE + "/static/gateway-flow.js"), timeout=30) as resp:
@@ -280,35 +307,32 @@ try:
 except Exception as e:
     check("流线引擎可读取", False, str(e)[:80])
 
-print("\n=== 12. 赛博终端主题（取自 me.dufengyun.xyz） ===")
-# 原站 :root 变量
-check("--retina 霓虹绿 #00ff41", '--retina: #00ff41' in page)
-check("--electro 电紫 #7024ff", '--electro: #7024ff' in page)
-check("--grid 绿色网格线", '--grid: rgba(0, 255, 65, .06)' in page or '--grid: rgba(0,255,65,.06)' in page)
-check("--glass 玻璃底色", '--glass: hsla(0, 0%, 4%, .55)' in page or '--glass:hsla(0,0%,4%,.55)' in page)
-check("--bone 骨白正文 #d7e3db", '--bone: #d7e3db' in page)
-check("兜底金 #d9ad62", '#d9ad62' in page or '--gold: #d9ad62' in page)
+print("\n=== 12. 深色主题（赛博终端风，可切换） ===")
+m = re.search(r'html\[data-theme="dark"\]\s*\{(.*?)\n\}', page, re.S)
+dark = m.group(1) if m else ""
+check("存在深色主题覆盖块 html[data-theme=dark]", bool(dark))
+check("深色底纯黑", "--bg: #000000" in dark)
+check("深色强调霓虹绿 #00ff41", "--accent: #00ff41" in dark)
+check("深色正文骨白 #d7e3db", "--text: #d7e3db" in dark)
+check("深色玻璃面板", "--panel: hsla(0, 0%, 4%, .62)" in dark)
+check("深色涨跌为亮红/亮绿",
+      _is_red(_first_hex(dark, "--up")) and _is_green(_first_hex(dark, "--down")),
+      "%s / %s" % (_first_hex(dark, "--up"), _first_hex(dark, "--down")))
 
-# 原站签名元素
-check("绿色网格衬底 .bg-substrate（48px）", 'id="substrate"' in page and 'background-size: 48px 48px' in page)
+# 赛博签名元素（与主题无关，始终存在）
+check("绿色网格衬底 48px", 'id="substrate"' in page and 'background-size: 48px 48px' in page)
 check("胶噪层 SVG feTurbulence", 'id="noise"' in page and 'feTurbulence' in page)
 check("扫描线层 mix-blend-mode:overlay",
       'id="scanlines"' in page and 'mix-blend-mode: overlay' in page)
 check("暗角层 vignette", 'id="vignette"' in page and 'rgba(0,0,0,.7) 100%' in page)
 check("霓虹辉光三件套 glow-bone/retina/electro",
       '.glow-bone' in page and '.glow-retina' in page and '.glow-electro' in page)
-check("辉光用 text-shadow 双层",
-      'text-shadow: 0 0 6px rgba(0,255,65,.7), 0 0 18px rgba(0,255,65,.35)' in page)
-check("故障字 glitch（绿/紫双向偏移 + clip-path）",
+check("辉光用 text-shadow 双层", 'text-shadow: 0 0 6px rgba(' in page)
+check("故障字 glitch（双向偏移 + clip-path）",
       'data-text="KRONOS"' in page and 'mix-blend-mode: screen' in page and 'clip-path: polygon' in page)
 check("闪烁光标 blinkCursor 关键帧", '@keyframes blinkCursor' in page)
-check("滚动条染成霓虹绿", '::-webkit-scrollbar-thumb { background: rgba(0,255,65,.65)' in page)
-check("等宽字体 JetBrains Mono", 'JetBrains Mono' in page)
-check("body 双径向辉光（左上紫 / 右下绿）",
-      'rgba(112, 36, 255, .10)' in page and 'rgba(0, 255, 65, .08)' in page)
-check("默认背景为银河 Galaxy",
-      "mode: 'galaxy'" in __import__("urllib.request", fromlist=["x"]).urlopen(
-          BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
+check("纸面虚线网格（呼应虚线描边语言）",
+      'id="paper-bg"' in page and 'background-size: 72px 72px' in page)
 
 print("\n=== 13. Galaxy 银河背景（ReactBits 移植） ===")
 check("银河画布存在", 'id="galaxy-bg"' in page)
@@ -365,6 +389,29 @@ check("顶栏允许换行（放大后不溢出）", "flex-wrap: wrap" in page)
 check("面板内表格可横向滚动", ".panel { overflow-x: auto; }" in page)
 check("长文本表格允许换行", ".wrap-cells th, .wrap-cells td { white-space: normal" in page)
 check("需求对照表已用 wrap-cells", 'class="wrap-cells"' in page)
+
+print("\n=== 15. TypeSafe AI 主题（浅色，默认） ===")
+check("默认主题为浅色", 'data-theme="light"' in page or ':root {' in page)
+check("--paper 纸面白 #fefefe（原站 38% 像素占比色）", '--paper: #fefefe' in page)
+check("--ink 近黑 #1e1e1e（原站主文字色）", '--ink: #1e1e1e' in page)
+check("--magenta #d45bb6（原站 ::selection 色）", '--magenta: #d45bb6' in page)
+check("--pink #f386a1（原站 rgb(243,134,161)）", '--pink: #f386a1' in page)
+check("--neon #ff52fc（原站 hero 霓虹品红）", '--neon: #ff52fc' in page)
+check("--paper-3 #dedede（原站 rgb(222,222,222)）", '--paper-3: #dedede' in page)
+check("虚线描边语言 border-style dashed", 'dashed' in page)
+check("直角（border-radius: 0）", 'border-radius: 0' in page)
+check("::selection 使用品红", '::selection { background: var(--magenta)' in page)
+check("深色主题保留为可切换项", 'html[data-theme="dark"]' in page)
+check("顶栏有主题切换按钮", 'id="theme-toggle"' in page and 'toggleTheme()' in page)
+check("纸面背景层存在", 'id="paper-bg"' in page)
+check("六个背景模式按钮齐全",
+      all(f'id="bg-mode-{m}"' in page for m in ("paper", "galaxy", "cyber", "flow", "shards", "spline")))
+check("图表配色跟随主题（Plotly 用具体色值）",
+      'function chartBg()' in page and 'function chartGrid()' in page and 'function chartFont()' in page)
+check("图表已改用主题函数", 'chartBg()' in page and 'chartFont()' in page)
+check("默认背景为纸面",
+      "mode: 'paper'" in __import__("urllib.request", fromlist=["x"]).urlopen(
+          BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
 
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")

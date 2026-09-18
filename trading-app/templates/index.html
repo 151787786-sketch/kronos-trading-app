@@ -9,56 +9,82 @@
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root {
-    /* ==== 风格取自 me.dufengyun.xyz（风云个人站）：赛博终端 ====
-       原站 :root 变量原样搬过来，只把 --grid 名字保留 */
-    --retina: #00ff41;      /* 霓虹绿：主强调 */
-    --electro: #7024ff;     /* 电紫：次强调 */
-    --ink: #000;            /* 纯黑 */
-    --grid: rgba(0, 255, 65, .06);
-    --glass: hsla(0, 0%, 4%, .55);
-    --bone: #d7e3db;        /* 骨白：正文 */
-    --bone-bright: #e9f2ec;
-    --electro-light: #b59bff;
-    --gold: #d9ad62;        /* 金：三级强调 */
+    /* ==== 默认主题：TypeSafe AI 风格（typesafe.ai）====
+       浅色纸面 + 近黑文字 + 霓虹品红强调 + 虚线描边 + 直角 + 紧排大字 */
+    --ink: #1e1e1e;          /* 原站主文字色（rgb 30,30,30） */
+    --paper: #fefefe;        /* 原站主背景（38% 像素占比） */
+    --paper-2: #f4f4f4;      /* 次级面板 */
+    --paper-3: #dedede;      /* 三级 / 原站 rgb(222,222,222) */
+    --muted-paper: #c4c4c4;  /* 原站 rgb(196,196,196) */
+    --line: rgba(136, 136, 136, .32);   /* 原站 --border-color:#8883 虚线 */
+    --magenta: #d45bb6;      /* 原站 ::selection 背景色 */
+    --pink: #f386a1;         /* 原站 rgb(243,134,161) */
+    --neon: #ff52fc;         /* 原站 hero 霓虹品红 */
+    --teal: #09aea1;         /* 原站点缀青 */
+    --stroke-w: 1.2px;       /* 原站 --framer-text-stroke-width */
 
     /* 应用层映射 */
+    --bg: #fefefe;
+    --accent: #d45bb6;
+    --accent-2: #ff52fc;
+    --panel-solid: #fefefe;
+    --panel: rgba(254, 254, 254, .92);
+    --panel2: rgba(30, 30, 30, .035);
+    --border: rgba(136, 136, 136, .32);
+    --border-strong: rgba(30, 30, 30, .55);
+    --text: #1e1e1e;
+    --muted: #8a8a8a;
+    /* 语义色（浅底上加深，保证对比度） */
+    --green: #0f8a4d; --red: #d92b1f;
+    --blue: #7a3fd0; --amber: #b8860b;
+    /* 涨跌色：默认 A 股习惯 红涨绿跌（浅色底专用加深版，对比度 ≥ 4.5:1） */
+    --up: #d92b1f; --up-bg: rgba(217,43,31,.10); --up-bg-strong: rgba(217,43,31,.16);
+    --down: #0f8a4d; --down-bg: rgba(15,138,77,.10); --down-bg-strong: rgba(15,138,77,.16);
+}
+/* 深色主题（保留原来的赛博终端配色，顶栏可切） */
+html[data-theme="dark"] {
+    --ink: #000; --paper: #000000; --paper-2: #0a0a0a; --paper-3: #111;
+    --line: rgba(215, 227, 219, .14);
+    --magenta: #00ff41; --pink: #b59bff; --neon: #00ff41; --teal: #00ff41;
     --bg: #000000;
-    --accent: #00ff41;
+    --accent: #00ff41; --accent-2: #7024ff;
     --panel-solid: #0a0a0a;
     --panel: hsla(0, 0%, 4%, .62);
     --panel2: rgba(0, 255, 65, .04);
     --border: rgba(215, 227, 219, .12);
     --border-strong: rgba(0, 255, 65, .45);
     --text: #d7e3db; --muted: rgba(215, 227, 219, .5);
-    /* 语义色：green/red 用于「成功/失败、通过/风险」等非涨跌含义，不随配色方案切换 */
     --green: #22c55e; --red: #ef4444;
     --blue: #b59bff; --amber: #d9ad62;
-    /* 涨跌色：默认 A 股习惯 —— 红涨绿跌 */
     --up: #ef4444; --up-bg: rgba(239,68,68,.15); --up-bg-strong: rgba(239,68,68,.18);
     --down: #22c55e; --down-bg: rgba(34,197,94,.15); --down-bg-strong: rgba(34,197,94,.18);
 }
 /* 欧美习惯：绿涨红跌（可在顶栏切换） */
+/* 欧美习惯：绿涨红跌（浅色主题用加深版）。
+   注意：这里必须写具体色值，不能写 --up: var(--down) —— 自定义属性在同一条规则内
+   解析时 --down 已被本规则覆盖，会导致 --up 和 --down 变成同一个颜色。 */
 html[data-scheme="western"] {
+    --up: #0f8a4d; --up-bg: rgba(15,138,77,.10); --up-bg-strong: rgba(15,138,77,.16);
+    --down: #d92b1f; --down-bg: rgba(217,43,31,.10); --down-bg-strong: rgba(217,43,31,.16);
+}
+html[data-theme="dark"][data-scheme="western"] {
     --up: #22c55e; --up-bg: rgba(34,197,94,.15); --up-bg-strong: rgba(34,197,94,.18);
     --down: #ef4444; --down-bg: rgba(239,68,68,.15); --down-bg-strong: rgba(239,68,68,.18);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+::selection { background: var(--magenta); color: var(--paper); }
 /* 界面缩放：默认 1.5 倍（字号、间距、图表同步放大，等价于浏览器 150% 缩放）。
    用 zoom 而不是逐个改 font-size —— 布局会跟着一起放大，不会出现文字溢出。
-   顶栏「🔍」可调，选择记在浏览器里。 */
+   顶栏「A−/A+」可调，选择记在浏览器里。 */
 html { zoom: var(--ui-scale, 1.5); }
-body { color: var(--bone); font-size: 14px; min-height: 100vh;
-    font-family: "IBM Plex Sans", Inter, "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+body { color: var(--text); font-size: 14px; min-height: 100vh;
+    font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    /* 原站背景：左上紫、右下绿的径向辉光 + 纯黑 */
-    background:
-        radial-gradient(ellipse at 15% 10%, rgba(112, 36, 255, .10), transparent 55%),
-        radial-gradient(ellipse at 85% 90%, rgba(0, 255, 65, .08), transparent 55%),
-        #000; }
+    background: var(--bg); }
 /* 绿色网格衬底（原站 .bg-substrate，48×48 网格） */
 #substrate { position: fixed; inset: 0; z-index: 0; pointer-events: none;
-    background-image: linear-gradient(to right, var(--grid) 1px, transparent 1px),
-                      linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+    background-image: linear-gradient(to right, var(--line) 1px, transparent 1px),
+                      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
     background-size: 48px 48px; }
 /* 胶噪（原站 .noise：SVG feTurbulence，opacity .035） */
 #noise { position: fixed; inset: 0; z-index: 25; pointer-events: none; opacity: .035;
@@ -72,12 +98,12 @@ body { color: var(--bone); font-size: 14px; min-height: 100vh;
 /* 霓虹滚动条（原站 #00ff41） */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0,255,65,.65); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(212,91,182,.6); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #00ff41; }
 /* 原站辉光三件套 */
-.glow-bone { color: var(--bone-bright); text-shadow: 0 0 10px rgba(0,255,65,.15); }
-.glow-retina { color: var(--retina); text-shadow: 0 0 6px rgba(0,255,65,.7), 0 0 18px rgba(0,255,65,.35); }
-.glow-electro { color: var(--electro-light); text-shadow: 0 0 6px rgba(112,36,255,.8), 0 0 22px rgba(112,36,255,.35); }
+.glow-bone { color: var(--text); text-shadow: 0 0 10px rgba(0,255,65,.15); }
+.glow-retina { color: var(--accent); text-shadow: 0 0 6px rgba(212,91,182,.5), 0 0 18px rgba(212,91,182,.25); }
+.glow-electro { color: var(--blue); text-shadow: 0 0 6px rgba(112,36,255,.8), 0 0 22px rgba(112,36,255,.35); }
 /* 等宽字体（原站 JetBrains Mono） */
 .mono { font-family: "JetBrains Mono", "Fira Code", "Cascadia Mono", ui-monospace, Consolas, monospace; }
 /* 闪烁光标（原站 animate-blinkCursor） */
@@ -87,19 +113,29 @@ body { color: var(--bone); font-size: 14px; min-height: 100vh;
 .glitch { position: relative; display: inline-block; }
 .glitch::before, .glitch::after {
     content: attr(data-text); position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; }
-.glitch::before { color: #00ff41; transform: translate(1.2px, 0); clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); }
-.glitch::after { color: #7024ff; transform: translate(-1.2px, 0); clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%); }
+.glitch::before { color: var(--accent); transform: translate(1.2px, 0); clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%); }
+.glitch::after { color: var(--accent-2); transform: translate(-1.2px, 0); clip-path: polygon(0 55%, 100% 55%, 100% 100%, 0 100%); }
 /* 四角括号（原站 .chrome-edge） */
 .chrome-edge::before, .chrome-edge::after {
     content: ""; position: absolute; width: 16px; height: 16px; pointer-events: none; opacity: .8; }
 .chrome-edge::before { top: -1px; left: -1px;
-    background: linear-gradient(180deg, var(--retina), transparent) 0 0 / 1px 16px no-repeat,
-                linear-gradient(90deg, var(--retina), transparent) 0 0 / 16px 1px no-repeat; }
+    background: linear-gradient(180deg, var(--accent), transparent) 0 0 / 1px 16px no-repeat,
+                linear-gradient(90deg, var(--accent), transparent) 0 0 / 16px 1px no-repeat; }
 .chrome-edge::after { bottom: -1px; right: -1px;
-    background: linear-gradient(0deg, var(--electro), transparent) 100% 100% / 1px 16px no-repeat,
-                linear-gradient(270deg, var(--electro), transparent) 100% 100% / 16px 1px no-repeat; }
-/* 背景层：流线画布 + 碎片画布 + Spline 3D，都固定在最底层且不挡交互 */
-#galaxy-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; pointer-events: none; }
+    background: linear-gradient(0deg, var(--accent-2), transparent) 100% 100% / 1px 16px no-repeat,
+                linear-gradient(270deg, var(--accent-2), transparent) 100% 100% / 16px 1px no-repeat; }
+/* 背景层：TypeSafe 纸面 / 银河 / 流线 / 碎片 / Spline，都固定在最底层且不挡交互 */
+#paper-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: block;
+    background:
+        radial-gradient(ellipse 55% 45% at 82% -5%, rgba(255, 82, 252, .13), transparent 62%),
+        radial-gradient(ellipse 45% 40% at 8% 105%, rgba(212, 91, 182, .10), transparent 62%),
+        var(--paper); }
+/* 虚线网格：呼应原站的虚线描边语言 */
+#paper-bg::after { content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(to right, var(--line) 1px, transparent 1px),
+                      linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    background-size: 72px 72px; opacity: .45; }
+#galaxy-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #flow-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #aero-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #spline-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
@@ -110,34 +146,34 @@ body { color: var(--bone); font-size: 14px; min-height: 100vh;
     background-size: 2px 2px; display: none; }
 /* 背景设置面板 */
 #bg-panel { position: fixed; top: 62px; right: 20px; z-index: 45; width: 400px; display: none;
-    background: hsla(0, 0%, 3%, .97); border: 1px solid var(--border-strong); border-radius: 4px;
-    padding: 16px; box-shadow: 0 24px 70px rgba(0,0,0,.9), 0 0 30px rgba(0,255,65,.08); backdrop-filter: blur(18px); }
-#bg-panel h3 { font-size: 11px; color: var(--retina); margin-bottom: 12px; text-transform: uppercase; letter-spacing: .18em; font-weight: 400;
-    font-family: "JetBrains Mono", ui-monospace, monospace; text-shadow: 0 0 6px rgba(0,255,65,.5); }
+    background: var(--paper); border: 1px dashed var(--line); border-radius: 0;
+    padding: 16px; box-shadow: 0 18px 50px rgba(30,30,30,.16); }
+#bg-panel h3 { font-size: 11px; color: var(--accent); margin-bottom: 12px; text-transform: uppercase; letter-spacing: .18em; font-weight: 400;
+    font-family: "Fragment Mono", "JetBrains Mono", ui-monospace, monospace; }
 #bg-panel .row { margin-bottom: 12px; }
 #bg-panel label { display: block; font-size: 10px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .15em;
     font-family: "JetBrains Mono", ui-monospace, monospace; }
 #bg-panel .seg { display: flex; gap: 6px; flex-wrap: wrap; }
 #bg-panel .seg button { flex: 1; min-width: 84px; font-size: 11px; padding: 8px; }
-#bg-panel .seg button.on { background: var(--retina); color: #000; border-color: var(--retina); box-shadow: 0 0 18px rgba(0,255,65,.4); }
+#bg-panel .seg button.on { background: var(--ink); color: var(--paper); border-color: var(--ink); box-shadow: none; }
 #bg-panel .hint { font-size: 11px; color: var(--muted); line-height: 1.75; }
 .topbar, .wrap { position: relative; z-index: 1; }
-.topbar { display: flex; align-items: center; flex-wrap: wrap; row-gap: 8px; gap: 14px; padding: 11px 20px; background: hsla(0,0%,3%,.82); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-strong); position: sticky; top: 0; z-index: 10;
-    box-shadow: 0 1px 0 rgba(0,255,65,.12), 0 8px 30px rgba(0,0,0,.6); }
-.topbar h1 { font-size: 15px; color: var(--bone-bright); font-weight: 400; letter-spacing: .16em; text-transform: uppercase;
+.topbar { display: flex; align-items: center; flex-wrap: wrap; row-gap: 8px; gap: 14px; padding: 11px 20px; background: var(--paper); border-bottom: 1px dashed var(--line); position: sticky; top: 0; z-index: 10;
+    box-shadow: none; }
+.topbar h1 { font-size: 16px; color: var(--ink); font-weight: 500; letter-spacing: -.02em; text-transform: uppercase; line-height: .85;
     font-family: "JetBrains Mono", ui-monospace, monospace; }
-.topbar h1 span { color: var(--retina); text-shadow: 0 0 6px rgba(0,255,65,.55), 0 0 18px rgba(0,255,65,.25); }
-.badge { background: rgba(0,255,65,.05); border: 1px solid var(--border); padding: 4px 10px; border-radius: 2px; color: var(--muted); font-size: 11px; letter-spacing: .06em;
+.topbar h1 span { color: var(--muted); font-size: 12px; letter-spacing: .16em; font-family: "Fragment Mono", "JetBrains Mono", ui-monospace, monospace; }
+.badge { background: transparent; border: 1px dashed var(--line); padding: 4px 10px; border-radius: 0; color: var(--muted); font-size: 11px; letter-spacing: .06em;
     font-family: "JetBrains Mono", ui-monospace, monospace; }
 .wrap { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 14px; padding: 14px 20px; }
 /* 关键：网格子项必须能收缩到内容以下，否则 nowrap 的宽表格会把整页撑破
    （1fr 默认是 minmax(auto,1fr)，auto 下限 = 内容最小宽度） */
 .wrap > * { min-width: 0; }
 .left { display: flex; flex-direction: column; gap: 14px; }
-.panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; padding: 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); position: relative;
+.panel { background: var(--panel); border: 1px dashed var(--line); border-radius: 0; padding: 14px; position: relative;
     box-shadow: inset 0 1px 0 rgba(215,227,219,.03), 0 4px 24px rgba(0,0,0,.5); }
 /* hover 时边框亮起绿色辉光（原站霓虹感） */
-.panel:hover { border-color: rgba(0,255,65,.28); }
+.panel:hover { border-color: var(--accent); }
 .panel::after, .rec-card::after {
     content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
     background: linear-gradient(110deg, transparent, rgba(255,255,255,.22), transparent);
@@ -148,25 +184,25 @@ body { color: var(--bone); font-size: 14px; min-height: 100vh;
 .panel h2 { font-size: 13px; margin-bottom: 10px; color: #fff; display: flex; justify-content: space-between; align-items: center; font-weight: 400; letter-spacing: .04em; }
 .panel h2 .hint { color: var(--muted); font-weight: normal; font-size: 11px; }
 input[type=text], input[type=number], select {
-    background: hsla(0,0%,3%,.85); border: 1px solid var(--border); color: var(--bone);
+    background: var(--paper); border: 1px dashed var(--line); color: var(--ink);
     padding: 7px 10px; border-radius: 2px; width: 100%; margin: 4px 0;
     font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px;
 }
 input[type=text]:focus, input[type=number]:focus, select:focus {
-    outline: none; border-color: var(--retina); box-shadow: 0 0 14px rgba(0,255,65,.2); caret-color: var(--retina);
+    outline: none; border-style: solid; border-color: var(--accent); box-shadow: none; caret-color: var(--magenta);
 }
 button {
-    position: relative; background: hsla(0,0%,4%,.8); color: var(--bone); border: 1px solid rgba(215,227,219,.18);
+    position: relative; background: var(--paper); color: var(--ink); border: 1px dashed var(--line);
     padding: 8px 14px; border-radius: 2px; cursor: pointer; font-size: 12px; font-weight: 400;
     letter-spacing: .08em; font-family: "JetBrains Mono", ui-monospace, monospace;
     transition: border-color .3s, box-shadow .3s, background .3s, color .3s;
 }
-button:hover { background: rgba(0,255,65,.08); border-color: var(--retina); box-shadow: 0 0 18px rgba(0,255,65,.25); color: var(--retina); }
+button:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); box-shadow: none; }
 button:disabled { opacity: .4; cursor: not-allowed; }
 button.green { background: var(--green); border-color: transparent; color: #05230f; font-weight: 500; }
 button.red { background: var(--red); border-color: transparent; color: #2a0606; font-weight: 500; }
-button.ghost { background: rgba(0,255,65,.03); border: 1px solid var(--border); color: var(--text); }
-button.ghost:hover { background: rgba(0,255,65,.08); border-color: rgba(0,255,65,.45); color: var(--retina); box-shadow: 0 0 12px rgba(0,255,65,.18); }
+button.ghost { background: transparent; border: 1px dashed var(--line); color: var(--ink); }
+button.ghost:hover { background: rgba(212,91,182,.12); border-color: var(--accent); color: var(--accent); box-shadow: none; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--border); white-space: nowrap; }
 /* 长文本表格（需求对照、投研纪要等）允许换行，否则界面放大后会被 nowrap 撑破 */
@@ -175,7 +211,7 @@ th, td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--bor
 .panel { overflow-x: auto; }
 th { color: var(--muted); font-weight: normal; font-size: 10px; text-transform: uppercase; letter-spacing: .14em; font-family: "JetBrains Mono", ui-monospace, monospace; }
 td:first-child, th:first-child { text-align: left; }
-tr:hover { background: rgba(0,255,65,.035); }
+tr:hover { background: rgba(212,91,182,.06); }
 /* 涨跌配色：.pos = 上涨 / .neg = 下跌（颜色由 --up/--down 决定，随红涨绿跌设置切换） */
 .pos { color: var(--up); } .neg { color: var(--down); }
 /* 语义配色：与涨跌无关的判断（好坏、通过/失败、风险高低）固定用 green/red */
@@ -192,19 +228,19 @@ tr:hover { background: rgba(0,255,65,.035); }
 .wl-flag.neg { background:var(--down-bg-strong); color:var(--down); }
 .follow-btn { display:inline-block; font-size:11px; padding:2px 7px; border-radius:4px; background:var(--up-bg); color:var(--up); cursor:pointer; margin-left:4px; }
 .follow-btn:hover { background:var(--up-bg-strong); }
-.rec-card { background:hsla(0,0%,4%,.6); border:1px solid var(--border); border-radius:4px; padding:14px; cursor:pointer; transition:border-color .25s, box-shadow .25s; position:relative; }
-.rec-card:hover { border-color: rgba(0,255,65,.4); box-shadow: 0 0 24px rgba(0,255,65,.1); }
-.rec-rank { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; border-radius:2px; background:rgba(0,255,65,.06); border:1px solid var(--border); font-size:11px; font-weight:bold; font-family:"JetBrains Mono", ui-monospace, monospace; color: var(--retina); }
-.rec-rank.top { background:rgba(217,173,98,.16); border-color:var(--gold); color:var(--gold); }
+.rec-card { background:var(--paper); border:1px dashed var(--line); border-radius:0; padding:14px; cursor:pointer; transition:border-color .25s, box-shadow .25s; position:relative; }
+.rec-card:hover { border-color: var(--accent); box-shadow: none; }
+.rec-rank { display:inline-flex; align-items:center; justify-content:center; min-width:22px; height:22px; border-radius:0; background:transparent; border:1px dashed var(--line); font-size:11px; font-weight:bold; font-family:"JetBrains Mono", ui-monospace, monospace; color: var(--accent); }
+.rec-rank.top { background:rgba(217,173,98,.16); border-color:var(--amber); color:var(--amber); }
 .signal-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; }
 .signal-BUY { background: var(--up-bg); color: var(--up); }
 .signal-SELL { background: var(--down-bg); color: var(--down); }
-.signal-HOLD { background: rgba(215,227,219,.08); color: var(--muted); }
+.signal-HOLD { background: rgba(30,30,30,.06); color: var(--muted); }
 .chart-box { height: 420px; }
 .chart-box.small { height: 200px; }
 .tabs { display: flex; gap: 4px; margin-bottom: 10px; }
-.tabs button { background: hsla(0,0%,4%,.7); border: 1px solid var(--border); color: var(--muted); border-radius: 2px 2px 0 0; font-weight: 400; letter-spacing: .08em; font-size: 12px; font-family:"JetBrains Mono", ui-monospace, monospace; }
-.tabs button.active { background: rgba(0,255,65,.12); color: var(--retina); border-color: var(--retina); border-bottom-color: transparent; box-shadow: 0 0 22px rgba(0,255,65,.28), inset 0 0 18px rgba(0,255,65,.06); text-shadow: 0 0 8px rgba(0,255,65,.6); }
+.tabs button { background: transparent; border: 1px dashed var(--line); color: var(--muted); border-radius: 0; font-weight: 400; letter-spacing: .08em; font-size: 12px; font-family:"JetBrains Mono", ui-monospace, monospace; }
+.tabs button.active { background: var(--ink); color: var(--paper); border-style: solid; border-color: var(--ink); box-shadow: none; }
 .tab-pane { display: none; }
 .tab-pane.active { display: block; }
 .form-row { display: flex; gap: 8px; align-items: end; margin: 6px 0; }
@@ -222,6 +258,23 @@ tr:hover { background: rgba(0,255,65,.035); }
 .loading { text-align: center; padding: 30px; color: var(--muted); }
 @media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; } }
 </style>
+<script>
+/* 主题必须在首屏渲染前定好，否则会闪一下错误配色。
+   放在 <head> 里、样式表之后立即执行（此时 body 还没解析）。
+   完整逻辑（按钮文案、背景联动）在页面底部再跑一遍。 */
+(function () {
+    var t = 'light';
+    try {
+        var q = new URLSearchParams(location.search || '').get('theme');
+        if (q === 'dark' || q === 'light') t = q;
+        else {
+            var v = localStorage.getItem('kronos_theme');
+            if (v === 'dark' || v === 'light') t = v;
+        }
+    } catch (e) {}
+    document.documentElement.setAttribute('data-theme', t);
+})();
+</script>
 </head>
 <body>
 
@@ -230,6 +283,8 @@ tr:hover { background: rgba(0,255,65,.035); }
 <div id="noise" aria-hidden="true"></div>
 <div id="scanlines" aria-hidden="true"></div>
 <div id="vignette" aria-hidden="true"></div>
+<!-- TypeSafe 纸面背景（浅色主题默认） -->
+<div id="paper-bg" aria-hidden="true"></div>
 <!-- 备用背景层（Galaxy 星云 / Gateway 流线 / AeroShards 碎片 / Spline 3D） -->
 <canvas id="galaxy-bg" aria-hidden="true"></canvas>
 <canvas id="flow-bg" aria-hidden="true"></canvas>
@@ -243,7 +298,8 @@ tr:hover { background: rgba(0,255,65,.035); }
     <div class="row">
         <label>背景模式</label>
         <div class="seg">
-            <button class="ghost" id="bg-mode-galaxy" onclick="setBgMode('galaxy')">银河（默认）</button>
+            <button class="ghost" id="bg-mode-paper" onclick="setBgMode('paper')">纸面（默认）</button>
+            <button class="ghost" id="bg-mode-galaxy" onclick="setBgMode('galaxy')">银河</button>
             <button class="ghost" id="bg-mode-cyber" onclick="setBgMode('cyber')">赛博网格</button>
             <button class="ghost" id="bg-mode-flow" onclick="setBgMode('flow')">流线</button>
             <button class="ghost" id="bg-mode-shards" onclick="setBgMode('shards')">碎片</button>
@@ -275,10 +331,12 @@ tr:hover { background: rgba(0,255,65,.035); }
 </div>
 
 <div class="topbar">
-    <h1><span class="glitch" data-text="KRONOS">KRONOS</span> <span>交易终端</span><span class="blink" style="color:var(--retina)">_</span></h1>
+    <h1><span class="glitch" data-text="KRONOS">KRONOS</span> <span>交易终端</span><span class="blink" style="color:var(--accent)">_</span></h1>
     <div class="badge" id="model-badge">模型未加载</div>
     <div class="badge" id="device-badge">设备: -</div>
     <div class="badge" id="cache-badge">缓存 -</div>
+    <button class="ghost" id="theme-toggle" style="font-size:12px" onclick="toggleTheme()"
+            title="浅色（TypeSafe 风）/ 深色（赛博终端风）">☀️ 浅色</button>
     <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
             title="切换涨跌配色：A股习惯红涨绿跌 / 欧美习惯绿涨红跌">🔴涨🟢跌（A股）</button>
     <button class="ghost" id="fx-toggle" style="font-size:12px" onclick="toggleBgPanel()"
@@ -994,7 +1052,7 @@ var FLOW_CONFIG = {
 function updateBgPanel() {
     var Bg = window.SplineBackground;
     if (!Bg) return;
-    ['galaxy', 'cyber', 'flow', 'shards', 'spline'].forEach(function (m) {
+    ['paper', 'galaxy', 'cyber', 'flow', 'shards', 'spline'].forEach(function (m) {
         var b = document.getElementById('bg-mode-' + m);
         if (b) b.className = Bg.mode === m ? '' : 'ghost';
     });
@@ -1078,6 +1136,8 @@ function startShards() {
         window.SplineBackground.init();
         updateBgPanel();
     }
+    // 注意：applyTheme 定义在下一个 <script> 里，函数声明不跨 script 标签，
+    // 所以主题在这里不能调用 —— 已改为 head 里预设 data-theme + 底部跑完整逻辑。
     document.addEventListener('click', function (e) {
         var p = document.getElementById('bg-panel');
         var btn = document.getElementById('fx-toggle');
@@ -1150,6 +1210,47 @@ function applyScale(v) {
 function stepScale(delta) { applyScale(uiScale() + delta); }
 
 applyScale(uiScale());
+
+// ---------- 主题（浅色 TypeSafe 风 / 深色赛博终端风） ----------
+// 图表底色/网格/字色跟随主题（Plotly 需要具体颜色值，不能用 CSS 变量）
+function chartBg() { return currentTheme() === 'dark' ? '#171122' : '#fefefe'; }
+function chartGrid() { return currentTheme() === 'dark' ? 'rgba(137,106,189,.18)' : 'rgba(136,136,136,.22)'; }
+function chartFont() { return currentTheme() === 'dark' ? '#E9E3F5' : '#1e1e1e'; }
+
+function currentTheme() {
+    try {
+        var q = new URLSearchParams(location.search || '').get('theme');
+        if (q === 'light' || q === 'dark') return q;
+    } catch (e) {}
+    try {
+        var v = localStorage.getItem('kronos_theme');
+        if (v === 'light' || v === 'dark') return v;
+    } catch (e) {}
+    return 'light';
+}
+
+function applyTheme(name, switchBg) {
+    name = (name === 'dark') ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', name);
+    try { localStorage.setItem('kronos_theme', name); } catch (e) {}
+    var b = document.getElementById('theme-toggle');
+    if (b) b.textContent = name === 'dark' ? '🌙 深色' : '☀️ 浅色';
+    // 主题与背景配套：浅色↔纸面、深色↔银河（只在当前是"配套默认"时才跟着换）
+    if (switchBg && window.SplineBackground) {
+        var m = window.SplineBackground.mode;
+        if (name === 'light' && (m === 'galaxy' || m === 'cyber' || m === 'flow')) {
+            window.SplineBackground.setMode('paper');
+        } else if (name === 'dark' && m === 'paper') {
+            window.SplineBackground.setMode('galaxy');
+        }
+    }
+    if (typeof updateBgPanel === 'function') updateBgPanel();
+}
+
+function toggleTheme() { applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true); }
+
+// 首屏之后跑一次完整逻辑（head 里已设好 data-theme，这里补按钮文案与背景联动）
+applyTheme(currentTheme(), true);
 
 let currentSymbol = null;
 let lastRecLLM = {};
@@ -1441,9 +1542,9 @@ function drawChart(k, indicator, predLen, seq) {
 
     const traces = [candle];
     const layout = {
-        paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
-        xaxis:{rangeslider:{visible:false}, gridcolor:'rgba(137,106,189,.18)'},
-        yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'价格'},
+        paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()},
+        xaxis:{rangeslider:{visible:false}, gridcolor:chartGrid()},
+        yaxis:{gridcolor:chartGrid(), title:'价格'},
         margin:{l:50,r:20,t:30,b:30},
         height:420, dragmode:'pan'
     };
@@ -1458,12 +1559,12 @@ function drawChart(k, indicator, predLen, seq) {
         });
     } else if (indicator === 'rsi') {
         traces.push({x, y:bars.map(b=>b.rsi), type:'scatter', mode:'lines', name:'RSI', yaxis:'y2', line:{color:'#f59e0b'}});
-        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:'rgba(137,106,189,.18)', showgrid:false};
+        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:chartGrid(), showgrid:false};
     } else if (indicator === 'kdj') {
         ['kdj_k','kdj_d','kdj_j'].forEach((m,i)=>{
             traces.push({x, y:bars.map(b=>b[m]), type:'scatter', mode:'lines', name:m, yaxis:'y2', line:{width:1.2, color:['#3b82f6','#f59e0b','#a78bfa'][i]}});
         });
-        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:'rgba(137,106,189,.18)', showgrid:false};
+        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:chartGrid(), showgrid:false};
     } else if (indicator === 'macd') {
         const dif = bars.map(b=>b.dif), dea = bars.map(b=>b.dea), macd = bars.map(b=>b.macd);
         const colors = macd.map(v=>v>=0?inc.color:dec.color);
@@ -1472,7 +1573,7 @@ function drawChart(k, indicator, predLen, seq) {
             {x, y:dif, type:'scatter', mode:'lines', name:'DIF', yaxis:'y2', line:{width:1, color:'#3b82f6'}},
             {x, y:dea, type:'scatter', mode:'lines', name:'DEA', yaxis:'y2', line:{width:1, color:'#f59e0b'}}
         );
-        layout.yaxis2 = {overlaying:'y', side:'right', gridcolor:'rgba(137,106,189,.18)', showgrid:false};
+        layout.yaxis2 = {overlaying:'y', side:'right', gridcolor:chartGrid(), showgrid:false};
     }
 
     // Kronos forecast
@@ -1616,8 +1717,8 @@ async function runBacktest() {
     document.getElementById('bt-avg').textContent = fmt(r.avg_pnl);
     const eqTrace = {x:r.dates, y:r.equity, type:'scatter', mode:'lines', name:'策略收益', line:{color:'#3b82f6'}};
     const bmTrace = {x:r.dates, y:r.benchmark, type:'scatter', mode:'lines', name:'买入持有（基准）', line:{color:'#8a93a5', dash:'dash'}};
-    Plotly.react('bt-chart', [eqTrace, bmTrace], {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
-        margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'资产'}});
+    Plotly.react('bt-chart', [eqTrace, bmTrace], {paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()},
+        margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:chartGrid()}, yaxis:{gridcolor:chartGrid(), title:'资产'}});
     const tdiv = document.getElementById('bt-trades');
     if (r.trades.length) {
         tdiv.innerHTML = `<h2 style="font-size:14px;margin:10px 0">交易明细（${r.trades.length} 笔）</h2>
@@ -1726,8 +1827,8 @@ async function runAccuracy() {
             traces.push({x:[rd.start_date, rd.end_date], y:[rd.last_close, rd.actual_end], mode:'lines+markers',
                 name:`轮次${rd.round} 实际`, line:{color:colors[i%5], width:2}});
         });
-        Plotly.react('ac-chart', traces, {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
-            margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'价格'}});
+        Plotly.react('ac-chart', traces, {paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()},
+            margin:{l:50,r:20,t:20,b:30}, height:300, xaxis:{gridcolor:chartGrid()}, yaxis:{gridcolor:chartGrid(), title:'价格'}});
         document.getElementById('ac-table-wrap').innerHTML = `
             <h2 style="font-size:14px;margin:10px 0">逐轮明细（共 ${r.rounds} 轮，用时 ${r.elapsed}s）</h2>
             <table><thead><tr><th>轮次</th><th>验证区间</th><th>起点价</th><th>预测终点</th><th>实际终点</th><th>MAE</th><th>方向准确</th></tr></thead><tbody>
@@ -1751,8 +1852,8 @@ async function runCompare() {
         if (r.error) { showMsg('cp-msg', r.error, false); return; }
         const traces = r.symbols.map(s=>({x:s.dates, y:s.normalized, type:'scatter', mode:'lines',
             name:`${s.name} (${s.return_pct>0?'+':''}${s.return_pct}%)`, line:{width:1.6}}));
-        Plotly.react('cp-chart', traces, {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
-            margin:{l:50,r:20,t:30,b:30}, height:360, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{gridcolor:'rgba(137,106,189,.18)', title:'累计涨跌幅 %'},
+        Plotly.react('cp-chart', traces, {paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()},
+            margin:{l:50,r:20,t:30,b:30}, height:360, xaxis:{gridcolor:chartGrid()}, yaxis:{gridcolor:chartGrid(), title:'累计涨跌幅 %'},
             hovermode:'x unified'});
         document.getElementById('cp-table-wrap').innerHTML = `
             <h2 style="font-size:14px;margin:10px 0">区间表现对比</h2>
@@ -1779,15 +1880,15 @@ async function runCompareForecast() {
         const pcts = r.results.map(x=>x.change_pct);
         const colors = pcts.map(p=>p>=0?schemeColor('up'):schemeColor('down'));
         Plotly.react('cpf-bar', [{x:names, y:pcts, type:'bar', marker:{color:colors}, text:pcts.map(p=>(p>0?'+':'')+p+'%'), textposition:'outside'}],
-            {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'}, margin:{l:50,r:20,t:30,b:50},
-             height:260, yaxis:{title:'预测涨跌幅 %', gridcolor:'rgba(137,106,189,.18)'}});
+            {paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()}, margin:{l:50,r:20,t:30,b:50},
+             height:260, yaxis:{title:'预测涨跌幅 %', gridcolor:chartGrid()}});
         // normalized forecast curves
         const traces = r.results.map(x=>{
             const base = x.last_close;
             return {x:x.dates, y:x.close.map(c=>(c/base-1)*100), type:'scatter', mode:'lines', name:`${x.name}`};
         });
-        Plotly.react('cpf-chart', traces, {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
-            margin:{l:50,r:20,t:30,b:30}, height:320, xaxis:{gridcolor:'rgba(137,106,189,.18)'}, yaxis:{title:'预测累计涨跌 %', gridcolor:'rgba(137,106,189,.18)'}});
+        Plotly.react('cpf-chart', traces, {paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()},
+            margin:{l:50,r:20,t:30,b:30}, height:320, xaxis:{gridcolor:chartGrid()}, yaxis:{title:'预测累计涨跌 %', gridcolor:chartGrid()}});
         document.getElementById('cpf-table-wrap').innerHTML = `
             <h2 style="font-size:14px;margin:10px 0">预测结果对比（${period} 周期，未来 ${predLen} 根）</h2>
             <table><thead><tr><th>股票</th><th>当前价</th><th>预测终点</th><th>预测涨跌</th></tr></thead><tbody>
@@ -2177,7 +2278,7 @@ function drawMiniChart(symbol, elId) {
         Plotly.react(elId, [{x:b.map(x=>x.timestamps), open:b.map(x=>x.open), high:b.map(x=>x.high),
             low:b.map(x=>x.low), close:b.map(x=>x.close), type:'candlestick',
             increasing:{color:schemeColor('up')}, decreasing:{color:schemeColor('down')}}],
-            {paper_bgcolor:'#171122', plot_bgcolor:'#171122', font:{color:'#E9E3F5'},
+            {paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()},
              margin:{l:40,r:10,t:10,b:20}, xaxis:{rangeslider:{visible:false}}, height:280, showlegend:false});
     });
 }
