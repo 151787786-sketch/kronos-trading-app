@@ -47,8 +47,9 @@
 | 📚 **券商研报库** | 东财研报中心：个股研报 / 行业研报 / 策略报告 + **评级分布统计**（如「买入 32 / 增持 7 / 持有 3」）+ DeepSeek 一致预期汇总 |
 | 🌙 **夜间自迭代** | 每天 02:00 自动运行（也可手动）：收集真实运行数据（样本外 MAPE / 方向准确率 / 告警频次 / 自动交易成功率）→ DeepSeek 提出调参建议 → **范围与步长双重钳制**后写入 `tuning.json` → 全量留痕，可一键回滚。已生效参数**真的会改变**报警阈值、风控阈值与荐股权重 |
 | 涨跌配色 | **默认 A 股习惯：红涨绿跌**（与行情软件一致）。顶栏一键切换为欧美习惯（绿涨红跌），选择记在浏览器里。K 线、涨跌幅、盈亏、买卖方向、Kronos 预测柱状图全部跟随；「成功/失败、通过/风险高低」这类**非涨跌语义**固定用绿/红，不受配色影响 |
-| 🎨 **界面主题** | **默认浅色（TypeSafe AI 风格，色板取自 [typesafe.ai](https://typesafe.ai/)）**：纸面白 `#fefefe` + 近黑 `#1e1e1e` 文字 + 霓虹品红强调 `#d45bb6` / `#ff52fc` + **虚线描边** + **直角** + 紧凑大字号。顶栏一键切深色（保留原赛博终端配色：`#000` 底 + `#00ff41` 霓虹绿 + `#d7e3db` 骨白），选择记在浏览器里 |
-| ✨ **背景动画** | 六种模式，顶栏「🎨 背景」切换：<br>① **纸面**（浅色主题默认，纯 CSS，零依赖零网络）——`#fefefe` 底 + 左上品红径向辉光 + 72px 虚线网格<br>② **银河**（WebGL，**零依赖**）——ReactBits `<Galaxy />` 的 vanilla 移植：4 层星空网格 + 光芒 + 闪烁 + 鼠标排斥，参数 density 1.5 / glowIntensity 0.5 / saturation 0.8 / hueShift 240<br>③ **赛博网格**（纯 CSS）——绿色 48px 网格 + 胶噪 + 扫描线 + 暗角<br>④ **流线**——`GatewayFlow` vanilla 移植：左右各 40 条白色虚线贝塞尔曲线汇聚到中心，每线一颗 3×3 白色粒子，**点击产生环形冲击推开粒子**<br>⑤ **碎片**——`AeroShards` WebGL 移植：珍珠碎片、鼠标排斥、按住聚拢、泛光/颗粒/色差<br>⑥ **Spline 3D**——本地 `@splinetool/runtime` 渲染，需填场景地址<br>**任何失败都自动切回默认背景，绝不白屏** |
+| 🎨 **界面主题** | **默认科技风（深色 HUD，静态）**：深空蓝黑底 `#070b14` + 青色主强调 `#22d3ee` + 蓝色次强调 `#3b82f6` + 青色细线网格 `rgba(56,189,248,.18)` + 直角。顶栏可一键切另外两套：**浅色**（TypeSafe AI：`#fefefe` 纸面 + `#1e1e1e` 近黑 + 品红 `#d45bb6` + 虚线描边）、**赛博**（`#000` + 霓虹绿 `#00ff41`）。选择记在浏览器里 |
+| 🚫 **零动效（默认）** | 按要求去掉全部动效：全站 `animation: none !important` + `transition: none !important`（含 `::before`/`::after`），背景不启动任何 WebGL/Canvas 渲染循环，图表也关掉过渡。**实测两次不同时刻渲染像素级完全一致（最大差 0）**。顶栏 `🚫 动效 关` 可切回；同时尊重系统 `prefers-reduced-motion` |
+| ✨ **背景模式** | 七种，顶栏「🎨 背景」切换：<br>① **科技网格**（默认，纯 CSS 静态）——深空底 + 青色 40px 精密网格<br>② **纸面**（浅色主题配套，纯 CSS 静态）<br>③ **银河**（WebGL）——ReactBits `<Galaxy />` vanilla 移植：4 层星空网格 + 光芒 + 闪烁 + 鼠标排斥<br>④ **赛博网格**（纯 CSS）——绿色 48px 网格 + 胶噪 + 扫描线 + 暗角<br>⑤ **流线**——`GatewayFlow` vanilla 移植：40 条白色虚线贝塞尔曲线汇聚到中心，**点击产生环形冲击**<br>⑥ **碎片**——`AeroShards` WebGL 移植<br>⑦ **Spline 3D**——本地 `@splinetool/runtime`，需填场景地址<br>开启动效后 ③⑤⑥⑦ 才真正跑渲染循环；任何失败都自动切回静态背景 |
 | 外围市场 | 美股三大指数 / 恒指 / 国企指数 / 日经225 / KOSPI 实时，顶部常驻条 |
 | 赛道分组 | 自选股按 AI/新能源/消费/周期分组，每组显示热度（均涨/涨跌家数/领涨股） |
 | 行情与指标 | 日线 + 1/5/15/30/60 分钟线，MA/MACD/RSI/KDJ/BOLL 叠加 |
@@ -192,9 +193,26 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 
 ## 🎨 界面主题与背景动画
 
-### 主题：浅色（默认）/ 深色（可切换）
+### 主题：科技风（默认）/ 浅色 / 赛博（均可切换，全部静态）
 
-**默认 = TypeSafe AI 风格**（色板从 [typesafe.ai](https://typesafe.ai/) 的 Framer 内联样式里提取）：
+**默认 = 科技风（深色 HUD）**：
+
+| 变量 | 值 | 用途 |
+|---|---|---|
+| `--bg` | `#070b14` | 深空蓝黑底 |
+| `--accent` | `#22d3ee` | 青色主强调 |
+| `--accent-2` | `#3b82f6` | 蓝色次强调 |
+| `--text` | `#cbd8ec` | 浅灰蓝正文 |
+| `--border` | `rgba(56,189,248,.18)` | 青色细线（科技感来源） |
+| `--panel` | `rgba(13,20,34,.92)` | 面板底 |
+| `--line` | `rgba(56,189,248,.14)` | 40px 网格线 |
+
+> 参考页 `aigc.xinpianchang.com/canvas/...` 从本机**连不上**（TLS 被重置，走代理也不通），
+> 且 Shotlab 画布页是需要登录的编辑器，无法提取设计令牌。当前配色是按「科技风」的通用
+> 语言（深空底 + 青蓝光 + 精密网格 + 直角 + 等宽数字）实现的。
+> **拿到参考截图后可一处换肤**：改 `:root` 里的 `--bg` / `--accent` / `--accent-2` / `--border` 四个值即可。
+
+**浅色 = TypeSafe AI 风格**（色板从 [typesafe.ai](https://typesafe.ai/) 的 Framer 内联样式里提取）：
 
 | 变量 | 值 | 来源 |
 |---|---|---|
@@ -218,24 +236,49 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 > 字体说明：原站用 Host Grotesk（Framer 私有托管），本机没有也不引入 CDN，回退到
 > `Inter → HarmonyOS Sans SC → 微软雅黑` 系统栈；等宽部分用 JetBrains Mono / 系统 mono。
 
-**深色主题**（顶栏 `🌙 深色` 切换）保留原来的赛博终端配色（`#000` 底 + `#00ff41` 霓虹绿 +
-`#d7e3db` 骨白），背景默认联动切到银河。两套主题共用同一批语义变量，切换零成本。
+**赛博主题**（顶栏循环切换 `🛰 科技 → ☀️ 浅色 → 🌙 赛博`）保留霓虹绿终端配色
+（`#000` 底 + `#00ff41` 霓虹绿 + `#d7e3db` 骨白）。三套主题共用同一批语义变量，切换零成本。
 
 ```html
 <!-- URL 直达 -->
-?theme=light   （默认）
-?theme=dark
+?theme=tech    （默认，科技风）
+?theme=light   （TypeSafe 浅色）
+?theme=cyber   （霓虹绿赛博）
+?motion=on     （开启动效；默认 off = 完全静止）
 ```
 
-> 涨跌配色在**两套主题里各用适配版本**，保证对比度：
-> 浅色 `#d92b1f` 红 / `#0f8a4d` 绿，深色 `#ef4444` 红 / `#22c55e` 绿。
+### 🚫 零动效（默认）
+
+需求要求「去掉动效」，实现方式是一处总开关，而不是逐个删动画：
+
+```css
+html[data-motion="off"] *,
+html[data-motion="off"] *::before,
+html[data-motion="off"] *::after {
+    animation: none !important;
+    transition: none !important;
+}
+```
+
+- 首屏前在 `<head>` 里设好 `data-motion`，避免闪一下动画
+- 背景层：`data-motion="off"` 时不启动任何 WebGL / Canvas 渲染循环，
+  画布类背景即使被选中也只是静态一帧
+- 顶栏 `🚫 动效 关` 按钮可切回；也尊重系统 `prefers-reduced-motion`
+- **验证方式**：同一页面在 12 秒与 30 秒虚拟时间各渲染一次，逐像素比对 ——
+  平均差 `0.000`、最大差 `0`、有差异像素 `0.000%`，即页面彻底静止
+
+> 涨跌配色在**三套主题里各用适配版本**，保证对比度：
+> 科技 `#ff5a4d` 红 / `#22c55e` 绿，浅色 `#d92b1f` / `#0f8a4d`，赛博 `#ef4444` / `#22c55e`。
 > 测试改成**语义判定**（红必须 R 明显高于 G/B，绿反之），不再锁死具体色号 —— 换主题不会误报。
 
-### 背景模式一：纸面（浅色主题默认）
-纯 CSS：`#fefefe` 底 + 左上角品红径向辉光 + 72px 虚线网格（呼应虚线描边语言）。
+### 背景模式一：科技网格（默认）
+纯 CSS 静态：深空蓝黑底 `#070b14` + 青色 40px 精密网格 + 顶部青色光晕 + 右下蓝色光晕。
 零 JS、零依赖、零网络。
 
-### 背景模式二：银河 Galaxy
+### 背景模式二：纸面（TypeSafe 浅色主题配套）
+纯 CSS 静态：`#fefefe` 底 + 左上角品红径向辉光 + 72px 虚线网格（呼应虚线描边语言）。
+
+### 背景模式三：银河 Galaxy
 ReactBits `<Galaxy />` 的零依赖 vanilla 移植（`trading-app/static/galaxy.js`）。
 原组件依赖 `ogl`，这里直接用原生 WebGL 复刻同一份 fragment shader，渲染结果一致但不引入依赖。
 
@@ -256,11 +299,11 @@ twinkleIntensity / rotationSpeed / autoCenterRepulsion / transparent / lightMode
 > 移植修正：原版 shader 用 `float` 作循环计数器，严格 GLSL ES 1.0 不允许（部分驱动会编译失败），
 > 已改成常量边界的 `int` 循环，其余 shader 代码逐行保持一致。
 
-### 背景模式二：赛博网格
+### 背景模式四：赛博网格
 纯 CSS 实现，零 JS、零依赖、零网络：`#substrate` + `#noise` + `#scanlines` + `#vignette` 四层叠加。
 银河模式下保留胶噪 / 扫描线 / 暗角，但**隐藏绿色网格**（否则和星空打架）。
 
-### 背景模式三：流线
+### 背景模式五：流线
 `GatewayFlow` 的零依赖 vanilla 移植（`trading-app/static/gateway-flow.js`，Canvas 2D）。
 原组件用 React + iframe(srcDoc) + Tailwind + GSAP 包装，核心就是一段 canvas 动画 —— 这里只把那
 段核心原样搬出来，参数与语义保持一致：
@@ -273,7 +316,7 @@ twinkleIntensity / rotationSpeed / autoCenterRepulsion / transparent / lightMode
 保留的原版特征：**80 条**贝塞尔流线（左右各半）、虚线 `[1, 4]`、线宽 `1.2`、
 每线一颗 **3×3** 白色粒子、**点击产生环形冲击**把附近粒子推开、全局抖动网点。
 
-### 背景模式四：碎片
+### 背景模式六：碎片
 `AeroShards` 的 vanilla 移植（`static/aero-shards.js`，WebGL 着色器）。
 原 React 组件的全部参数一一对应：
 
@@ -286,7 +329,7 @@ twinkleIntensity / rotationSpeed / autoCenterRepulsion / transparent / lightMode
   interactionRadius:1.5, interactionStrength:0.5, rippleIntensity:1, holdToGather:true }
 ```
 
-### 背景模式五：Spline 3D 场景
+### 背景模式七：Spline 3D 场景
 - 渲染引擎 `@splinetool/runtime` **已下载到本地**（`static/vendor/spline-runtime.js`，约 2MB），
   运行时**不依赖任何 CDN**，也不会因为网络抖动而白屏
 - 适配层 `static/spline-scene.js` 保持与原 React 组件**同名同参数**：
@@ -310,9 +353,9 @@ twinkleIntensity / rotationSpeed / autoCenterRepulsion / transparent / lightMode
 - 实测（iframe 注入测量 DOM）：150% 下 `documentElement.scrollWidth - clientWidth = 0`，**无横向溢出**
 
 ### 切换方式
-- 顶栏「🎨 背景」→ 选 纸面 / 银河 / 赛博网格 / 流线 / 碎片 / Spline，选择存在浏览器里
+- 顶栏「🎨 背景」→ 选 科技网格 / 纸面 / 银河 / 赛博网格 / 流线 / 碎片 / Spline，选择存在浏览器里
 - URL 直达：`?bg=paper` / `?bg=galaxy` / `?bg=cyber` / `?bg=flow` / `?bg=shards` / `?bg=spline&scene=<url>`
-- 主题：`?theme=light`（默认，TypeSafe 浅色）/ `?theme=dark`（赛博终端深色）
+- 主题：`?theme=tech`（默认）/ `?theme=light` / `?theme=cyber`；动效：`?motion=on|off`（默认 off）
 - 配色方案：`?scheme=cn`（A股红涨绿跌，默认）/ `?scheme=western`（欧美绿涨红跌），
   也可点顶栏 `🔴涨🟢跌（A股）` 按钮切换
 
@@ -398,3 +441,4 @@ MIT（Kronos 模型部分遵循其原仓库 License，见 Kronos-README.md）
 1. 预测可靠性：Kronos 是统计模型，方向准确率有限（自检约 50%），数值预测偏乐观，请勿据此实盘操作。
 2. 数据源：腾讯/新浪/东财公开接口，非券商级数据，有缓存。
 3. 不接实盘：本项目的模拟交易/自动接管均为虚拟资金，不涉及真实交易。
+

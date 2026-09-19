@@ -13,7 +13,7 @@
 
     var LS_BG = 'kronos_bg_mode';
     var LS_SCENE = 'kronos_spline_scene';
-    var VALID = { paper: 1, galaxy: 1, cyber: 1, flow: 1, shards: 1, spline: 1 };
+    var VALID = { tech: 1, paper: 1, galaxy: 1, cyber: 1, flow: 1, shards: 1, spline: 1 };
 
     function qs(name) {
         try { return new URLSearchParams(location.search || '').get(name) || ''; }
@@ -30,7 +30,7 @@
     }
 
     var Bg = {
-        mode: 'paper',
+        mode: 'tech',
         scene: '',
         handle: null,
         status: 'idle',
@@ -42,8 +42,8 @@
             var s = qs('scene');
             if (m) lsSet(LS_BG, m);
             if (s) lsSet(LS_SCENE, s);
-            var saved = ls(LS_BG, 'paper');
-            this.mode = VALID[saved] ? saved : 'paper';
+            var saved = ls(LS_BG, 'tech');
+            this.mode = VALID[saved] ? saved : 'tech';
             this.scene = ls(LS_SCENE, '');
             this.apply();
         },
@@ -55,7 +55,7 @@
         },
 
         setMode: function (mode) {
-            if (!VALID[mode]) mode = 'paper';
+            if (!VALID[mode]) mode = 'tech';
             this.mode = mode;
             lsSet(LS_BG, mode);
             this.apply();
@@ -78,6 +78,8 @@
             var dom = ['galaxy-bg', 'flow-bg', 'aero-bg', 'spline-bg'];
             var pb = document.getElementById('paper-bg');
             if (pb) pb.style.display = which === 'paper' ? 'block' : 'none';
+            var tb = document.getElementById('tech-bg');
+            if (tb) tb.style.display = which === 'tech' ? 'block' : 'none';
             dom.forEach(function (id) {
                 var el = document.getElementById(id);
                 if (!el) return;
@@ -99,16 +101,19 @@
             var d = document.getElementById('dither');
             if (d) d.style.display = which === 'flow' ? 'block' : 'none';
 
+            // 动效关闭时，画布类背景一律不启动渲染循环（页面彻底静止）
+            var motionOff = document.documentElement.getAttribute('data-motion') === 'off';
+
             if (global.galaxy) {
-                if (which === 'galaxy') { try { global.galaxy.start(); global.galaxy.resize(); } catch (e) {} }
+                if (which === 'galaxy' && !motionOff) { try { global.galaxy.start(); global.galaxy.resize(); } catch (e) {} }
                 else { try { global.galaxy.pause(); } catch (e) {} }
             }
             if (global.flow) {
-                if (which === 'flow') { try { global.flow.start(); global.flow.resize(); } catch (e) {} }
+                if (which === 'flow' && !motionOff) { try { global.flow.start(); global.flow.resize(); } catch (e) {} }
                 else { try { global.flow.pause(); } catch (e) {} }
             }
             if (global.shards) {
-                if (which === 'shards') { try { global.shards.start(); global.shards.resize(); } catch (e) {} }
+                if (which === 'shards' && !motionOff) { try { global.shards.start(); global.shards.resize(); } catch (e) {} }
                 else { try { global.shards.pause(); } catch (e) {} }
             }
         },
@@ -131,6 +136,13 @@
 
         apply: function () {
             var self = this;
+
+            if (this.mode === 'tech') {
+                this._destroySpline();
+                this._activate('tech');
+                this._report('ready', '科技网格');
+                return;
+            }
 
             if (this.mode === 'paper') {
                 this._destroySpline();

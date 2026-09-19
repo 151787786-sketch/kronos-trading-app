@@ -307,15 +307,15 @@ try:
 except Exception as e:
     check("流线引擎可读取", False, str(e)[:80])
 
-print("\n=== 12. 深色主题（赛博终端风，可切换） ===")
-m = re.search(r'html\[data-theme="dark"\]\s*\{(.*?)\n\}', page, re.S)
+print("\n=== 12. 赛博终端主题（可切换） ===")
+m = re.search(r'html\[data-theme="cyber"\]\s*\{(.*?)\n\}', page, re.S)
 dark = m.group(1) if m else ""
-check("存在深色主题覆盖块 html[data-theme=dark]", bool(dark))
-check("深色底纯黑", "--bg: #000000" in dark)
-check("深色强调霓虹绿 #00ff41", "--accent: #00ff41" in dark)
-check("深色正文骨白 #d7e3db", "--text: #d7e3db" in dark)
-check("深色玻璃面板", "--panel: hsla(0, 0%, 4%, .62)" in dark)
-check("深色涨跌为亮红/亮绿",
+check("存在赛博主题覆盖块 html[data-theme=cyber]", bool(dark))
+check("赛博底纯黑", "--bg: #000000" in dark)
+check("赛博强调霓虹绿 #00ff41", "--accent: #00ff41" in dark)
+check("赛博正文骨白 #d7e3db", "--text: #d7e3db" in dark)
+check("赛博玻璃面板", "--panel: hsla(0, 0%, 4%, .62)" in dark)
+check("赛博涨跌为亮红/亮绿",
       _is_red(_first_hex(dark, "--up")) and _is_green(_first_hex(dark, "--down")),
       "%s / %s" % (_first_hex(dark, "--up"), _first_hex(dark, "--down")))
 
@@ -390,28 +390,52 @@ check("面板内表格可横向滚动", ".panel { overflow-x: auto; }" in page)
 check("长文本表格允许换行", ".wrap-cells th, .wrap-cells td { white-space: normal" in page)
 check("需求对照表已用 wrap-cells", 'class="wrap-cells"' in page)
 
-print("\n=== 15. TypeSafe AI 主题（浅色，默认） ===")
-check("默认主题为浅色", 'data-theme="light"' in page or ':root {' in page)
-check("--paper 纸面白 #fefefe（原站 38% 像素占比色）", '--paper: #fefefe' in page)
-check("--ink 近黑 #1e1e1e（原站主文字色）", '--ink: #1e1e1e' in page)
-check("--magenta #d45bb6（原站 ::selection 色）", '--magenta: #d45bb6' in page)
-check("--pink #f386a1（原站 rgb(243,134,161)）", '--pink: #f386a1' in page)
-check("--neon #ff52fc（原站 hero 霓虹品红）", '--neon: #ff52fc' in page)
-check("--paper-3 #dedede（原站 rgb(222,222,222)）", '--paper-3: #dedede' in page)
-check("虚线描边语言 border-style dashed", 'dashed' in page)
-check("直角（border-radius: 0）", 'border-radius: 0' in page)
-check("::selection 使用品红", '::selection { background: var(--magenta)' in page)
-check("深色主题保留为可切换项", 'html[data-theme="dark"]' in page)
+print("\n=== 15. 科技风主题（默认，静态） ===")
+check("默认主题为 tech", 'data-theme="tech"' in page or "return 'tech'" in page)
+check("深空蓝黑底 #070b14", '--bg: #070b14' in page)
+check("青色主强调 #22d3ee", '--accent: #22d3ee' in page)
+check("蓝色次强调 #3b82f6", '--accent-2: #3b82f6' in page)
+check("浅灰蓝正文 #cbd8ec", '--text: #cbd8ec' in page)
+check("青色细线边框", '--border: rgba(56, 189, 248, .18)' in page)
+check("科技网格背景层", 'id="tech-bg"' in page and 'background-size: 40px 40px' in page)
+check("直角（科技风保持直角）", 'border-radius: 0' in page)
+check("深色底涨跌用亮红亮绿",
+      _is_red(_first_hex(page, "--up")) and _is_green(_first_hex(page, "--down")),
+      "%s / %s" % (_first_hex(page, "--up"), _first_hex(page, "--down")))
+check("三套主题都可切换", all(t in page for t in ("'tech'", "'light'", "'cyber'")))
 check("顶栏有主题切换按钮", 'id="theme-toggle"' in page and 'toggleTheme()' in page)
-check("纸面背景层存在", 'id="paper-bg"' in page)
-check("六个背景模式按钮齐全",
-      all(f'id="bg-mode-{m}"' in page for m in ("paper", "galaxy", "cyber", "flow", "shards", "spline")))
 check("图表配色跟随主题（Plotly 用具体色值）",
       'function chartBg()' in page and 'function chartGrid()' in page and 'function chartFont()' in page)
-check("图表已改用主题函数", 'chartBg()' in page and 'chartFont()' in page)
-check("默认背景为纸面",
-      "mode: 'paper'" in __import__("urllib.request", fromlist=["x"]).urlopen(
+check("默认背景为科技网格",
+      "mode: 'tech'" in __import__("urllib.request", fromlist=["x"]).urlopen(
           BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
+
+print("\n=== 16. 去动效（默认关闭全部动画） ===")
+check("html 带 data-motion 属性（首屏前设定）", 'data-motion' in page)
+check("默认动效关闭", "var t = 'tech', m = 'off'" in page or 'kronos_motion' in page)
+check("顶栏有动效开关", 'id="motion-toggle"' in page and 'toggleMotion()' in page)
+check("全局关闭 animation / transition",
+      'animation: none !important' in page and 'transition: none !important' in page)
+check("作用于 ::before/::after 伪元素",
+      'html[data-motion="off"] *::before' in page and 'html[data-motion="off"] *::after' in page)
+check("尊重系统 prefers-reduced-motion",
+      'prefers-reduced-motion: reduce' in page)
+check("动效关闭时不启动画布渲染循环",
+      "data-motion') === 'off'" in __import__("urllib.request", fromlist=["x"]).urlopen(
+          BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
+check("支持 ?motion=on|off", "get('motion')" in page)
+
+print("\n=== 17. 浅色主题（TypeSafe，可切换） ===")
+lm = re.search(r'html\[data-theme="light"\]\s*\{(.*?)\n\}', page, re.S)
+light = lm.group(1) if lm else ""
+check("存在浅色主题覆盖块", bool(light))
+check("纸面白 #fefefe", '--bg: #fefefe' in light)
+check("近黑文字 #1e1e1e", '--text: #1e1e1e' in light)
+check("品红强调 #d45bb6（原站 ::selection 色）", '--accent: #d45bb6' in light)
+check("浅色涨跌用加深版",
+      _is_red(_first_hex(light, "--up")) and _is_green(_first_hex(light, "--down")),
+      "%s / %s" % (_first_hex(light, "--up"), _first_hex(light, "--down")))
+check("::selection 使用主题强调色", '::selection { background: var(--magenta)' in page)
 
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")
