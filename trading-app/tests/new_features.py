@@ -69,6 +69,12 @@ def _is_red(hx):
     return r > g + 40 and r > b + 40
 
 
+def _is_orange(hx):
+    """语义判定：R 高、G 中、B 低 → 橙/琥珀"""
+    r, g, b = _rgb(hx)
+    return r > 150 and r > b + 80 and g > b
+
+
 def _is_green(hx):
     r, g, b = _rgb(hx)
     return g > r + 40 and g > b + 40
@@ -392,11 +398,13 @@ check("需求对照表已用 wrap-cells", 'class="wrap-cells"' in page)
 
 print("\n=== 15. 科技风主题（默认，静态） ===")
 check("默认主题为 tech", 'data-theme="tech"' in page or "return 'tech'" in page)
-check("深空蓝黑底 #070b14", '--bg: #070b14' in page)
-check("青色主强调 #22d3ee", '--accent: #22d3ee' in page)
-check("蓝色次强调 #3b82f6", '--accent-2: #3b82f6' in page)
-check("浅灰蓝正文 #cbd8ec", '--text: #cbd8ec' in page)
-check("青色细线边框", '--border: rgba(56, 189, 248, .18)' in page)
+check("深灰底 #1c1c1c", '--bg: #1c1c1c' in page)
+check("橙色主强调 #ff8c1a", '--accent: #ff8c1a' in page)
+check("暖黄次强调 #ffd166", '--accent-2: #ffd166' in page)
+check("橙色正文 #ffb454", '--text: #ffb454' in page)
+check("正文确为橙色系（语义判定）", _is_orange(_first_hex(page, "--text")), _first_hex(page, "--text"))
+check("面板底为深灰 #242424", '--panel-solid: #242424' in page)
+check("橙色细线边框", '--border: rgba(255, 140, 26, .20)' in page or '--border: rgba(255,140,26,.20)' in page)
 check("科技网格背景层", 'id="tech-bg"' in page and 'background-size: 40px 40px' in page)
 check("直角（科技风保持直角）", 'border-radius: 0' in page)
 check("深色底涨跌用亮红亮绿",

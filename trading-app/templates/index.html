@@ -9,36 +9,36 @@
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root {
-    /* ==== 默认主题：科技风（深色 HUD / 精密线条 / 青蓝光）====
+    /* ==== 默认主题：深灰底 + 橙色文字（琥珀终端）====
        静态设计：不依赖任何动画，网格与描边都是纯 CSS。
-       若参考页有明确配色，改 --accent / --bg 两个值即可整体换肤。 */
-    --bg: #070b14;              /* 深空蓝黑 */
-    --bg-2: #0b1220;            /* 次级面板底 */
-    --panel: rgba(13, 20, 34, .92);
-    --panel-solid: #0b1220;
-    --panel2: rgba(56, 189, 248, .05);
-    --border: rgba(56, 189, 248, .18);      /* 科技感：细青色线与网格 */
-    --border-strong: rgba(56, 189, 248, .45);
-    --text: #cbd8ec;
-    --muted: #6b7f9e;
-    --accent: #22d3ee;          /* 青：主强调 */
-    --accent-2: #3b82f6;        /* 蓝：次强调 */
-    --accent-3: #8b5cf6;        /* 紫：点缀 */
-    --line: rgba(56, 189, 248, .14);
-    --ink: #e6eefc;
-    --paper: #070b14;
-    --paper-3: #16243d;
-    --magenta: #22d3ee;
-    --pink: #7dd3fc;
-    --neon: #22d3ee;
-    --teal: #2dd4bf;
+       想换肤只改下面 4 个值：--bg / --text / --accent / --border */
+    --bg: #1c1c1c;              /* 深灰底（不用纯黑，眼睛更舒服） */
+    --bg-2: #242424;            /* 次级面板底 */
+    --panel: rgba(36, 36, 36, .94);
+    --panel-solid: #242424;
+    --panel2: rgba(255, 140, 26, .05);
+    --border: rgba(255, 140, 26, .20);      /* 橙色细线与网格 */
+    --border-strong: rgba(255, 140, 26, .48);
+    --text: #ffb454;            /* 主文字：琥珀橙（对比度约 9:1） */
+    --muted: #a8783f;           /* 次要文字：暗橙 */
+    --accent: #ff8c1a;          /* 强调：亮橙 */
+    --accent-2: #ffd166;        /* 次强调：暖黄 */
+    --accent-3: #ff6b35;        /* 点缀：橙红 */
+    --line: rgba(255, 140, 26, .13);
+    --ink: #ffc978;
+    --paper: #1c1c1c;
+    --paper-3: #333333;
+    --magenta: #ff8c1a;
+    --pink: #ffd166;
+    --neon: #ff8c1a;
+    --teal: #d9a441;
     --stroke-w: 1px;
-    /* 语义色 */
-    --green: #22c55e; --red: #ef4444;
-    --blue: #60a5fa; --amber: #f5a524;
-    /* 涨跌：深色底用亮红亮绿（A 股红涨绿跌） */
-    --up: #ff5a4d; --up-bg: rgba(255,90,77,.14); --up-bg-strong: rgba(255,90,77,.20);
-    --down: #22c55e; --down-bg: rgba(34,197,94,.14); --down-bg-strong: rgba(34,197,94,.20);
+    /* 语义色（在深灰底上提亮保证对比度） */
+    --green: #3ddc84; --red: #ff5252;
+    --blue: #ffb454; --amber: #ffd166;
+    /* 涨跌：A 股红涨绿跌。橙色文字下用偏品红的正红 / 偏青的正绿，避免和橙色混淆 */
+    --up: #ff4d6a; --up-bg: rgba(255,77,106,.15); --up-bg-strong: rgba(255,77,106,.22);
+    --down: #2ee6a8; --down-bg: rgba(46,230,168,.14); --down-bg-strong: rgba(46,230,168,.20);
 }
 /* 浅色主题：TypeSafe AI（可切换） */
 html[data-theme="light"] {
@@ -167,11 +167,11 @@ body { color: var(--text); font-size: 14px; min-height: 100vh;
 .chrome-edge::after { bottom: -1px; right: -1px;
     background: linear-gradient(0deg, var(--accent-2), transparent) 100% 100% / 1px 16px no-repeat,
                 linear-gradient(270deg, var(--accent-2), transparent) 100% 100% / 16px 1px no-repeat; }
-/* 科技风静态背景：深空底 + 青色精密网格 + 顶部光晕（无任何动画） */
+/* 深灰底 + 橙色精密网格（静态，无动画） */
 #tech-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: block;
     background:
-        radial-gradient(ellipse 60% 45% at 50% -8%, rgba(34, 211, 238, .10), transparent 62%),
-        radial-gradient(ellipse 45% 40% at 88% 104%, rgba(59, 130, 246, .10), transparent 62%),
+        radial-gradient(ellipse 60% 45% at 50% -8%, rgba(255, 140, 26, .07), transparent 62%),
+        radial-gradient(ellipse 45% 40% at 88% 104%, rgba(255, 107, 53, .06), transparent 62%),
         var(--bg); }
 #tech-bg::after { content: ''; position: absolute; inset: 0;
     background-image:
@@ -1277,16 +1277,16 @@ applyScale(uiScale());
 // 图表底色/网格/字色跟随主题（Plotly 需要具体颜色值，不能用 CSS 变量）
 function chartBg() {
     var t = currentTheme();
-    return t === 'light' ? '#fefefe' : (t === 'cyber' ? '#171122' : '#070b14');
+    return t === 'light' ? '#fefefe' : (t === 'cyber' ? '#171122' : '#1c1c1c');
 }
 function chartGrid() {
     var t = currentTheme();
     return t === 'light' ? 'rgba(136,136,136,.22)'
-        : (t === 'cyber' ? 'rgba(137,106,189,.18)' : 'rgba(56,189,248,.16)');
+        : (t === 'cyber' ? 'rgba(137,106,189,.18)' : 'rgba(255,140,26,.16)');
 }
 function chartFont() {
     var t = currentTheme();
-    return t === 'light' ? '#1e1e1e' : (t === 'cyber' ? '#E9E3F5' : '#cbd8ec');
+    return t === 'light' ? '#1e1e1e' : (t === 'cyber' ? '#E9E3F5' : '#ffb454');
 }
 
 var THEMES = ['tech', 'light', 'cyber'];
