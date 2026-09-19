@@ -397,20 +397,21 @@ check("长文本表格允许换行", ".wrap-cells th, .wrap-cells td { white-spa
 check("需求对照表已用 wrap-cells", 'class="wrap-cells"' in page)
 
 print("\n=== 15. 科技风主题（默认，静态） ===")
-check("默认主题为 tech", 'data-theme="tech"' in page or "return 'tech'" in page)
-check("深灰底 #1c1c1c", '--bg: #1c1c1c' in page)
-check("橙色主强调 #ff8c1a", '--accent: #ff8c1a' in page)
-check("暖黄次强调 #ffd166", '--accent-2: #ffd166' in page)
-check("橙色正文 #ffb454", '--text: #ffb454' in page)
-check("正文确为橙色系（语义判定）", _is_orange(_first_hex(page, "--text")), _first_hex(page, "--text"))
-check("面板底为深灰 #242424", '--panel-solid: #242424' in page)
-check("橙色细线边框", '--border: rgba(255, 140, 26, .20)' in page or '--border: rgba(255,140,26,.20)' in page)
-check("科技网格背景层", 'id="tech-bg"' in page and 'background-size: 40px 40px' in page)
-check("直角（科技风保持直角）", 'border-radius: 0' in page)
-check("深色底涨跌用亮红亮绿",
+check("默认主题为 tan（炭金米白）", "var t = 'tan'" in page or "return 'tan'" in page)
+check("米白页面底 #FAFAF8", '--bg: #FAFAF8' in page)
+check("金棕点缀 #B8860B", '--accent: #B8860B' in page and '--gold: #B8860B' in page)
+check("深炭灰主色 #1A2430", '--charcoal: #1A2430' in page)
+check("深炭灰正文 #1A2430", '--text: #1A2430' in page)
+check("冷灰蓝次要文字 #546E7A", '--muted: #546E7A' in page and '--slate: #546E7A' in page)
+check("面板为纯白卡片", '--panel: #FFFFFF' in page)
+check("金棕细线边框", '--border: rgba(184, 134, 11, .34)' in page)
+check("语义绿 #2E7D32 / 红 #C62828", '--green: #2E7D32; --red: #C62828;' in page)
+check("炭金纸面背景层（米白底 + 48px 网格）", 'id="tech-bg"' in page and 'background-size: 48px 48px' in page)
+check("直角（保持克制风格）", 'border-radius: 0' in page)
+check("涨跌为红涨绿跌（A 股习惯）",
       _is_red(_first_hex(page, "--up")) and _is_green(_first_hex(page, "--down")),
       "%s / %s" % (_first_hex(page, "--up"), _first_hex(page, "--down")))
-check("三套主题都可切换", all(t in page for t in ("'tech'", "'light'", "'cyber'")))
+check("三套主题都可切换", all(t in page for t in ("'tan'", "'tandark'", "'cyber'")))
 check("顶栏有主题切换按钮", 'id="theme-toggle"' in page and 'toggleTheme()' in page)
 check("图表配色跟随主题（Plotly 用具体色值）",
       'function chartBg()' in page and 'function chartGrid()' in page and 'function chartFont()' in page)
@@ -433,17 +434,35 @@ check("动效关闭时不启动画布渲染循环",
           BASE + "/static/background.js", timeout=30).read().decode("utf-8", "replace"))
 check("支持 ?motion=on|off", "get('motion')" in page)
 
-print("\n=== 17. 浅色主题（TypeSafe，可切换） ===")
-lm = re.search(r'html\[data-theme="light"\]\s*\{(.*?)\n\}', page, re.S)
-light = lm.group(1) if lm else ""
-check("存在浅色主题覆盖块", bool(light))
-check("纸面白 #fefefe", '--bg: #fefefe' in light)
-check("近黑文字 #1e1e1e", '--text: #1e1e1e' in light)
-check("品红强调 #d45bb6（原站 ::selection 色）", '--accent: #d45bb6' in light)
-check("浅色涨跌用加深版",
-      _is_red(_first_hex(light, "--up")) and _is_green(_first_hex(light, "--down")),
-      "%s / %s" % (_first_hex(light, "--up"), _first_hex(light, "--down")))
+print("\n=== 17. 炭金 · 深色变体（可切换） ===")
+dm = re.search(r'html\[data-theme="tandark"\]\s*\{(.*?)\n\}', page, re.S)
+dk = dm.group(1) if dm else ""
+check("存在炭金深色覆盖块", bool(dk))
+check("深炭灰底 #1A2430", '--bg: #1A2430' in dk)
+check("米白正文 #FAFAF8", '--text: #FAFAF8' in dk)
+check("金棕点缀提亮 #D4A017", '--accent: #D4A017' in dk)
+check("冷灰蓝提亮 #8FA6B2", '--muted: #8FA6B2' in dk)
+check("深底语义色提亮到 #4CAF50 / #E53935（原色对比度不足 3:1）",
+      '--green: #4CAF50; --red: #E53935;' in dk)
+check("深底涨跌同样为红涨绿跌",
+      _is_red(_first_hex(dk, "--up")) and _is_green(_first_hex(dk, "--down")),
+      "%s / %s" % (_first_hex(dk, "--up"), _first_hex(dk, "--down")))
 check("::selection 使用主题强调色", '::selection { background: var(--magenta)' in page)
+
+print("\n=== 18. 外观持久化（避免旧选择把新默认锁死） ===")
+check("存在 UI 版本号常量", "KRONOS_UI_VER" in page)
+check("读取本地选择前校验版本",
+      "localStorage.getItem('kronos_ui_ver') === KRONOS_UI_VER" in page)
+check("初始化不写入本地存储（persist=false）",
+      "applyTheme(currentTheme(), true, false)" in page
+      and "applyMotion(currentMotion(), false)" in page)
+check("只有手动切换才持久化",
+      "applyTheme(THEMES[(i + 1) % THEMES.length], true, true)" in page)
+check("动效切换同样持久化", "? 'off' : 'on', true)" in page)
+check("提供「恢复默认外观」按钮", 'onclick="resetAppearance()"' in page)
+check("恢复默认会清掉所有外观键",
+      "'kronos_theme', 'kronos_ui_ver', 'kronos_bg_mode', 'kronos_motion', 'kronos_ui_scale'" in page)
+check("恢复后主题回到 tan", "applyTheme('tan', true, false)" in page)
 
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")

@@ -9,64 +9,76 @@
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root {
-    /* ==== 默认主题：深灰底 + 橙色文字（琥珀终端）====
-       静态设计：不依赖任何动画，网格与描边都是纯 CSS。
-       想换肤只改下面 4 个值：--bg / --text / --accent / --border */
-    --bg: #1c1c1c;              /* 深灰底（不用纯黑，眼睛更舒服） */
-    --bg-2: #242424;            /* 次级面板底 */
-    --panel: rgba(36, 36, 36, .94);
-    --panel-solid: #242424;
-    --panel2: rgba(255, 140, 26, .05);
-    --border: rgba(255, 140, 26, .20);      /* 橙色细线与网格 */
-    --border-strong: rgba(255, 140, 26, .48);
-    --text: #ffb454;            /* 主文字：琥珀橙（对比度约 9:1） */
-    --muted: #a8783f;           /* 次要文字：暗橙 */
-    --accent: #ff8c1a;          /* 强调：亮橙 */
-    --accent-2: #ffd166;        /* 次强调：暖黄 */
-    --accent-3: #ff6b35;        /* 点缀：橙红 */
-    --line: rgba(255, 140, 26, .13);
-    --ink: #ffc978;
-    --paper: #1c1c1c;
-    --paper-3: #333333;
-    --magenta: #ff8c1a;
-    --pink: #ffd166;
-    --neon: #ff8c1a;
-    --teal: #d9a441;
+    /* ==== 默认主题：炭金（米白底）====
+       色板（用户指定，5 色）：
+         深炭灰 #1A2430  主色（文字 / 深色块）
+         金棕   #B8860B  点缀（标题边框、分割线、卡片标签 —— 少量）
+         冷灰蓝 #546E7A  次要文字
+         米白   #FAFAF8  页面底色（替代纯白，降低刺眼感）
+         绿     #2E7D32  收益 /  红 #C62828 风险
+       定位：深色基底 + 低饱和金点缀，高级克制，面向高净值客户。
+       静态设计：无任何动效。 */
+    --charcoal: #1A2430;
+    --gold: #B8860B;
+    --slate: #546E7A;
+    --cream: #FAFAF8;
+
+    --bg: #FAFAF8;                          /* 米白页面底 */
+    --bg-2: #FFFFFF;
+    --panel: #FFFFFF;                       /* 卡片：纯白浮于米白之上 */
+    --panel-solid: #FFFFFF;
+    --panel2: rgba(84, 110, 122, .06);
+    --border: rgba(184, 134, 11, .34);      /* 金棕细线 —— 点缀，不铺满 */
+    --border-strong: #B8860B;
+    --text: #1A2430;                        /* 深炭灰正文（对比度约 15:1） */
+    --muted: #546E7A;                       /* 冷灰蓝次要文字（约 5:1） */
+    --accent: #B8860B;                      /* 金棕强调 */
+    --accent-2: #1A2430;
+    --accent-3: #546E7A;
+    --line: rgba(26, 36, 48, .07);          /* 中性分割线用炭灰淡色，金色只留给重点 */
+    --ink: #1A2430;
+    --paper: #FAFAF8;
+    --paper-3: #EDEDEA;
+    --magenta: #B8860B;
+    --pink: #B8860B;
+    --neon: #B8860B;
+    --teal: #2E7D32;
     --stroke-w: 1px;
-    /* 语义色（在深灰底上提亮保证对比度） */
-    --green: #3ddc84; --red: #ff5252;
-    --blue: #ffb454; --amber: #ffd166;
-    /* 涨跌：A 股红涨绿跌。橙色文字下用偏品红的正红 / 偏青的正绿，避免和橙色混淆 */
-    --up: #ff4d6a; --up-bg: rgba(255,77,106,.15); --up-bg-strong: rgba(255,77,106,.22);
-    --down: #2ee6a8; --down-bg: rgba(46,230,168,.14); --down-bg-strong: rgba(46,230,168,.20);
+    /* 语义色（用户指定） */
+    --green: #2E7D32; --red: #C62828;
+    --blue: #546E7A; --amber: #B8860B;
+    /* 涨跌：A 股红涨绿跌。用指定色 —— 红 #C62828 涨 / 绿 #2E7D32 跌 */
+    --up: #C62828; --up-bg: rgba(198,40,40,.08); --up-bg-strong: rgba(198,40,40,.14);
+    --down: #2E7D32; --down-bg: rgba(46,125,50,.08); --down-bg-strong: rgba(46,125,50,.14);
 }
-/* 浅色主题：TypeSafe AI（可切换） */
-html[data-theme="light"] {
-    --ink: #1e1e1e;
-    --paper: #fefefe;
-    --paper-2: #f4f4f4;
-    --paper-3: #dedede;
-    --muted-paper: #c4c4c4;
-    --line: rgba(136, 136, 136, .32);
-    --magenta: #d45bb6;
-    --pink: #f386a1;
-    --neon: #ff52fc;
-    --teal: #09aea1;
-    --bg: #fefefe;
-    --accent: #d45bb6;
-    --accent-2: #ff52fc;
-    --accent-3: #7a3fd0;
-    --panel-solid: #fefefe;
-    --panel: rgba(254, 254, 254, .92);
-    --panel2: rgba(30, 30, 30, .035);
-    --border: rgba(136, 136, 136, .32);
-    --border-strong: rgba(30, 30, 30, .55);
-    --text: #1e1e1e;
-    --muted: #8a8a8a;
-    --green: #0f8a4d; --red: #d92b1f;
-    --blue: #7a3fd0; --amber: #b8860b;
-    --up: #d92b1f; --up-bg: rgba(217,43,31,.10); --up-bg-strong: rgba(217,43,31,.16);
-    --down: #0f8a4d; --down-bg: rgba(15,138,77,.10); --down-bg-strong: rgba(15,138,77,.16);
+/* 炭金 · 深色变体：同一套 5 色，把底与墨对调。
+   注意：深底上 #2E7D32 / #C62828 对比度不足（约 3:1），
+   语义色提亮到 #4CAF50 / #E53935（各约 5.5:1），色相身份不变。 */
+html[data-theme="tandark"] {
+    --bg: #1A2430;                          /* 深炭灰底 */
+    --bg-2: #212D3B;
+    --panel: #212D3B;
+    --panel-solid: #212D3B;
+    --panel2: rgba(250, 250, 248, .04);
+    --border: rgba(184, 134, 11, .30);      /* 金棕细线 */
+    --border-strong: #B8860B;
+    --text: #FAFAF8;                        /* 米白正文（对比度约 14:1） */
+    --muted: #8FA6B2;                       /* 冷灰蓝提亮版（约 6:1） */
+    --accent: #D4A017;                      /* 金棕提亮，深底上更亮 */
+    --accent-2: #FAFAF8;
+    --accent-3: #546E7A;
+    --line: rgba(250, 250, 248, .07);
+    --ink: #FAFAF8;
+    --paper: #1A2430;
+    --paper-3: #2C3A49;
+    --magenta: #D4A017;
+    --pink: #D4A017;
+    --neon: #D4A017;
+    --teal: #4CAF50;
+    --green: #4CAF50; --red: #E53935;
+    --blue: #8FA6B2; --amber: #D4A017;
+    --up: #E53935; --up-bg: rgba(229,57,53,.14); --up-bg-strong: rgba(229,57,53,.20);
+    --down: #4CAF50; --down-bg: rgba(76,175,80,.14); --down-bg-strong: rgba(76,175,80,.20);
 }
 /* 赛博终端主题（可切换）：霓虹绿 */
 html[data-theme="cyber"] {
@@ -99,16 +111,17 @@ html[data-motion="off"] *::after {
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
-/* 欧美习惯：绿涨红跌（顶栏可切换）。
-   必须写具体色值，不能写 --up: var(--down)：自定义属性在同一条规则内解析时
-   --down 已被本规则覆盖，会让涨跌变成同一个颜色。三套主题各给一份。 */
+/* 欧美习惯：绿涨红跌（顶栏可切换）。三套主题各给一份具体色值
+   （不能写 --up: var(--down)：同规则内 --down 已被覆盖，会让涨跌同色）。 */
+/* 炭金米白底：绿 #2E7D32 涨 / 红 #C62828 跌 */
 html[data-scheme="western"] {
-    --up: #22c55e; --up-bg: rgba(34,197,94,.14); --up-bg-strong: rgba(34,197,94,.20);
-    --down: #ff5a4d; --down-bg: rgba(255,90,77,.14); --down-bg-strong: rgba(255,90,77,.20);
+    --up: #2E7D32; --up-bg: rgba(46,125,50,.08); --up-bg-strong: rgba(46,125,50,.14);
+    --down: #C62828; --down-bg: rgba(198,40,40,.08); --down-bg-strong: rgba(198,40,40,.14);
 }
-html[data-theme="light"][data-scheme="western"] {
-    --up: #0f8a4d; --up-bg: rgba(15,138,77,.10); --up-bg-strong: rgba(15,138,77,.16);
-    --down: #d92b1f; --down-bg: rgba(217,43,31,.10); --down-bg-strong: rgba(217,43,31,.16);
+/* 炭金深色底：提亮版 */
+html[data-theme="tandark"][data-scheme="western"] {
+    --up: #4CAF50; --up-bg: rgba(76,175,80,.14); --up-bg-strong: rgba(76,175,80,.20);
+    --down: #E53935; --down-bg: rgba(229,57,53,.14); --down-bg-strong: rgba(229,57,53,.20);
 }
 html[data-theme="cyber"][data-scheme="western"] {
     --up: #22c55e; --up-bg: rgba(34,197,94,.15); --up-bg-strong: rgba(34,197,94,.18);
@@ -167,17 +180,17 @@ body { color: var(--text); font-size: 14px; min-height: 100vh;
 .chrome-edge::after { bottom: -1px; right: -1px;
     background: linear-gradient(0deg, var(--accent-2), transparent) 100% 100% / 1px 16px no-repeat,
                 linear-gradient(270deg, var(--accent-2), transparent) 100% 100% / 16px 1px no-repeat; }
-/* 深灰底 + 橙色精密网格（静态，无动画） */
+/* 炭金纸面（静态，无动画）：米白底 + 极淡金晕 + 中性网格 */
 #tech-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: block;
     background:
-        radial-gradient(ellipse 60% 45% at 50% -8%, rgba(255, 140, 26, .07), transparent 62%),
-        radial-gradient(ellipse 45% 40% at 88% 104%, rgba(255, 107, 53, .06), transparent 62%),
+        radial-gradient(ellipse 62% 46% at 50% -8%, rgba(184, 134, 11, .05), transparent 64%),
+        radial-gradient(ellipse 46% 40% at 88% 106%, rgba(84, 110, 122, .05), transparent 62%),
         var(--bg); }
 #tech-bg::after { content: ''; position: absolute; inset: 0;
     background-image:
         linear-gradient(to right, var(--line) 1px, transparent 1px),
         linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-    background-size: 40px 40px; }
+    background-size: 48px 48px; }
 /* 背景层：TypeSafe 纸面 / 银河 / 流线 / 碎片 / Spline，都固定在最底层且不挡交互 */
 #paper-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: none;
     background:
@@ -314,19 +327,26 @@ tr:hover { background: rgba(212,91,182,.06); }
 </style>
 <script>
 /* 主题与动效开关必须在首屏渲染前定好，否则会闪一下错误配色。
-   放在 <head> 里、样式表之后立即执行（此时 body 还没解析）。 */
+   放在 <head> 里、样式表之后立即执行（此时 body 还没解析）。
+
+   ⚠️ 版本号机制：只有当本地保存的选择带有「当前版本号」时才采信。
+   否则用新默认值 —— 避免改了默认主题后，老用户被浏览器里存的旧选择永久锁死
+   （之前就踩过：把浅色设成默认时初始化误写入了 localStorage，
+    导致后来默认改成深灰+橙，浏览器仍一直显示白色底）。 */
+var KRONOS_UI_VER = '3';
 (function () {
-    var t = 'tech', m = 'off';
+    var t = 'tan', m = 'off';
     try {
         var q = new URLSearchParams(location.search || '');
         var qt = q.get('theme'), qm = q.get('motion');
-        if (qt === 'light' || qt === 'tech' || qt === 'cyber') t = qt;
-        else {
+        var verOk = localStorage.getItem('kronos_ui_ver') === KRONOS_UI_VER;
+        if (qt === 'tan' || qt === 'tandark' || qt === 'cyber') t = qt;
+        else if (verOk) {
             var v = localStorage.getItem('kronos_theme');
-            if (v === 'light' || v === 'tech' || v === 'cyber') t = v;
+            if (v === 'tan' || v === 'tandark' || v === 'cyber') t = v;
         }
         if (qm === 'on' || qm === 'off') m = qm;
-        else if (localStorage.getItem('kronos_motion') === 'on') m = 'on';
+        else if (verOk && localStorage.getItem('kronos_motion') === 'on') m = 'on';
     } catch (e) {}
     document.documentElement.setAttribute('data-theme', t);
     document.documentElement.setAttribute('data-motion', m);
@@ -357,7 +377,7 @@ tr:hover { background: rgba(212,91,182,.06); }
     <div class="row">
         <label>背景模式</label>
         <div class="seg">
-            <button class="ghost" id="bg-mode-tech" onclick="setBgMode('tech')">科技网格（默认）</button>
+            <button class="ghost" id="bg-mode-tech" onclick="setBgMode('tech')">炭金纸面（默认）</button>
             <button class="ghost" id="bg-mode-paper" onclick="setBgMode('paper')">纸面</button>
             <button class="ghost" id="bg-mode-galaxy" onclick="setBgMode('galaxy')">银河</button>
             <button class="ghost" id="bg-mode-cyber" onclick="setBgMode('cyber')">赛博网格</button>
@@ -398,7 +418,9 @@ tr:hover { background: rgba(212,91,182,.06); }
     <button class="ghost" id="motion-toggle" style="font-size:12px" onclick="toggleMotion()"
             title="开关全部动效">🚫 动效 关</button>
     <button class="ghost" id="theme-toggle" style="font-size:12px" onclick="toggleTheme()"
-            title="浅色（TypeSafe 风）/ 深色（赛博终端风）">☀️ 浅色</button>
+            title="切换主题：深灰橙 / 浅色 / 赛博">◈ 炭金</button>
+    <button class="ghost" style="font-size:12px" onclick="resetAppearance()"
+            title="清掉浏览器里记住的外观选择，恢复到默认（深灰底 + 橙字）">↺ 恢复默认外观</button>
     <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
             title="切换涨跌配色：A股习惯红涨绿跌 / 欧美习惯绿涨红跌">🔴涨🟢跌（A股）</button>
     <button class="ghost" id="fx-toggle" style="font-size:12px" onclick="toggleBgPanel()"
@@ -1277,20 +1299,20 @@ applyScale(uiScale());
 // 图表底色/网格/字色跟随主题（Plotly 需要具体颜色值，不能用 CSS 变量）
 function chartBg() {
     var t = currentTheme();
-    return t === 'light' ? '#fefefe' : (t === 'cyber' ? '#171122' : '#1c1c1c');
+    return t === 'cyber' ? '#171122' : (t === 'tandark' ? '#212D3B' : '#FFFFFF');
 }
 function chartGrid() {
     var t = currentTheme();
-    return t === 'light' ? 'rgba(136,136,136,.22)'
-        : (t === 'cyber' ? 'rgba(137,106,189,.18)' : 'rgba(255,140,26,.16)');
+    return t === 'cyber' ? 'rgba(137,106,189,.18)'
+        : (t === 'tandark' ? 'rgba(250,250,248,.10)' : 'rgba(26,36,48,.10)');
 }
 function chartFont() {
     var t = currentTheme();
-    return t === 'light' ? '#1e1e1e' : (t === 'cyber' ? '#E9E3F5' : '#ffb454');
+    return t === 'cyber' ? '#E9E3F5' : (t === 'tandark' ? '#FAFAF8' : '#1A2430');
 }
 
-var THEMES = ['tech', 'light', 'cyber'];
-var THEME_LABEL = { tech: '🛰 科技', light: '☀️ 浅色', cyber: '🌙 赛博' };
+var THEMES = ['tan', 'tandark', 'cyber'];
+var THEME_LABEL = { tan: '◈ 炭金', tandark: '◆ 炭金·深', cyber: '🌙 赛博' };
 
 function currentTheme() {
     try {
@@ -1298,30 +1320,52 @@ function currentTheme() {
         if (THEMES.indexOf(q) >= 0) return q;
     } catch (e) {}
     try {
-        var v = localStorage.getItem('kronos_theme');
-        if (THEMES.indexOf(v) >= 0) return v;
+        // 只有本地选择带当前版本号时才采信（否则用新默认，避免被旧选择锁死）
+        if (localStorage.getItem('kronos_ui_ver') === KRONOS_UI_VER) {
+            var v = localStorage.getItem('kronos_theme');
+            if (THEMES.indexOf(v) >= 0) return v;
+        }
     } catch (e) {}
-    return 'tech';
+    return 'tan';
 }
 
-function applyTheme(name, switchBg) {
-    if (THEMES.indexOf(name) < 0) name = 'tech';
+/** persist 只在用户手动切换时为 true —— 初始化绝不能写入存储，
+ *  否则以后每次改默认主题，老浏览器都会被上一次的默认值锁住。 */
+function applyTheme(name, switchBg, persist) {
+    if (THEMES.indexOf(name) < 0) name = 'tan';
     document.documentElement.setAttribute('data-theme', name);
-    try { localStorage.setItem('kronos_theme', name); } catch (e) {}
+    if (persist) {
+        try {
+            localStorage.setItem('kronos_theme', name);
+            localStorage.setItem('kronos_ui_ver', KRONOS_UI_VER);
+        } catch (e) {}
+    }
     var b = document.getElementById('theme-toggle');
     if (b) b.textContent = THEME_LABEL[name];
     // 主题与背景配套：浅色↔纸面、深色系↔科技网格
     if (switchBg && window.SplineBackground) {
         var m = window.SplineBackground.mode;
         if (name === 'light' && m !== 'paper') window.SplineBackground.setMode('paper');
-        else if (name !== 'light' && m === 'paper') window.SplineBackground.setMode('tech');
+        else if (name !== 'tan' && m === 'paper') window.SplineBackground.setMode('tech');
     }
     if (typeof updateBgPanel === 'function') updateBgPanel();
 }
 
 function toggleTheme() {
     var i = THEMES.indexOf(currentTheme());
-    applyTheme(THEMES[(i + 1) % THEMES.length], true);
+    applyTheme(THEMES[(i + 1) % THEMES.length], true, true);
+}
+
+/** 清掉浏览器里存的旧选择，恢复到当前默认外观 */
+function resetAppearance() {
+    try {
+        ['kronos_theme', 'kronos_ui_ver', 'kronos_bg_mode', 'kronos_motion', 'kronos_ui_scale']
+            .forEach(function (k) { localStorage.removeItem(k); });
+    } catch (e) {}
+    applyTheme('tan', true, false);
+    applyMotion('off');
+    applyScale(SCALE_DEFAULT);
+    if (window.SplineBackground) window.SplineBackground.setMode('paper');
 }
 
 // ---------- 动效开关（默认关闭 = 不要任何动效） ----------
@@ -1330,14 +1374,22 @@ function currentMotion() {
         var q = new URLSearchParams(location.search || '').get('motion');
         if (q === 'on' || q === 'off') return q;
     } catch (e) {}
-    try { return localStorage.getItem('kronos_motion') === 'on' ? 'on' : 'off'; } catch (e) {}
+    try {
+        if (localStorage.getItem('kronos_ui_ver') !== KRONOS_UI_VER) return 'off';
+        return localStorage.getItem('kronos_motion') === 'on' ? 'on' : 'off';
+    } catch (e) {}
     return 'off';
 }
 
-function applyMotion(mode) {
+function applyMotion(mode, persist) {
     mode = (mode === 'on') ? 'on' : 'off';
     document.documentElement.setAttribute('data-motion', mode);
-    try { localStorage.setItem('kronos_motion', mode); } catch (e) {}
+    if (persist) {
+        try {
+            localStorage.setItem('kronos_motion', mode);
+            localStorage.setItem('kronos_ui_ver', KRONOS_UI_VER);
+        } catch (e) {}
+    }
     var b = document.getElementById('motion-toggle');
     if (b) b.textContent = mode === 'on' ? '🎞 动效 开' : '🚫 动效 关';
     if (mode === 'off') {
@@ -1353,11 +1405,12 @@ function applyMotion(mode) {
     }
 }
 
-function toggleMotion() { applyMotion(currentMotion() === 'on' ? 'off' : 'on'); }
+function toggleMotion() { applyMotion(currentMotion() === 'on' ? 'off' : 'on', true); }
 
 // 首屏之后跑一次完整逻辑（head 里已设好 data-theme / data-motion，这里补按钮文案与背景联动）
-applyTheme(currentTheme(), true);
-applyMotion(currentMotion());
+// persist = false：初始化不写本地存储，只有用户手动切换才记
+applyTheme(currentTheme(), true, false);
+applyMotion(currentMotion(), false);
 
 let currentSymbol = null;
 let lastRecLLM = {};
