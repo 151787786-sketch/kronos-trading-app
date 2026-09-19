@@ -333,9 +333,9 @@ tr:hover { background: rgba(212,91,182,.06); }
    否则用新默认值 —— 避免改了默认主题后，老用户被浏览器里存的旧选择永久锁死
    （之前就踩过：把浅色设成默认时初始化误写入了 localStorage，
     导致后来默认改成深灰+橙，浏览器仍一直显示白色底）。 */
-var KRONOS_UI_VER = '3';
+var KRONOS_UI_VER = '4';
 (function () {
-    var t = 'tan', m = 'off';
+    var t = 'tandark', m = 'off';
     try {
         var q = new URLSearchParams(location.search || '');
         var qt = q.get('theme'), qm = q.get('motion');
@@ -418,7 +418,7 @@ var KRONOS_UI_VER = '3';
     <button class="ghost" id="motion-toggle" style="font-size:12px" onclick="toggleMotion()"
             title="开关全部动效">🚫 动效 关</button>
     <button class="ghost" id="theme-toggle" style="font-size:12px" onclick="toggleTheme()"
-            title="切换主题：深灰橙 / 浅色 / 赛博">◈ 炭金</button>
+            title="切换主题：深色 / 浅色 / 赛博">◆ 炭金·深</button>
     <button class="ghost" style="font-size:12px" onclick="resetAppearance()"
             title="清掉浏览器里记住的外观选择，恢复到默认（深灰底 + 橙字）">↺ 恢复默认外观</button>
     <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
@@ -1311,8 +1311,8 @@ function chartFont() {
     return t === 'cyber' ? '#E9E3F5' : (t === 'tandark' ? '#FAFAF8' : '#1A2430');
 }
 
-var THEMES = ['tan', 'tandark', 'cyber'];
-var THEME_LABEL = { tan: '◈ 炭金', tandark: '◆ 炭金·深', cyber: '🌙 赛博' };
+var THEMES = ['tandark', 'tan', 'cyber'];
+var THEME_LABEL = { tandark: '◆ 炭金·深', tan: '◈ 炭金·浅', cyber: '🌙 赛博' };
 
 function currentTheme() {
     try {
@@ -1326,7 +1326,7 @@ function currentTheme() {
             if (THEMES.indexOf(v) >= 0) return v;
         }
     } catch (e) {}
-    return 'tan';
+    return 'tandark';   // 默认：炭金深色
 }
 
 /** persist 只在用户手动切换时为 true —— 初始化绝不能写入存储，
@@ -1342,11 +1342,11 @@ function applyTheme(name, switchBg, persist) {
     }
     var b = document.getElementById('theme-toggle');
     if (b) b.textContent = THEME_LABEL[name];
-    // 主题与背景配套：浅色↔纸面、深色系↔科技网格
+    // 主题与背景配套：深色↔炭金网格（静态）、浅色↔纸面
     if (switchBg && window.SplineBackground) {
         var m = window.SplineBackground.mode;
-        if (name === 'light' && m !== 'paper') window.SplineBackground.setMode('paper');
-        else if (name !== 'tan' && m === 'paper') window.SplineBackground.setMode('tech');
+        if (name === 'tan' && m !== 'paper') window.SplineBackground.setMode('paper');
+        else if (name === 'tandark' && m !== 'tech') window.SplineBackground.setMode('tech');
     }
     if (typeof updateBgPanel === 'function') updateBgPanel();
 }
@@ -1362,10 +1362,10 @@ function resetAppearance() {
         ['kronos_theme', 'kronos_ui_ver', 'kronos_bg_mode', 'kronos_motion', 'kronos_ui_scale']
             .forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) {}
-    applyTheme('tan', true, false);
+    applyTheme('tandark', true, false);
     applyMotion('off');
     applyScale(SCALE_DEFAULT);
-    if (window.SplineBackground) window.SplineBackground.setMode('paper');
+    if (window.SplineBackground) window.SplineBackground.setMode('tech');
 }
 
 // ---------- 动效开关（默认关闭 = 不要任何动效） ----------

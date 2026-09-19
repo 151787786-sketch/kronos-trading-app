@@ -397,7 +397,7 @@ check("长文本表格允许换行", ".wrap-cells th, .wrap-cells td { white-spa
 check("需求对照表已用 wrap-cells", 'class="wrap-cells"' in page)
 
 print("\n=== 15. 科技风主题（默认，静态） ===")
-check("默认主题为 tan（炭金米白）", "var t = 'tan'" in page or "return 'tan'" in page)
+check("默认主题为 tandark（炭金深色）", "var t = 'tandark'" in page or "return 'tandark'" in page)
 check("米白页面底 #FAFAF8", '--bg: #FAFAF8' in page)
 check("金棕点缀 #B8860B", '--accent: #B8860B' in page and '--gold: #B8860B' in page)
 check("深炭灰主色 #1A2430", '--charcoal: #1A2430' in page)
@@ -411,7 +411,7 @@ check("直角（保持克制风格）", 'border-radius: 0' in page)
 check("涨跌为红涨绿跌（A 股习惯）",
       _is_red(_first_hex(page, "--up")) and _is_green(_first_hex(page, "--down")),
       "%s / %s" % (_first_hex(page, "--up"), _first_hex(page, "--down")))
-check("三套主题都可切换", all(t in page for t in ("'tan'", "'tandark'", "'cyber'")))
+check("三套主题都可切换", all(t in page for t in ("'tandark'", "'tan'", "'cyber'")))
 check("顶栏有主题切换按钮", 'id="theme-toggle"' in page and 'toggleTheme()' in page)
 check("图表配色跟随主题（Plotly 用具体色值）",
       'function chartBg()' in page and 'function chartGrid()' in page and 'function chartFont()' in page)
@@ -462,7 +462,7 @@ check("动效切换同样持久化", "? 'off' : 'on', true)" in page)
 check("提供「恢复默认外观」按钮", 'onclick="resetAppearance()"' in page)
 check("恢复默认会清掉所有外观键",
       "'kronos_theme', 'kronos_ui_ver', 'kronos_bg_mode', 'kronos_motion', 'kronos_ui_scale'" in page)
-check("恢复后主题回到 tan", "applyTheme('tan', true, false)" in page)
+check("恢复后主题回到 tandark", "applyTheme('tandark', true, false)" in page)
 
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")
