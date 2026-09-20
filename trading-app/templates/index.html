@@ -9,45 +9,67 @@
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <style>
 :root {
-    /* ==== 默认主题：炭金（米白底）====
-       色板（用户指定，5 色）：
-         深炭灰 #1A2430  主色（文字 / 深色块）
-         金棕   #B8860B  点缀（标题边框、分割线、卡片标签 —— 少量）
-         冷灰蓝 #546E7A  次要文字
-         米白   #FAFAF8  页面底色（替代纯白，降低刺眼感）
-         绿     #2E7D32  收益 /  红 #C62828 风险
-       定位：深色基底 + 低饱和金点缀，高级克制，面向高净值客户。
+    /* ==== 默认主题：SharedNet 风（浅蓝白 + 牛津深蓝）====
+       色板取自 https://www.sharednet.ai/ —— 原站用 oklch 定义，这里换成等值 hex：
+         页面底  oklch(96.8% 0.025 240)  → #F3F7FF
+         次级底  oklch(96.2% 0.022 240)  → #F0F4FE
+         最浅    oklch(98.6% 0.01  240)  → #FAFBFF
+         正文    #002147  原站直接写的 hex（牛津深蓝）
+         次要    oklch(46% 0.06 252)     → #3F5A79
+         中蓝    #205F91  原站强调色
+         陶土橙  #D97757  原站点缀色
+         浅蓝    #90CAF9 / #64B5F6 / #0077B6  原站装饰蓝
+       字体：原站用 Albert Sans Variable + Anybody Variable（Google Fonts，不引 CDN，
+             回退到同气质的几何无衬线栈）。
        静态设计：无任何动效。 */
-    --charcoal: #1A2430;
-    --gold: #B8860B;
-    --slate: #546E7A;
-    --cream: #FAFAF8;
+    --sn-navy: #002147;      /* 正文 / 深色块 */
+    --sn-blue: #205F91;      /* 中蓝强调 */
+    --sn-navy-deep: #0E3560; /* 深藏青 */
+    --sn-terra: #D97757;     /* 陶土橙点缀 */
+    --sn-sky: #90CAF9;       /* 浅蓝装饰 */
+    --sn-sky-2: #64B5F6;
+    --sn-cyan: #0077B6;
 
-    --bg: #FAFAF8;                          /* 米白页面底 */
+    --bg: #F3F7FF;                          /* 浅蓝白页面底 */
     --bg-2: #FFFFFF;
-    --panel: #FFFFFF;                       /* 卡片：纯白浮于米白之上 */
+    --panel: #FFFFFF;                       /* 卡片：纯白浮于浅蓝白之上 */
     --panel-solid: #FFFFFF;
-    --panel2: rgba(84, 110, 122, .06);
-    --border: rgba(184, 134, 11, .34);      /* 金棕细线 —— 点缀，不铺满 */
-    --border-strong: #B8860B;
-    --text: #1A2430;                        /* 深炭灰正文（对比度约 15:1） */
-    --muted: #546E7A;                       /* 冷灰蓝次要文字（约 5:1） */
-    --accent: #B8860B;                      /* 金棕强调 */
-    --accent-2: #1A2430;
-    --accent-3: #546E7A;
-    --line: rgba(26, 36, 48, .07);          /* 中性分割线用炭灰淡色，金色只留给重点 */
-    --ink: #1A2430;
-    --paper: #FAFAF8;
-    --paper-3: #EDEDEA;
-    --magenta: #B8860B;
-    --pink: #B8860B;
-    --neon: #B8860B;
-    --teal: #2E7D32;
+    --panel2: rgba(32, 95, 145, .05);
+    --border: rgba(32, 95, 145, .22);       /* 中蓝细线 */
+    --border-strong: #205F91;
+    --text: #002147;                        /* 牛津深蓝正文（对比度约 15:1） */
+    --muted: #3F5A79;                       /* 石板蓝次要文字（约 6:1） */
+    --accent: #205F91;                      /* 中蓝强调 */
+    --accent-2: #0077B6;
+    --accent-3: #D97757;                    /* 陶土橙点缀 */
+    --line: rgba(32, 95, 145, .10);
+    --ink: #002147;
+    --paper: #F3F7FF;
+    --paper-3: #E3F2FD;
+    --magenta: #205F91;
+    --pink: #D97757;
+    --neon: #0077B6;
+    --teal: #17805A;
     --stroke-w: 1px;
-    /* 语义色（用户指定） */
-    --green: #2E7D32; --red: #C62828;
-    --blue: #546E7A; --amber: #B8860B;
-    /* 涨跌：A 股红涨绿跌。用指定色 —— 红 #C62828 涨 / 绿 #2E7D32 跌 */
+    /* 语义色：取自原站 oklch(52% .12 157) 绿 / oklch(53% .16 28) 红 */
+    --green: #17805A; --red: #C8452C;
+    --blue: #205F91; --amber: #B45309;
+    /* 涨跌：A 股红涨绿跌 */
+    --up: #C8452C; --up-bg: rgba(200,69,44,.08); --up-bg-strong: rgba(200,69,44,.14);
+    --down: #17805A; --down-bg: rgba(23,128,90,.08); --down-bg-strong: rgba(23,128,90,.14);
+}
+/* 炭金 · 米白变体（可切换）：深炭灰文字 + 金棕点缀 + 米白底 */
+html[data-theme="tan"] {
+    --bg: #FAFAF8; --bg-2: #FFFFFF;
+    --panel: #FFFFFF; --panel-solid: #FFFFFF;
+    --panel2: rgba(84, 110, 122, .06);
+    --border: rgba(184, 134, 11, .34); --border-strong: #B8860B;
+    --text: #1A2430; --muted: #546E7A;
+    --accent: #B8860B; --accent-2: #1A2430; --accent-3: #546E7A;
+    --line: rgba(26, 36, 48, .07);
+    --ink: #1A2430; --paper: #FAFAF8; --paper-3: #EDEDEA;
+    --magenta: #B8860B; --pink: #B8860B; --neon: #B8860B; --teal: #2E7D32;
+    --green: #2E7D32; --red: #C62828; --blue: #546E7A; --amber: #B8860B;
     --up: #C62828; --up-bg: rgba(198,40,40,.08); --up-bg-strong: rgba(198,40,40,.14);
     --down: #2E7D32; --down-bg: rgba(46,125,50,.08); --down-bg-strong: rgba(46,125,50,.14);
 }
@@ -134,7 +156,7 @@ html[data-theme="cyber"][data-scheme="western"] {
    顶栏「A−/A+」可调，选择记在浏览器里。 */
 html { zoom: var(--ui-scale, 1.5); }
 body { color: var(--text); font-size: 14px; min-height: 100vh;
-    font-family: Inter, "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    font-family: "Albert Sans", "Anybody", Inter, "HarmonyOS Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     background: var(--bg); }
 /* 绿色网格衬底（原站 .bg-substrate，48×48 网格） */
@@ -191,17 +213,17 @@ body { color: var(--text); font-size: 14px; min-height: 100vh;
         linear-gradient(to right, var(--line) 1px, transparent 1px),
         linear-gradient(to bottom, var(--line) 1px, transparent 1px);
     background-size: 48px 48px; }
-/* 背景层：TypeSafe 纸面 / 银河 / 流线 / 碎片 / Spline，都固定在最底层且不挡交互 */
-#paper-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: none;
+/* 背景层：纸面（SharedNet 浅蓝）/ 炭金网格 / 银河 / 流线 / 碎片 / Spline，都固定在最底层且不挡交互 */
+#paper-bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: block;
     background:
-        radial-gradient(ellipse 55% 45% at 82% -5%, rgba(255, 82, 252, .13), transparent 62%),
-        radial-gradient(ellipse 45% 40% at 8% 105%, rgba(212, 91, 182, .10), transparent 62%),
+        radial-gradient(ellipse 58% 46% at 78% -6%, rgba(144, 202, 249, .34), transparent 64%),
+        radial-gradient(ellipse 46% 40% at 6% 104%, rgba(32, 95, 145, .10), transparent 62%),
         var(--paper); }
-/* 虚线网格：呼应原站的虚线描边语言 */
+/* 细网格：浅蓝格线 */
 #paper-bg::after { content: ''; position: absolute; inset: 0;
     background-image: linear-gradient(to right, var(--line) 1px, transparent 1px),
                       linear-gradient(to bottom, var(--line) 1px, transparent 1px);
-    background-size: 72px 72px; opacity: .45; }
+    background-size: 72px 72px; opacity: .5; }
 #galaxy-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #flow-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
 #aero-bg { position: fixed; inset: 0; width: 100%; height: 100%; display: none; z-index: 0; pointer-events: none; }
@@ -333,17 +355,17 @@ tr:hover { background: rgba(212,91,182,.06); }
    否则用新默认值 —— 避免改了默认主题后，老用户被浏览器里存的旧选择永久锁死
    （之前就踩过：把浅色设成默认时初始化误写入了 localStorage，
     导致后来默认改成深灰+橙，浏览器仍一直显示白色底）。 */
-var KRONOS_UI_VER = '4';
+var KRONOS_UI_VER = '5';
 (function () {
-    var t = 'tandark', m = 'off';
+    var t = 'sn', m = 'off';
     try {
         var q = new URLSearchParams(location.search || '');
         var qt = q.get('theme'), qm = q.get('motion');
         var verOk = localStorage.getItem('kronos_ui_ver') === KRONOS_UI_VER;
-        if (qt === 'tan' || qt === 'tandark' || qt === 'cyber') t = qt;
+        if (qt === 'sn' || qt === 'tan' || qt === 'tandark' || qt === 'cyber') t = qt;
         else if (verOk) {
             var v = localStorage.getItem('kronos_theme');
-            if (v === 'tan' || v === 'tandark' || v === 'cyber') t = v;
+            if (v === 'sn' || v === 'tan' || v === 'tandark' || v === 'cyber') t = v;
         }
         if (qm === 'on' || qm === 'off') m = qm;
         else if (verOk && localStorage.getItem('kronos_motion') === 'on') m = 'on';
@@ -418,7 +440,7 @@ var KRONOS_UI_VER = '4';
     <button class="ghost" id="motion-toggle" style="font-size:12px" onclick="toggleMotion()"
             title="开关全部动效">🚫 动效 关</button>
     <button class="ghost" id="theme-toggle" style="font-size:12px" onclick="toggleTheme()"
-            title="切换主题：深色 / 浅色 / 赛博">◆ 炭金·深</button>
+            title="切换主题：深色 / 浅色 / 赛博">◉ 共享网络</button>
     <button class="ghost" style="font-size:12px" onclick="resetAppearance()"
             title="清掉浏览器里记住的外观选择，恢复到默认（深灰底 + 橙字）">↺ 恢复默认外观</button>
     <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
@@ -1308,11 +1330,11 @@ function chartGrid() {
 }
 function chartFont() {
     var t = currentTheme();
-    return t === 'cyber' ? '#E9E3F5' : (t === 'tandark' ? '#FAFAF8' : '#1A2430');
+    return t === 'cyber' ? '#E9E3F5' : (t === 'tandark' ? '#FAFAF8' : '#002147');
 }
 
-var THEMES = ['tandark', 'tan', 'cyber'];
-var THEME_LABEL = { tandark: '◆ 炭金·深', tan: '◈ 炭金·浅', cyber: '🌙 赛博' };
+var THEMES = ['sn', 'tandark', 'tan', 'cyber'];
+var THEME_LABEL = { sn: '◉ 共享网络', tandark: '◆ 炭金·深', tan: '◈ 炭金·浅', cyber: '🌙 赛博' };
 
 function currentTheme() {
     try {
@@ -1326,7 +1348,7 @@ function currentTheme() {
             if (THEMES.indexOf(v) >= 0) return v;
         }
     } catch (e) {}
-    return 'tandark';   // 默认：炭金深色
+    return 'sn';   // 默认：SharedNet 风
 }
 
 /** persist 只在用户手动切换时为 true —— 初始化绝不能写入存储，
@@ -1342,11 +1364,12 @@ function applyTheme(name, switchBg, persist) {
     }
     var b = document.getElementById('theme-toggle');
     if (b) b.textContent = THEME_LABEL[name];
-    // 主题与背景配套：深色↔炭金网格（静态）、浅色↔纸面
+    // 主题与背景配套：浅色主题（共享网络 / 炭金浅）↔ 静态纸面；深色主题 ↔ 炭金网格
     if (switchBg && window.SplineBackground) {
         var m = window.SplineBackground.mode;
-        if (name === 'tan' && m !== 'paper') window.SplineBackground.setMode('paper');
-        else if (name === 'tandark' && m !== 'tech') window.SplineBackground.setMode('tech');
+        var isDark = (name === 'tandark' || name === 'cyber');
+        if (!isDark && m !== 'paper') window.SplineBackground.setMode('paper');
+        else if (isDark && m !== 'tech') window.SplineBackground.setMode('tech');
     }
     if (typeof updateBgPanel === 'function') updateBgPanel();
 }
@@ -1362,10 +1385,10 @@ function resetAppearance() {
         ['kronos_theme', 'kronos_ui_ver', 'kronos_bg_mode', 'kronos_motion', 'kronos_ui_scale']
             .forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) {}
-    applyTheme('tandark', true, false);
+    applyTheme('sn', true, false);
     applyMotion('off');
     applyScale(SCALE_DEFAULT);
-    if (window.SplineBackground) window.SplineBackground.setMode('tech');
+    if (window.SplineBackground) window.SplineBackground.setMode('paper');
 }
 
 // ---------- 动效开关（默认关闭 = 不要任何动效） ----------

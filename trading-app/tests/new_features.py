@@ -76,8 +76,10 @@ def _is_orange(hx):
 
 
 def _is_green(hx):
+    """语义判定：绿通道明显高于红，且绿不低于蓝。
+    允许 B 较高，因为青绿（teal，如 #17805A）本身就是绿+蓝，仍属视觉上的「绿」。"""
     r, g, b = _rgb(hx)
-    return g > r + 40 and g > b + 40
+    return g > r + 40 and g >= b
 
 
 print("=== 1. DeepSeek 接入层 ===")
@@ -397,21 +399,24 @@ check("长文本表格允许换行", ".wrap-cells th, .wrap-cells td { white-spa
 check("需求对照表已用 wrap-cells", 'class="wrap-cells"' in page)
 
 print("\n=== 15. 科技风主题（默认，静态） ===")
-check("默认主题为 tandark（炭金深色）", "var t = 'tandark'" in page or "return 'tandark'" in page)
-check("米白页面底 #FAFAF8", '--bg: #FAFAF8' in page)
-check("金棕点缀 #B8860B", '--accent: #B8860B' in page and '--gold: #B8860B' in page)
-check("深炭灰主色 #1A2430", '--charcoal: #1A2430' in page)
-check("深炭灰正文 #1A2430", '--text: #1A2430' in page)
-check("冷灰蓝次要文字 #546E7A", '--muted: #546E7A' in page and '--slate: #546E7A' in page)
+check("默认主题为 sn（SharedNet 风）", "var t = 'sn'" in page or "return 'sn'" in page)
+check("浅蓝白页面底 #F3F7FF（原站 oklch(96.8% .025 240)）", '--bg: #F3F7FF' in page)
+check("中蓝强调 #205F91", '--accent: #205F91' in page and '--sn-blue: #205F91' in page)
+check("陶土橙点缀 #D97757（原站 hex）", '--accent-3: #D97757' in page and '--sn-terra: #D97757' in page)
+check("牛津深蓝 #002147（原站直接写的 hex）", '--text: #002147' in page and '--sn-navy: #002147' in page)
+check("石板蓝次要文字 #3F5A79（原站 oklch(46% .06 252)）", '--muted: #3F5A79' in page)
 check("面板为纯白卡片", '--panel: #FFFFFF' in page)
-check("金棕细线边框", '--border: rgba(184, 134, 11, .34)' in page)
-check("语义绿 #2E7D32 / 红 #C62828", '--green: #2E7D32; --red: #C62828;' in page)
-check("炭金纸面背景层（米白底 + 48px 网格）", 'id="tech-bg"' in page and 'background-size: 48px 48px' in page)
+check("原站装饰浅蓝 #90CAF9 / #64B5F6 / #0077B6",
+      all(c in page for c in ("--sn-sky: #90CAF9", "--sn-sky-2: #64B5F6", "--sn-cyan: #0077B6")))
+check("中蓝细线边框", '--border: rgba(32, 95, 145, .22)' in page)
+check("语义绿 #17805A / 红 #C8452C（原站 oklch 绿红）", '--green: #17805A; --red: #C8452C;' in page)
+check("字体栈含原站 Albert Sans / Anybody", '"Albert Sans"' in page and '"Anybody"' in page)
+check("纸面背景层带原站浅蓝渐变", 'id="paper-bg"' in page and 'rgba(144, 202, 249, .34)' in page)
 check("直角（保持克制风格）", 'border-radius: 0' in page)
 check("涨跌为红涨绿跌（A 股习惯）",
       _is_red(_first_hex(page, "--up")) and _is_green(_first_hex(page, "--down")),
       "%s / %s" % (_first_hex(page, "--up"), _first_hex(page, "--down")))
-check("三套主题都可切换", all(t in page for t in ("'tandark'", "'tan'", "'cyber'")))
+check("四套主题都可切换", all(t in page for t in ("'sn'", "'tandark'", "'tan'", "'cyber'")))
 check("顶栏有主题切换按钮", 'id="theme-toggle"' in page and 'toggleTheme()' in page)
 check("图表配色跟随主题（Plotly 用具体色值）",
       'function chartBg()' in page and 'function chartGrid()' in page and 'function chartFont()' in page)
@@ -462,7 +467,7 @@ check("动效切换同样持久化", "? 'off' : 'on', true)" in page)
 check("提供「恢复默认外观」按钮", 'onclick="resetAppearance()"' in page)
 check("恢复默认会清掉所有外观键",
       "'kronos_theme', 'kronos_ui_ver', 'kronos_bg_mode', 'kronos_motion', 'kronos_ui_scale'" in page)
-check("恢复后主题回到 tandark", "applyTheme('tandark', true, false)" in page)
+check("恢复后主题回到 sn", "applyTheme('sn', true, false)" in page)
 
 print("\n" + "=" * 50)
 print(f"RESULT: {PASS} passed, {FAIL} failed")
