@@ -46,9 +46,12 @@
 | 📰 **舆情情感分析** | 腾讯财经个股新闻 + 东财公司公告；**DeepSeek 语义极性打分 + 中文金融情感词典双引擎**，含事件类型识别、正负面统计、舆情风险分级，并接入风控扫描 |
 | 📚 **券商研报库** | 东财研报中心：个股研报 / 行业研报 / 策略报告 + **评级分布统计**（如「买入 32 / 增持 7 / 持有 3」）+ DeepSeek 一致预期汇总 |
 | 🌙 **夜间自迭代** | 每天 02:00 自动运行（也可手动）：收集真实运行数据（样本外 MAPE / 方向准确率 / 告警频次 / 自动交易成功率）→ DeepSeek 提出调参建议 → **范围与步长双重钳制**后写入 `tuning.json` → 全量留痕，可一键回滚。已生效参数**真的会改变**报警阈值、风控阈值与荐股权重 |
-| 涨跌配色 | **默认 A 股习惯：红涨绿跌**（与行情软件一致）。顶栏一键切换为欧美习惯（绿涨红跌），选择记在浏览器里。K 线、涨跌幅、盈亏、买卖方向、Kronos 预测柱状图全部跟随；「成功/失败、通过/风险高低」这类**非涨跌语义**固定用绿/红，不受配色影响 |
-| 🎨 **界面主题** | **默认 SharedNet 风（浅蓝白 + 牛津深蓝，静态）**：色板取自 [sharednet.ai](https://www.sharednet.ai/)——浅蓝白底 `#F3F7FF`（原站 `oklch(96.8% .025 240)`）+ 牛津深蓝正文 `#002147` + 中蓝强调 `#205F91` + 陶土橙点缀 `#D97757` + 石板蓝次要文字 `#3F5A79` + 装饰浅蓝 `#90CAF9`/`#64B5F6`/`#0077B6`。字体栈含原站 Albert Sans / Anybody。正文对比度约 **15:1**。顶栏可一键切另外两套：**浅色**（TypeSafe AI：`#fefefe` 纸面 + `#1e1e1e` 近黑 + 品红 `#d45bb6` + 虚线描边）、**赛博**（`#000` + 霓虹绿 `#00ff41`）。选择记在浏览器里 |
-| 🚫 **零动效（默认）** | 按要求去掉全部动效：全站 `animation: none !important` + `transition: none !important`（含 `::before`/`::after`），背景不启动任何 WebGL/Canvas 渲染循环，图表也关掉过渡。**实测两次不同时刻渲染像素级完全一致（最大差 0）**。顶栏 `🚫 动效 关` 可切回；同时尊重系统 `prefers-reduced-motion` |
+| 涨跌配色 | **默认 = 绿涨红跌**（与参照站 getbreakaway.com 一致；Breakaway 用 `--color-green` 表示正向）。顶栏一键切回 **A 股习惯红涨绿跌**，选择记在浏览器里。K 线、涨跌幅、盈亏、买卖方向、Kronos 预测柱状图全部跟随；「成功/失败、通过/风险高低」这类**非涨跌语义**固定用绿/红，不受配色影响 |
+| 🎨 **界面主题** | **默认 = Breakaway 深色**（见下一行）。顶栏可一键切换另外三套：**炭金浅**（米白 + 金棕）、**炭金深**、**赛博**（`#000` + 霓虹绿 `#00ff41`）。选择记在浏览器里 |
+| 🌑 **视觉语言（2026-10-10 改版：Breakaway 风格，颜色完全一致）** | 参照 [getbreakaway.com/scanner](https://getbreakaway.com/scanner)（美股 Quality Score 扫描器）重做界面。设计令牌**逐项提取自其线上样式表并 1:1 采用**，集中写在 `templates/index.html` 样式表末尾「视觉层 · Breakaway 风格」段：<br>· **色板**（原站 `--color-*` 全量 36 项，值完全相同）：页面底 `#0a0c0f` / 次级 `#0f1216` / 卡面 `#13171c`·`#191e24`·`#20262d`；分割线 `#242b33` / `#2e363f`；正文 `#e8ebef` / 次级 `#c3c9d1` / 弱化 `#8a939e`·`#7f8996`；强调绿 `#34d399`（亮 `#22c55e`、深 `#189447`、填充 `#166534`、软底 `#0f2a1f`、描边 `#1f4d38`、链接 `#6ee7b7`）；警示红 `#f87171`（软底 `#2a1515`、描边 `#4a2222`）；琥珀 `#fbbf24`（软底 `#2a2110`、描边 `#5a4410`）；评分分层 avg `#e3c46e` / weak `#ee9a57` / poor `#df7f86`；金标 `#87691a`<br>· **圆角**（原站 `--radius-*`）：tag 4px / mark 6px / control 8px / card 12px / pill 9999px<br>· **字号**（原站 `--text-*`）：label 11 / meta 12.5 / body 14 / row 15 / field 16 / lead 17 / title 22 / display 28 / section 34 / hero 44<br>· **字重与字距**：normal 400 / semibold 600 / bold 700 / extrabold 800；tracking −.025em / 0 / .025em<br>· **阴影**：`0 20px 60px -20px #000000e6`（原站 `--shadow-pop`）<br>· **组件语汇**：面板=`.card`（surface + 1px line + 12px 圆角）；按钮=`.btn`（8px 圆角、600 字重、主按钮绿底黑字 `--color-on-green`）；Tab=`.seg` 分段控件（选中为**绿底绿字 + 内描边**）；标签=`.pill` / `.chip`；表头用 `line-2` 下边线、行悬停 `surface-2`<br>· **字体**：优先 `geist`（原站字体），回退 Albert Sans / 系统栈；数字统一 `tabular-nums`<br>· **背景**：默认「科技网格」重绘为极暗底 + 56px 细网格 + 绿/蓝极淡径向光晕，并加径向遮罩渐隐<br>· 纯 CSS 覆盖 + 少量配色开关 JS 适配，**不改动任何 HTML 结构与业务逻辑** |
+| 🔤 **字体与字号（与原站完全一致）** | **字体**：`Geist`——原站真实字体文件已下载到 `trading-app/static/fonts/`（`Geist-Latin.woff2` 28KB + `Geist-LatinExt.woff2` 15KB，均为有效 `wOF2`），按原站 `@font-face` 的 `unicode-range` 分组加载；字重范围 400–800。中文不在 Geist 覆盖范围（Geist 仅拉丁），故中文回退系统中文栈（PingFang SC / HarmonyOS Sans SC / 微软雅黑）<br>**字体栈**（原站 `--font-sans` 逐字对齐）：`geistExt, geist, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", …`；等宽用 `--font-mono`(ui-monospace, SFMono-Regular, Menlo, Consolas…)<br>**字号令牌**（原站 `--text-*` 原值）：label 11 / meta 12.5 / body 14 / row 15 / field 16 / lead 17 / title 22 / headline 26 / display 28 / section 34 / hero 44<br>**字重**：normal 400 / semibold 600 / bold 700 / extrabold 800<br>**字距**：tight −.025em / normal 0 / wide .025em / title −.01em / tag .03em / label .06em<br>**行高**：tight 1.25 / snug 1.375 / normal 1.5 / relaxed 1.625 / display 1.1；大字号专用行高 title 1.25 · headline 1.2 · display 1.15 · section 1.1 · hero 1.1<br>**body 基准**：与原站一致 = `font-size: var(--text-row)`(15px) + `line-height: 1.45` + `-webkit-font-smoothing: antialiased`<br>**内联字号归一化**：应用内原有约 160 处内联 `font-size`（10/11/12/13/14/15/16/18px）无法用样式表逐个覆盖且不宜批量改 HTML，因此改用**属性选择器 + `!important` 精确重置**，把各档位收敛到原站档位（表头→label、统计标签→label、数值→title 且小号卡收敛到 body、表单/按钮/Tab/徽标→meta） | 参照原站的克制动效（短时长、小幅位移），仅在顶栏 `🎞 动效 开` 时生效：<br>· 面板/卡片/统计卡**淡入上浮**（`bk-fade-up` .28s，统计卡 6 级错峰）<br>· 切换 Tab 内容**淡入**（.2s）<br>· 状态点**呼吸**（`bk-pulse`）<br>· 加载中顶部**细进度扫光**（`bk-sweep`）<br>**默认仍是关**：`html[data-motion="off"]` 的 `animation/transition: none !important` 会压平全部动画，同时尊重系统 `prefers-reduced-motion` |
+| 🎞️ **动效（可选，默认关）** | 参照原站的克制动效（短时长、小幅位移），仅在顶栏 `🎞 动效 开` 时生效：<br>· 面板/卡片/统计卡**淡入上浮**（`bk-fade-up` .28s，统计卡 6 级错峰）<br>· 切换 Tab 内容**淡入**（.2s）<br>· 状态点**呼吸**（`bk-pulse`）<br>· 加载中顶部**细进度扫光**（`bk-sweep`）<br>**默认仍是关**：`html[data-motion="off"]` 的 `animation/transition: none !important` 会压平全部动画，同时尊重系统 `prefers-reduced-motion` |
+| 🚫 **零动效（默认状态）** | 默认保持零动效：全站 `animation: none !important` + `transition: none !important`（含 `::before`/`::after`），背景不启动任何 WebGL/Canvas 渲染循环。顶栏 `🚫 动效 关` 可切换 |
 | ✨ **背景模式** | 七种，顶栏「🎨 背景」切换：<br>① **科技网格**（默认，纯 CSS 静态）——深空底 + 青色 40px 精密网格<br>② **纸面**（浅色主题配套，纯 CSS 静态）<br>③ **银河**（WebGL）——ReactBits `<Galaxy />` vanilla 移植：4 层星空网格 + 光芒 + 闪烁 + 鼠标排斥<br>④ **赛博网格**（纯 CSS）——绿色 48px 网格 + 胶噪 + 扫描线 + 暗角<br>⑤ **流线**——`GatewayFlow` vanilla 移植：40 条白色虚线贝塞尔曲线汇聚到中心，**点击产生环形冲击**<br>⑥ **碎片**——`AeroShards` WebGL 移植<br>⑦ **Spline 3D**——本地 `@splinetool/runtime`，需填场景地址<br>开启动效后 ③⑤⑥⑦ 才真正跑渲染循环；任何失败都自动切回静态背景 |
 | 外围市场 | 美股三大指数 / 恒指 / 国企指数 / 日经225 / KOSPI 实时，顶部常驻条 |
 | 赛道分组 | 自选股按 AI/新能源/消费/周期分组，每组显示热度（均涨/涨跌家数/领涨股） |
@@ -193,9 +196,37 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 
 ## 🎨 界面主题与背景动画
 
-### 主题：科技风（默认）/ 浅色 / 赛博（均可切换，全部静态）
+### 主题：Breakaway 深色（默认）/ 炭金浅 / 炭金深 / 赛博（均可切换）
 
-**默认 = SharedNet 风（浅蓝白）**：
+> **2026-10-10 改版**：参照 [getbreakaway.com/scanner](https://getbreakaway.com/scanner)
+> 重做视觉语言。设计令牌**直接提取自其线上样式表**（`--color-*` / `--radius-*` / `--text-*`），
+> 映射为本项目的 `--bk-*` 令牌层，组件全部改写为该风格。
+> 详见上方功能表的「🌑 视觉语言」「🎞️ 动效」两行。
+> 风格层集中在 `templates/index.html` 样式表末尾，纯 CSS 覆盖，**不改 HTML/JS**。
+
+**默认 = Breakaway 深色**：
+
+| 变量 | 值 | 用途 |
+|---|---|---|
+| `--bk-bg` | `#0a0c0f` | 页面底（原站 `--color-bg`） |
+| `--bk-bg-2` | `#0f1216` | 次级底（`--color-bg-2`） |
+| `--bk-surface` | `#13171c` | 卡面（`--color-surface`） |
+| `--bk-surface-2` | `#191e24` | 卡面 2 / 行悬停（`--color-surface-2`） |
+| `--bk-surface-3` | `#20262d` | 卡面 3 / 标签底（`--color-surface-3`） |
+| `--bk-line` / `--bk-line-2` | `#242b33` / `#2e363f` | 分割线 / 强分割线 |
+| `--bk-ink` / `--bk-ink-2` / `--bk-muted` | `#e8ebef` / `#c3c9d1` / `#8a939e` | 正文 / 次级 / 弱化 |
+| `--bk-green` | `#34d399` | 强调绿（原站主强调色） |
+| `--bk-green-soft` / `--bk-green-line` | `#0f2a1f` / `#1f4d38` | 绿软底 / 绿描边 |
+| `--bk-red` / `--bk-amber` | `#f87171` / `#fbbf24` | 警示 / 琥珀 |
+
+> **想再调色**：改「视觉层 · Breakaway 风格」段里 `--bk-*` 令牌即可整站换肤；
+> 或改 `--radius-card` / `--radius-control` 调整圆角，改 `--text-*` 调整字号体系。
+>
+> 三套可切换主题（炭金浅 / 炭金深 / 赛博）各自保留自己的色板，
+> 只统一形态语言（圆角、线宽、字号、组件结构），因此不会被本次改版破坏。
+> 下文保留各主题的原始色板记录。
+
+**（历史）SharedNet 风色板**——早期版本曾作为默认主题：
 
 | 变量 | 值 | 用途 |
 |---|---|---|
@@ -209,9 +240,8 @@ python tests/new_features.py        # 新增数据源 + DeepSeek + 夜间自迭�
 | `--line` | `rgba(32,95,145,.10)` | 72px 网格线 |
 
 > 参考页 `aigc.xinpianchang.com/canvas/...` 从本机**连不上**（TLS 被重置，走代理也不通），
-> 且 Shotlab 画布页是需要登录的编辑器，无法提取设计令牌。当前配色是按「科技风」的通用
-> 语言（深空底 + 青蓝光 + 精密网格 + 直角 + 等宽数字）实现的。
-> **想再调色**：改 `:root` 里的 `--bg` / `--text` / `--accent` / `--border` 四个值即可整站换肤。
+> 且 Shotlab 画布页是需要登录的编辑器，无法提取设计令牌。以下色板为早期实现的记录，
+> **现已不是默认**（默认见上方的 Breakaway 深色）。
 
 **浅色 = TypeSafe AI 风格**（色板从 [typesafe.ai](https://typesafe.ai/) 的 Framer 内联样式里提取）：
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<!-- data-scheme: cn = A股习惯（红涨绿跌，默认）；western = 欧美习惯（绿涨红跌）。
+<!-- data-scheme: western = 绿涨红跌（默认，与参照站 getbreakaway.com 一致）；cn = A股习惯（红涨绿跌）。
      写在静态 HTML 上可避免首屏闪一下错误配色，JS 启动后再按 localStorage 覆盖。 -->
-<html lang="zh-CN" data-scheme="cn">
+<html lang="zh-CN" data-scheme="western">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -149,6 +149,438 @@ html[data-theme="cyber"][data-scheme="western"] {
     --up: #22c55e; --up-bg: rgba(34,197,94,.15); --up-bg-strong: rgba(34,197,94,.18);
     --down: #ef4444; --down-bg: rgba(239,68,68,.15); --down-bg-strong: rgba(239,68,68,.18);
 }
+
+/* ============================================================================
+   同花顺风格主题（data-theme="ths"）
+   ----------------------------------------------------------------------------
+   参照同花顺 PC 客户端的信息密度与配色习惯：
+     · 深色底：主窗口接近黑（#0B0E11），卡片略亮（#14181D），形成层次
+     · 红涨绿跌：A 股惯例，红 #FF3B30 醒目、绿 #00C853 清晰，均为高饱和
+     · 细线分隔：1px 实线，不用虚线/圆角，接近客户端「表格感」
+     · 数据密集：数字用等宽字体 + tabular-nums，行高紧凑
+     · 表头：深灰底 + 亮边，接近客户端列表头
+   与原有主题完全隔离：只改 data-theme="ths" 作用域，不影响其他主题。
+   ========================================================================== */
+html[data-theme="ths"] {
+    /* —— 底色层次（由深到浅）—— */
+    --ths-bg-deep:   #0B0E11;   /* 主背景 */
+    --ths-bg-panel:  #14181D;   /* 卡片 */
+    --ths-bg-raise:  #1B2027;   /* 悬浮/输入框 */
+    --ths-bg-head:   #10151A;   /* 表头/工具条 */
+    --ths-line:      #2A3138;   /* 分隔线 */
+    --ths-line-soft: #1F252B;   /* 弱分隔线 */
+
+    /* —— 文本 —— */
+    --ths-text:      #E8EAED;   /* 主文本 */
+    --ths-text-2:    #A8B0B8;   /* 次要文本 */
+    --ths-text-3:    #6B747D;   /* 弱化文本 */
+
+    /* —— 涨跌（A股：红涨绿跌）—— */
+    --ths-up:        #FF3B30;   /* 涨 = 红 */
+    --ths-down:      #00C853;   /* 跌 = 绿 */
+    --ths-flat:      #8B949E;
+    --ths-up-soft:   rgba(255,59,48,.14);
+    --ths-down-soft: rgba(0,200,83,.14);
+
+    /* —— 强调色（客户端常用橙黄做选中/高亮）—— */
+    --ths-accent:    #FFA726;
+    --ths-accent-2:  #4FC3F7;
+    --ths-warn:      #FFB300;
+    --ths-info:      #4FC3F7;
+
+    /* —— 映射到既有变量契约（换皮不换骨）—— */
+    --bg: #0B0E11;
+    --bg-2: #14181D;
+    --panel: #14181D;
+    --panel-solid: #14181D;
+    --panel2: #1B2027;
+    --border: #2A3138;
+    --border-strong: #3A444D;
+    --text: #E8EAED;
+    --muted: #A8B0B8;
+    --accent: #FFA726;
+    --accent-2: #4FC3F7;
+    --accent-3: #FFB300;
+    --line: #1F252B;
+    --ink: #E8EAED;
+    --paper: #14181D;
+    --paper-3: #1B2027;
+    --magenta: #FFA726;
+    --pink: #FFA726;
+    --neon: #4FC3F7;
+    --teal: #00C853;
+    --stroke-w: 1px;
+    --green: #00C853; --red: #FF3B30;
+    --blue: #4FC3F7; --amber: #FFB300;
+
+    /* 涨跌语义（红涨绿跌，同花顺默认） */
+    --up: #FF3B30;
+    --up-bg: rgba(255,59,48,.14);
+    --up-bg-strong: rgba(255,59,48,.22);
+    --down: #00C853;
+    --down-bg: rgba(0,200,83,.14);
+    --down-bg-strong: rgba(0,200,83,.22);
+}
+/* 同花顺主题固定红涨绿跌（A 股惯例）——覆盖全局 data-scheme 设置。
+   原因：同花顺客户端就是红涨绿跌，这是该风格的组成部分；
+   若跟随 western（绿涨红跌）会与用户对同花顺的认知冲突。
+   如需绿涨红跌，切回其他主题即可。 */
+html[data-theme="ths"],
+html[data-theme="ths"][data-scheme="western"],
+html[data-theme="ths"][data-scheme="cn"] {
+    --up: #FF3B30;
+    --up-bg: rgba(255,59,48,.14);
+    --up-bg-strong: rgba(255,59,48,.24);
+    --down: #00C853;
+    --down-bg: rgba(0,200,83,.14);
+    --down-bg-strong: rgba(0,200,83,.24);
+}
+
+/* ——— 同花顺主题的组件级覆写：直角、实线、紧凑 ——— */
+html[data-theme="ths"] body { background: var(--ths-bg-deep); }
+
+/* 网格/噪点/扫描线/暗角：客户端是纯色底，全部隐去 */
+html[data-theme="ths"] #substrate,
+html[data-theme="ths"] #noise,
+html[data-theme="ths"] #scanlines,
+html[data-theme="ths"] #vignette { display: none; }
+
+/* 面板：实线 + 直角 + 无投影，贴近客户端的窗口感 */
+html[data-theme="ths"] .panel {
+    background: var(--ths-bg-panel);
+    border: 1px solid var(--ths-line);
+    border-radius: 0;
+    box-shadow: none;
+    padding: 10px 12px;
+}
+html[data-theme="ths"] .panel:hover { border-color: var(--ths-line); }
+html[data-theme="ths"] .panel::after,
+html[data-theme="ths"] .rec-card::after { display: none; }
+
+/* 面板标题：像客户端的工具条 —— 深底、分隔线、紧凑 */
+html[data-theme="ths"] .panel h2 {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ths-text);
+    border-bottom: 1px solid var(--ths-line);
+    padding-bottom: 6px;
+    margin: -10px -12px 8px;
+    padding: 7px 12px;
+    background: var(--ths-bg-head);
+    letter-spacing: 0;
+}
+html[data-theme="ths"] .panel h2 .hint { color: var(--ths-text-3); font-size: 11px; }
+
+/* 输入框/下拉：深底、实线、直角 */
+html[data-theme="ths"] input[type=text],
+html[data-theme="ths"] input[type=number],
+html[data-theme="ths"] input[type=time],
+html[data-theme="ths"] select {
+    background: var(--ths-bg-raise);
+    border: 1px solid var(--ths-line);
+    color: var(--ths-text);
+    border-radius: 0;
+    font-family: "Cascadia Mono", ui-monospace, Consolas, monospace;
+}
+html[data-theme="ths"] input:focus,
+html[data-theme="ths"] select:focus {
+    border-color: var(--ths-accent);
+    outline: none;
+    caret-color: var(--ths-accent);
+}
+
+/* 按钮：直角、实线，hover 变亮（客户端风格） */
+html[data-theme="ths"] button {
+    background: var(--ths-bg-raise);
+    border: 1px solid var(--ths-line);
+    color: var(--ths-text);
+    border-radius: 0;
+    font-family: inherit;
+    letter-spacing: 0;
+    transition: background .12s, border-color .12s, color .12s;
+}
+html[data-theme="ths"] button:hover {
+    background: #232A32;
+    border-color: var(--ths-accent);
+    color: var(--ths-accent);
+    box-shadow: none;
+}
+html[data-theme="ths"] button.ghost {
+    background: transparent;
+    border: 1px solid var(--ths-line);
+    color: var(--ths-text-2);
+}
+html[data-theme="ths"] button.ghost:hover {
+    background: #232A32;
+    border-color: var(--ths-accent);
+    color: var(--ths-accent);
+}
+html[data-theme="ths"] button.green {
+    background: var(--ths-down); border-color: var(--ths-down); color: #04140A; font-weight: 600;
+}
+html[data-theme="ths"] button.red {
+    background: var(--ths-up); border-color: var(--ths-up); color: #1A0402; font-weight: 600;
+}
+
+/* 顶部标签：客户端是多标签页样式 —— 选中的与工具条连成一体 */
+html[data-theme="ths"] .tabs { gap: 0; border-bottom: 1px solid var(--ths-line); margin-bottom: 8px; }
+html[data-theme="ths"] .tabs button {
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ths-text-3);
+    padding: 7px 14px;
+    font-size: 12px;
+    letter-spacing: 0;
+}
+html[data-theme="ths"] .tabs button:hover { color: var(--ths-text); background: #1A1F25; }
+html[data-theme="ths"] .tabs button.active {
+    background: var(--ths-bg-panel);
+    border-color: var(--ths-line);
+    border-bottom: 1px solid var(--ths-bg-panel);
+    color: var(--ths-accent);
+    font-weight: 600;
+    margin-bottom: -1px;
+}
+
+/* 表格：客户端是密集列表 —— 紧凑行高、左侧对齐、斑马纹 */
+html[data-theme="ths"] table { font-size: 12px; }
+html[data-theme="ths"] th,
+html[data-theme="ths"] td {
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--ths-line-soft);
+    border-right: none;
+    font-variant-numeric: tabular-nums;
+}
+html[data-theme="ths"] th {
+    background: var(--ths-bg-head);
+    color: var(--ths-text-2);
+    font-size: 11px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    border-bottom: 1px solid var(--ths-line);
+    position: sticky; top: 0; z-index: 1;
+}
+html[data-theme="ths"] tr:hover { background: #1A1F25; }
+html[data-theme="ths"] tbody tr:nth-child(even) { background: rgba(255,255,255,.018); }
+html[data-theme="ths"] tbody tr:nth-child(even):hover { background: #1A1F25; }
+
+/* 数字强调：等宽 + 表格数字对齐 */
+html[data-theme="ths"] .pos,
+html[data-theme="ths"] .neg,
+html[data-theme="ths"] .stat .v {
+    font-variant-numeric: tabular-nums;
+    font-family: "Cascadia Mono", ui-monospace, Consolas, monospace;
+}
+html[data-theme="ths"] .pos { color: var(--ths-up); }
+html[data-theme="ths"] .neg { color: var(--ths-down); }
+
+/* 统计卡：直角、紧凑 */
+html[data-theme="ths"] .stat {
+    background: var(--ths-bg-raise);
+    border: 1px solid var(--ths-line);
+    border-radius: 0;
+    padding: 7px 10px;
+}
+html[data-theme="ths"] .stat .k { color: var(--ths-text-3); font-size: 11px; }
+html[data-theme="ths"] .stat .v { font-size: 16px; color: var(--ths-text); }
+
+/* 自选股列表：客户端列表行 */
+html[data-theme="ths"] .watch-item {
+    border-bottom: 1px solid var(--ths-line-soft);
+    padding: 6px 8px;
+}
+html[data-theme="ths"] .watch-item:hover { background: #1A1F25; }
+
+/* 卡片 */
+html[data-theme="ths"] .rec-card {
+    background: var(--ths-bg-panel);
+    border: 1px solid var(--ths-line);
+    border-radius: 0;
+}
+html[data-theme="ths"] .rec-card:hover { border-color: var(--ths-accent); box-shadow: none; }
+html[data-theme="ths"] .rec-rank {
+    border: 1px solid var(--ths-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--ths-accent);
+}
+html[data-theme="ths"] .rec-rank.top {
+    background: rgba(255,167,38,.16);
+    border-color: var(--ths-accent);
+    color: var(--ths-accent);
+}
+
+/* 信号徽章 */
+html[data-theme="ths"] .signal-BUY { background: var(--ths-up-soft); color: var(--ths-up); }
+html[data-theme="ths"] .signal-SELL { background: var(--ths-down-soft); color: var(--ths-down); }
+html[data-theme="ths"] .signal-HOLD { background: #232A32; color: var(--ths-text-3); }
+
+/* 消息条 */
+html[data-theme="ths"] .msg.ok { background: rgba(0,200,83,.12); color: var(--ths-down); }
+html[data-theme="ths"] .msg.err { background: rgba(255,59,48,.12); color: var(--ths-up); }
+
+/* 滚动条：深色细条 */
+html[data-theme="ths"] ::-webkit-scrollbar { width: 10px; height: 10px; }
+html[data-theme="ths"] ::-webkit-scrollbar-track { background: var(--ths-bg-deep); }
+html[data-theme="ths"] ::-webkit-scrollbar-thumb { background: #333B43; border-radius: 0; }
+html[data-theme="ths"] ::-webkit-scrollbar-thumb:hover { background: #4A545E; }
+
+/* 输入区/工具条分隔 */
+html[data-theme="ths"] .form-row label { color: var(--ths-text-3); font-size: 11px; }
+
+/* 顶栏如果存在：深底 + 底部分隔线 */
+html[data-theme="ths"] header,
+html[data-theme="ths"] .topbar { background: var(--ths-bg-head); border-bottom: 1px solid var(--ths-line); }
+
+/* 选中/高亮块 */
+html[data-theme="ths"] ::selection { background: var(--ths-accent); color: #10151A; }
+
+/* 涨跌背景块（自选标记、跟投按钮）用同花顺色 */
+html[data-theme="ths"] .wl-flag.pos { background: var(--ths-up-soft); color: var(--ths-up); }
+html[data-theme="ths"] .wl-flag.neg { background: var(--ths-down-soft); color: var(--ths-down); }
+html[data-theme="ths"] .follow-btn { background: var(--ths-up-soft); color: var(--ths-up); border-radius: 0; }
+html[data-theme="ths"] .follow-btn:hover { background: var(--ths-up-strong, rgba(255,59,48,.24)); }
+
+/* ============================================================================
+   K线看板 · 同花顺风格 + 全屏模式
+   ----------------------------------------------------------------------------
+   目标：把「K线+指标+预测」板块做成同花顺客户端的看盘体验
+     · 全屏时铺满视口，工具栏固定在顶部，图表撑满剩余高度
+     · 放大/缩小（+/-/重置）作用于 K 线显示根数，键盘 + 按钮都可用
+     · 配色、网格、十字光标、成交量副图均按同花顺习惯
+   ========================================================================== */
+
+/* —— 看盘区明暗（独立于全站主题）：data-kline="dark|light" —— */
+/* 深色 */
+html[data-kline="dark"] #chart {
+    --kline-bg: #0B0E11;
+    --kline-tool-bg: #10151A;
+    --kline-tool-bd: #2A3138;
+    --kline-tool-fg: #E8EAED;
+    --kline-tool-fg2: #6B747D;
+}
+html[data-kline="dark"] #chart-main,
+html[data-kline="dark"] .kline-tools button,
+html[data-kline="dark"] #tab-chart .form-row {
+    background: #10151A;
+    border-color: #2A3138;
+    color: #E8EAED;
+}
+html[data-kline="dark"] #chart-main { background: #0B0E11; }
+html[data-kline="dark"] .kline-tools button {
+    background: #1B2027; border: 1px solid #2A3138; color: #E8EAED;
+}
+html[data-kline="dark"] .kline-tools button:hover {
+    border-color: #FFA726; color: #FFA726; background: #232A32;
+}
+html[data-kline="dark"] .kline-tools button.active {
+    background: #FFA726; border-color: #FFA726; color: #10151A; font-weight: 600;
+}
+html[data-kline="dark"] #tab-chart .form-row { border: 1px solid #2A3138; }
+html[data-kline="dark"] #tab-chart .form-row label { color: #6B747D; }
+html[data-kline="dark"] #tab-chart .form-row select {
+    background: #1B2027; border-color: #2A3138; color: #E8EAED;
+}
+
+/* 浅色 */
+html[data-kline="light"] #chart-main { background: #FFFFFF; }
+html[data-kline="light"] .kline-tools button {
+    background: #F5F7F9; border: 1px solid #D5DAE0; color: #1A2430;
+}
+html[data-kline="light"] .kline-tools button:hover {
+    border-color: #E65100; color: #E65100; background: #FFF3E0;
+}
+html[data-kline="light"] .kline-tools button.active {
+    background: #E65100; border-color: #E65100; color: #FFFFFF; font-weight: 600;
+}
+html[data-kline="light"] #tab-chart .form-row {
+    background: #F5F7F9; border: 1px solid #D5DAE0;
+}
+html[data-kline="light"] #tab-chart .form-row label { color: #6B747D; }
+html[data-kline="light"] #tab-chart .form-row select {
+    background: #FFFFFF; border-color: #D5DAE0; color: #1A2430;
+}
+
+/* —— 全屏容器 —— */
+#tab-chart.kline-fs {
+    position: fixed; inset: 0; z-index: 9000;
+    background: var(--kline-bg, #0B0E11);
+    padding: 0; margin: 0; overflow: hidden;
+    display: flex; flex-direction: column;
+}
+#tab-chart.kline-fs::before { content: none; }
+
+/* 全屏容器背景跟随看盘区明暗 */
+html[data-kline="dark"] #tab-chart.kline-fs { background: #0B0E11; }
+html[data-kline="light"] #tab-chart.kline-fs { background: #FFFFFF; }
+html[data-kline="light"] #tab-chart.kline-fs #chart-main { background: #FFFFFF; }
+
+/* 全屏时的工具栏：客户端样式，固定顶部 */
+#tab-chart.kline-fs .form-row {
+    flex: 0 0 auto;
+    margin: 0; padding: 6px 10px;
+    background: var(--kline-tool-bg, #10151A);
+    border-bottom: 1px solid var(--kline-tool-bd, #2A3138);
+    gap: 10px; align-items: center;
+    flex-wrap: nowrap; overflow-x: auto;
+}
+#tab-chart.kline-fs .form-row .field { flex: 0 0 auto; min-width: 108px; }
+#tab-chart.kline-fs .form-row label { font-size: 11px; color: var(--kline-tool-fg2, #6B747D); margin-bottom: 1px; }
+#tab-chart.kline-fs .form-row select { margin: 0; padding: 3px 6px; height: 28px; }
+
+/* 全屏时图表撑满剩余空间 */
+#tab-chart.kline-fs #chart-main {
+    flex: 1 1 auto; height: auto !important; min-height: 0;
+    background: var(--kline-bg, #0B0E11);
+}
+#tab-chart.kline-fs #chart-loading,
+#tab-chart.kline-fs .msg { flex: 0 0 auto; }
+
+/* 全屏时隐藏下方复盘面板，保持「纯看盘」 */
+#tab-chart.kline-fs .panel { display: none; }
+
+/* —— 工具栏按钮（放大/缩小/全屏）—— */
+.kline-tools { display: flex; gap: 4px; align-items: center; flex: 0 0 auto; }
+.kline-tools button {
+    min-width: 30px; height: 28px; padding: 0 8px;
+    font-size: 13px; line-height: 1; border-radius: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+html[data-theme="ths"] .kline-tools button {
+    background: #1B2027; border: 1px solid #2A3138; color: #E8EAED;
+}
+html[data-theme="ths"] .kline-tools button:hover {
+    border-color: #FFA726; color: #FFA726; background: #232A32;
+}
+html[data-theme="ths"] .kline-tools button.active {
+    background: #FFA726; border-color: #FFA726; color: #10151A; font-weight: 600;
+}
+
+/* —— 同花顺风格的 K 线面板外观 —— */
+html[data-theme="ths"] #chart-main {
+    border: 1px solid #2A3138;
+    background: #0B0E11;
+}
+html[data-theme="ths"] #tab-chart .form-row {
+    background: #10151A;
+    border: 1px solid #2A3138;
+    padding: 6px 10px;
+    margin-bottom: 6px;
+}
+
+/* 全屏提示条 */
+#kline-fs-hint {
+    position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+    z-index: 9001; pointer-events: none;
+    background: rgba(16,21,26,.94); border: 1px solid #2A3138;
+    color: #A8B0B8; font-size: 12px; padding: 6px 14px;
+    opacity: 0; transition: opacity .3s ease;
+}
+#kline-fs-hint.show { opacity: 1; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 ::selection { background: var(--magenta); color: var(--paper); }
 /* 界面缩放：默认 1.5 倍（字号、间距、图表同步放大，等价于浏览器 150% 缩放）。
@@ -346,6 +778,933 @@ tr:hover { background: rgba(212,91,182,.06); }
 .hidden { display: none !important; }
 .loading { text-align: center; padding: 30px; color: var(--muted); }
 @media (max-width: 1100px) { .wrap { grid-template-columns: 1fr; } }
+
+/* ============================================================================
+   视觉层 · Breakaway 风格（2026-10-10 改版）
+   ----------------------------------------------------------------------------
+   参照 https://getbreakaway.com/scanner —— 一个美股 Quality Score 扫描器。
+   设计令牌直接提取自其线上样式表（--color-* / --radius-* / --text-* 系列），
+   在此映射到 Kronos 现有变量契约上，做到「换皮不换骨」：
+     · 不改 HTML 结构、不改 JS 逻辑、不改任何接口
+     · 涨跌语义仍由 --up / --down 决定（默认 A 股红涨绿跌），本层不覆盖语义方向
+   回滚：从 _backup_ 目录还原 index.html，或删除本注释块至样式表结尾之间的内容。
+
+   Breakaway 原始令牌（供对照）：
+     bg #0a0c0f · bg-2 #0f1216 · surface #13171c · surface-2 #191e24 · surface-3 #20262d
+     line #242b33 · line-2 #2e363f
+     ink #e8ebef · ink-2 #c3c9d1 · muted #8a939e
+     green #34d399 · green-soft #0f2a1f · green-line #1f4d38 · on-green #04110a
+     red #f87171 · red-soft #2a1515 · red-line #4a2222
+     amber #fbbf24 · amber-soft #2a2110 · amber-line #5a4410
+     radius: tag 4 / mark 6 / control 8 / card 12 / pill 9999
+     text: label 11 / meta 12.5 / body 14 / row 15 / title 22 / display 28
+     shadow-pop: 0 20px 60px -20px #000000e6
+   ========================================================================== */
+
+/* ---------- 0a. 字体：Geist（原站真实字体文件，已下载到 static/fonts/） ----------
+   Breakaway 用 Geist 作为界面字体。这里按原站 @font-face 的 unicode-range 分组加载，
+   并保留其 Fallback 定义（原站用 local(Arial) 兜底）。
+   中文不在 Geist 覆盖范围（Geist 仅拉丁），故中文回退到系统中文栈。 */
+@font-face {
+    font-family: "geist";
+    src: url("/static/fonts/Geist-Latin.woff2") format("woff2");
+    font-weight: 400 800;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+                   U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+                   U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "geistExt";
+    src: url("/static/fonts/Geist-LatinExt.woff2") format("woff2");
+    font-weight: 400 800;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+                   U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+                   U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------- 0. Breakaway 令牌（独立命名，避免污染既有主题变量） ---------- */
+:root {
+    --bk-bg:        #0a0c0f;
+    --bk-bg-2:      #0f1216;
+    --bk-surface:   #13171c;
+    --bk-surface-2: #191e24;
+    --bk-surface-3: #20262d;
+    --bk-line:      #242b33;
+    --bk-line-2:    #2e363f;
+    --bk-ink:       #e8ebef;
+    --bk-ink-2:     #c3c9d1;
+    --bk-muted:     #8a939e;
+    --bk-muted-2:   #7f8996;
+    --bk-green:     #34d399;
+    --bk-green-2:   #22c55e;
+    --bk-green-deep:#189447;
+    --bk-green-fill:#166534;
+    --bk-green-soft:#0f2a1f;
+    --bk-green-line:#1f4d38;
+    --bk-green-wash:#0c1a16;
+    --bk-green-divider:#18382b;
+    --bk-green-box: #34d3990f;
+    --bk-link:      #6ee7b7;
+    --bk-on-green:  #04110a;
+    --bk-red:       #f87171;
+    --bk-red-soft:  #2a1515;
+    --bk-red-line:  #4a2222;
+    --bk-amber:     #fbbf24;
+    --bk-amber-soft:#2a2110;
+    --bk-amber-line:#5a4410;
+    --bk-amber-muted:#c9a03a;
+    --bk-amber-wash:#18160f;
+    --bk-amber-divider:#403210;
+    --bk-watch-gold:#121210;
+    --bk-watch-gold-line:#87691a;
+    --bk-watch-gold-divider:#59471a;
+    --bk-scrim:     #040608b8;
+    --bk-scrim-light:#04060873;
+    /* 评分分层（原站 tier 体系） */
+    --bk-tier-avg:  #e3c46e;
+    --bk-tier-weak: #ee9a57;
+    --bk-tier-poor: #df7f86;
+    --bk-tier-avg-soft:#e3c46e14;  --bk-tier-avg-line:#e3c46e73;
+    --bk-tier-avg-box:#e3c46e0f;   --bk-tier-avg-box-line:#e3c46e59;
+    --bk-tier-weak-soft:#ee9a5714; --bk-tier-weak-line:#ee9a5773;
+    --bk-tier-weak-box:#ee9a570f;  --bk-tier-weak-box-line:#ee9a5759;
+    --bk-tier-poor-soft:#df7f8614; --bk-tier-poor-line:#df7f8673;
+    --bk-tier-poor-box:#df7f860f;  --bk-tier-poor-box-line:#df7f8659;
+
+    --radius-tag: 4px;
+    --radius-mark: 6px;
+    --radius-control: 8px;
+    --radius-card: 12px;
+    --radius-pill: 9999px;
+
+    --text-label: 11px;
+    --text-meta: 12.5px;
+    --text-body: 14px;
+    --text-row: 15px;
+    --text-field: 16px;
+    --text-lead: 17px;
+    --text-title: 22px;
+    --text-display: 28px;
+    --text-headline: 26px;
+    --text-section: 34px;
+    --text-hero: 44px;
+
+    /* 字重（原站 --font-weight-*） */
+    --fw-normal: 400;
+    --fw-semibold: 600;
+    --fw-bold: 700;
+    --fw-extrabold: 800;
+
+    /* 字距（原站 --tracking-*） */
+    --tracking-tight: -.025em;
+    --tracking-normal: 0em;
+    --tracking-wide: .025em;
+    --tracking-title: -.01em;
+    --tracking-tag: .03em;
+    --tracking-label: .06em;
+
+    /* 行高（原站 --leading-*） */
+    --leading-tight: 1.25;
+    --leading-snug: 1.375;
+    --leading-normal: 1.5;
+    --leading-relaxed: 1.625;
+    --leading-display: 1.1;
+    /* 大字号的专用行高（原站 --text-X--line-height） */
+    --lh-title: 1.25;
+    --lh-headline: 1.2;
+    --lh-display: 1.15;
+    --lh-section: 1.1;
+    --lh-hero: 1.1;
+
+    /* 字体栈（原站 --font-sans，中文追加系统栈兜底） */
+    --font-geist: "geist", "geist Fallback";
+    --font-geist-ext: "geistExt";
+    --bk-font-sans: var(--font-geist-ext), var(--font-geist), ui-sans-serif, system-ui,
+                    -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+                    "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+    --bk-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+    --shadow-pop: 0 20px 60px -20px #000000e6;
+    --bk-ease: cubic-bezier(.4, 0, .2, 1);
+    --bk-ease-out: cubic-bezier(0, 0, .2, 1);
+    --bk-dur: .15s;
+}
+
+/* Breakaway 令牌 → 既有主题变量的映射。
+   默认（:root，即 SharedNet 主题位）走 Breakaway 深色；
+   浅色/炭金/赛博主题各自保留自己的色板，只借用形态（圆角/线宽/字号）。
+   这样三套可切换主题不会被破坏，同时组件结构语言统一。 */
+:root {
+    --bg: var(--bk-bg);
+    --bg-2: var(--bk-bg-2);
+    --panel: var(--bk-surface);
+    --panel-solid: var(--bk-surface);
+    --panel2: var(--bk-surface-2);
+    --border: var(--bk-line);
+    --border-strong: var(--bk-line-2);
+    --text: var(--bk-ink);
+    --muted: var(--bk-muted);
+    --accent: var(--bk-green);
+    --accent-2: #22c55e;
+    --accent-3: var(--bk-amber);
+    --line: var(--bk-line);
+    --ink: var(--bk-ink);
+    --paper: var(--bk-surface);
+    --paper-3: var(--bk-surface-2);
+    --magenta: var(--bk-green);
+    --pink: var(--bk-amber);
+    --neon: var(--bk-green);
+    --teal: var(--bk-green);
+    --green: var(--bk-green);
+    --red: var(--bk-red);
+    --blue: #60a5fa;
+    --amber: var(--bk-amber);
+    --stroke-w: 1px;
+}
+/* 涨跌色：**与原站一致 = 绿涨红跌**（Breakaway 用 --color-green 表示正向）。
+   注意：这与 A 股「红涨绿跌」相反。按「颜色跟参照网站一模一样」采用原站方向。
+   实现方式：把 Breakaway 方向写入 :root（= 默认），并同时覆盖各主题下的旧硬编码色值，
+   保证无论当前是哪套主题，涨跌色都与参照站一致。
+   原有的 cn / western 两个开关名各自映射到正确方向——
+   这样 JS 逻辑（applyScheme('cn'|'western')）完全不用改，顶栏按钮照常可用。 */
+:root,
+html[data-scheme="western"],
+html[data-theme][data-scheme="western"] {
+    --up:   var(--bk-green);  --up-bg: var(--bk-green-soft);  --up-bg-strong: rgba(52,211,153,.20);
+    --down: var(--bk-red);    --down-bg: var(--bk-red-soft);  --down-bg-strong: rgba(248,113,113,.20);
+}
+/* A 股习惯：红涨绿跌（顶栏按钮可切回） */
+html[data-scheme="cn"] {
+    --up:   var(--bk-red);    --up-bg: var(--bk-red-soft);    --up-bg-strong: rgba(248,113,113,.20);
+    --down: var(--bk-green);  --down-bg: var(--bk-green-soft); --down-bg-strong: rgba(52,211,153,.20);
+}
+
+/* 浅色主题（tan）下，把 Breakaway 的暗色语义令牌重映射到浅色等价物，
+   使组件样式（用 --bk-* 书写）在浅色主题里同样正确。 */
+html[data-theme="tan"] {
+    --bk-bg: #FAFAF8; --bk-bg-2: #FFFFFF;
+    --bk-surface: #FFFFFF; --bk-surface-2: #F5F5F2; --bk-surface-3: #EDEDEA;
+    --bk-line: rgba(26,36,48,.10); --bk-line-2: rgba(26,36,48,.20);
+    --bk-ink: #1A2430; --bk-ink-2: #33404D; --bk-muted: #546E7A;
+    --bk-green: #B8860B; --bk-green-soft: rgba(184,134,11,.10); --bk-green-line: rgba(184,134,11,.38);
+    --bk-on-green: #FFFFFF;
+    --bk-red: #C62828; --bk-red-soft: rgba(198,40,40,.10); --bk-red-line: rgba(198,40,40,.34);
+    --bk-amber: #B8860B; --bk-amber-soft: rgba(184,134,11,.10); --bk-amber-line: rgba(184,134,11,.36);
+    --shadow-pop: 0 20px 60px -20px rgba(26,36,48,.35);
+}
+/* 炭金深色：把 Breakaway 绿换成金棕，暗底提亮 */
+html[data-theme="tandark"] {
+    --bk-green: #D4A017; --bk-green-soft: rgba(212,160,23,.12); --bk-green-line: rgba(212,160,23,.42);
+    --bk-on-green: #1A2430;
+    --bk-muted: #8FA6B2; --bk-ink: #FAFAF8; --bk-ink-2: #D6DEE3;
+}
+/* 赛博：霓虹绿 */
+html[data-theme="cyber"] {
+    --bk-green: #00ff41; --bk-green-soft: rgba(0,255,65,.10); --bk-green-line: rgba(0,255,65,.42);
+    --bk-on-green: #000000;
+    --bk-muted: #7a8a7a; --bk-ink: #d8ffd8; --bk-ink-2: #b0dcb0;
+    --bk-surface: #0a0a0a; --bk-surface-2: #111111; --bk-surface-3: #1a1a1a;
+    --bk-line: rgba(0,255,65,.14); --bk-line-2: rgba(0,255,65,.28);
+}
+
+/* ---------- 2. 页面底：#tech-bg 重绘为 Breakaway 的极暗底 + 极淡网格 ---------- */
+/* 关掉与之叠加的 #substrate，避免双层网格发闷 */
+#substrate { display: none; }
+#tech-bg {
+    background:
+        radial-gradient(ellipse 60% 44% at 50% -8%, rgba(52,211,153,.045), transparent 66%),
+        radial-gradient(ellipse 46% 40% at 92% 104%, rgba(96,165,250,.035), transparent 64%),
+        var(--bk-bg);
+}
+#tech-bg::after {
+    background-image:
+        linear-gradient(to right, var(--bk-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--bk-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    opacity: .38;
+    mask-image: radial-gradient(ellipse 130% 90% at 50% 0%, #000 22%, transparent 78%);
+    -webkit-mask-image: radial-gradient(ellipse 130% 90% at 50% 0%, #000 22%, transparent 78%);
+}
+/* 切到浅色主题（tan）时，深色网格底会与白底冲突 —— 让它跟随主题底色走 */
+html[data-theme="tan"] #tech-bg {
+    background:
+        radial-gradient(ellipse 58% 46% at 78% -6%, rgba(184,134,11,.05), transparent 64%),
+        radial-gradient(ellipse 46% 40% at 6% 104%, rgba(84,110,122,.05), transparent 62%),
+        var(--bg);
+}
+html[data-theme="tan"] #tech-bg::after {
+    background-image:
+        linear-gradient(to right, var(--line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--line) 1px, transparent 1px);
+    opacity: 1;
+    mask-image: none; -webkit-mask-image: none;
+}
+#noise { opacity: .010 !important; }
+#scanlines, #vignette { opacity: .30; }
+body {
+    background: var(--bg);
+    color: var(--text);
+    /* 与原站完全一致：--font-sans + font-size: --text-row(15px) + line-height 1.45 */
+    font-family: var(--bk-font-sans);
+    font-size: var(--text-row);
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    letter-spacing: var(--tracking-normal);
+}
+/* 字体在未加载完成时避免抖动：数字统一等宽对齐 */
+input, button, select, textarea { font-family: inherit; }
+
+/* ---------- 3. 顶栏：Breakaway header（细分隔线 + 轻毛玻璃，高 49px 级） ---------- */
+.topbar {
+    background: color-mix(in srgb, var(--bk-bg) 88%, transparent);
+    backdrop-filter: saturate(1.5) blur(12px);
+    -webkit-backdrop-filter: saturate(1.5) blur(12px);
+    border-bottom: 1px solid var(--bk-line);
+    box-shadow: none;
+    padding: 9px 20px;
+    position: sticky; top: 0; z-index: 60;
+}
+.topbar h1 {
+    font-family: inherit; font-size: var(--text-title); font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-title); line-height: var(--lh-title);
+    text-transform: none; color: var(--bk-ink);
+}
+.topbar h1 span { font-family: inherit; font-size: var(--text-meta); font-weight: var(--fw-semibold); letter-spacing: var(--tracking-normal); text-transform: none; color: var(--bk-muted); }
+
+/* ---------- 4. 徽标 / 胶囊：Breakaway .pill / .chip ---------- */
+.badge {
+    border: 1px solid var(--bk-line);
+    border-radius: var(--radius-pill);
+    background: var(--bk-surface);
+    color: var(--bk-ink-2);
+    font-family: inherit; font-size: var(--text-meta); font-weight: 600;
+    letter-spacing: 0; padding: 3px 11px; min-height: 24px;
+    display: inline-flex; align-items: center;
+    transition: background var(--bk-dur) var(--bk-ease), border-color var(--bk-dur) var(--bk-ease), color var(--bk-dur) var(--bk-ease);
+}
+.badge:hover { border-color: var(--bk-green); background: var(--bk-green-soft); color: var(--bk-green); }
+
+/* ---------- 5. 面板：Breakaway .card / .panel ---------- */
+.panel {
+    background: var(--bk-surface);
+    border: 1px solid var(--bk-line);
+    border-radius: var(--radius-card);
+    padding: 16px;
+    box-shadow: none;
+    transition: border-color var(--bk-dur) var(--bk-ease), background var(--bk-dur) var(--bk-ease);
+}
+.panel:hover { border-color: var(--bk-line-2); box-shadow: none; }
+.panel::after { display: none; }
+.panel h2 {
+    font-size: var(--text-body); font-weight: var(--fw-bold); color: var(--bk-ink);
+    letter-spacing: var(--tracking-normal); line-height: var(--leading-tight);
+    text-transform: none;
+    padding-bottom: 10px; margin-bottom: 12px;
+    border-bottom: 1px solid var(--bk-line);
+}
+.panel h2 .hint { color: var(--bk-muted); font-weight: var(--fw-normal); font-size: var(--text-label); letter-spacing: var(--tracking-normal); }
+
+/* ---------- 6. 按钮：Breakaway .btn（40px 高、control 圆角、克制的悬停） ---------- */
+button {
+    border-radius: var(--radius-control);
+    border: 1px solid var(--bk-line);
+    background: var(--bk-surface-2);
+    color: var(--bk-ink);
+    font-family: inherit; font-size: var(--text-meta); font-weight: 600;
+    letter-spacing: 0; min-height: 32px; padding: 6px 14px;
+    transition: background var(--bk-dur) var(--bk-ease), border-color var(--bk-dur) var(--bk-ease), color var(--bk-dur) var(--bk-ease);
+}
+button:hover {
+    background: var(--bk-surface-3); border-color: var(--bk-line-2); color: var(--bk-ink);
+    transform: none; box-shadow: none;
+}
+button:active { transform: none; }
+button:focus-visible { outline: none; box-shadow: inset 0 0 0 1px var(--bk-green); }
+button.ghost { background: transparent; border: 1px solid var(--bk-line); color: var(--bk-ink-2); }
+button.ghost:hover { background: var(--bk-green-soft); border-color: var(--bk-green-line); color: var(--bk-green); }
+button.green { background: var(--bk-green); border-color: transparent; color: var(--bk-on-green); font-weight: 700; }
+button.green:hover { background: #22c55e; color: var(--bk-on-green); }
+button.red { background: var(--bk-red); border-color: transparent; color: #2a0b0b; font-weight: 700; }
+
+/* ---------- 7. 表单控件：Breakaway 输入（surface + 细线 + 绿色聚焦环） ---------- */
+input[type=text], input[type=number], select, textarea {
+    background: var(--bk-surface-2);
+    border: 1px solid var(--bk-line);
+    border-radius: var(--radius-control);
+    color: var(--bk-ink);
+    font-family: inherit; font-size: var(--text-meta);
+    padding: 7px 10px; min-height: 32px;
+    transition: border-color var(--bk-dur) var(--bk-ease), box-shadow var(--bk-dur) var(--bk-ease);
+}
+input[type=text]::placeholder, input[type=number]::placeholder { color: var(--bk-muted); }
+input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus {
+    border-style: solid; border-color: var(--bk-green-line);
+    box-shadow: inset 0 0 0 1px var(--bk-green-line);
+    caret-color: var(--bk-green);
+}
+
+/* ---------- 8. 表格：Breakaway 表头 line-2 下边线、行悬停 surface-2 ---------- */
+th {
+    font-family: inherit; font-size: var(--text-label); font-weight: 700;
+    text-transform: none; letter-spacing: .02em;
+    color: var(--bk-muted);
+    border-bottom: 1px solid var(--bk-line-2);
+    padding: 9px 10px; background: transparent;
+}
+td { border-bottom: 1px solid var(--bk-line); padding: 9px 10px; color: var(--bk-ink-2); }
+tbody tr { transition: background var(--bk-dur) var(--bk-ease); }
+tr:hover { background: var(--bk-surface-2); }
+
+/* ---------- 9. 自选列表 / 荐股卡：surface + 细线，悬停提亮而非位移 ---------- */
+.watch-item {
+    border-bottom: 1px solid var(--bk-line);
+    border-radius: var(--radius-mark);
+    padding: 9px 10px; color: var(--bk-ink);
+    transition: background var(--bk-dur) var(--bk-ease);
+}
+.watch-item:hover { background: var(--bk-surface-2); transform: none; }
+.watch-item .code { color: var(--bk-muted); font-size: var(--text-meta); }
+.rec-card {
+    background: var(--bk-surface);
+    border: 1px solid var(--bk-line);
+    border-radius: var(--radius-card);
+    box-shadow: none;
+    transition: border-color var(--bk-dur) var(--bk-ease), background var(--bk-dur) var(--bk-ease);
+}
+.rec-card:hover { border-color: var(--bk-line-2); background: var(--bk-surface-2); transform: none; box-shadow: none; }
+.rec-card::after { display: none; }
+.rec-rank {
+    border-radius: var(--radius-mark);
+    border: 1px solid var(--bk-line-2);
+    background: var(--bk-surface-3);
+    color: var(--bk-muted);
+    font-family: inherit; font-weight: 700;
+}
+.rec-rank.top { background: var(--bk-amber-soft); border-color: var(--bk-amber-line); color: var(--bk-amber); }
+.signal-badge, .wl-flag { border-radius: var(--radius-tag); font-weight: 700; }
+.follow-btn { border-radius: var(--radius-tag); font-weight: 700; transition: background var(--bk-dur) var(--bk-ease); }
+.follow-btn:hover { transform: none; }
+
+/* ---------- 10. Tab 导航：Breakaway .seg（分段控件，选中=绿底绿字+内描边） ---------- */
+.tabs {
+    gap: 3px; border-bottom: 1px solid var(--bk-line);
+    margin-bottom: 14px; padding: 3px;
+    background: var(--bk-surface); border: 1px solid var(--bk-line);
+    border-radius: calc(var(--radius-control) + 2px);
+    display: inline-flex; flex-wrap: wrap;
+}
+.tabs button {
+    background: transparent; border: 1px solid transparent;
+    border-radius: var(--radius-control);
+    color: var(--bk-muted);
+    font-family: inherit; font-size: var(--text-meta); font-weight: 600;
+    letter-spacing: 0; min-height: 30px; padding: 4px 12px; margin: 0;
+    transition: background var(--bk-dur) var(--bk-ease), color var(--bk-dur) var(--bk-ease), box-shadow var(--bk-dur) var(--bk-ease);
+}
+.tabs button:hover { background: var(--bk-surface-3); color: var(--bk-ink); transform: none; box-shadow: none; }
+.tabs button.active {
+    background: var(--bk-green-soft); color: var(--bk-green);
+    border-color: transparent;
+    box-shadow: inset 0 0 0 1px var(--bk-green-line);
+    font-weight: 700;
+}
+
+/* ---------- 11. 统计卡：Breakaway 层级（surface-2 + 大数字） ---------- */
+.stat {
+    background: var(--bk-surface-2);
+    border: 1px solid var(--bk-line);
+    border-radius: var(--radius-control);
+    box-shadow: none; overflow: hidden;
+    transition: border-color var(--bk-dur) var(--bk-ease), background var(--bk-dur) var(--bk-ease);
+}
+.stat::before { display: none; }
+.stat:hover { border-color: var(--bk-line-2); background: var(--bk-surface-3); transform: none; box-shadow: none; }
+.stat .k { color: var(--bk-muted); font-size: var(--text-label); font-weight: 600; letter-spacing: .02em; }
+.stat .v {
+    font-size: var(--text-title); font-weight: 700;
+    letter-spacing: -.02em; color: var(--bk-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 12. 其它收口 ---------- */
+.msg { border-radius: var(--radius-control); border: 1px solid transparent; }
+.msg.ok { background: var(--bk-green-soft); color: var(--bk-green); border-color: var(--bk-green-line); }
+.msg.err { background: var(--bk-red-soft); color: var(--bk-red); border-color: var(--bk-red-line); }
+code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bk-bg-2); }
+::-webkit-scrollbar-thumb {
+    background: var(--bk-surface-3); border-radius: var(--radius-pill);
+    border: 2px solid transparent; background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--bk-line-2); background-clip: content-box; }
+#bg-panel {
+    border-radius: var(--radius-card);
+    border: 1px solid var(--bk-line);
+    background: var(--bk-surface);
+    box-shadow: var(--shadow-pop);
+    color: var(--bk-ink);
+}
+select option { background: var(--bk-surface-2); color: var(--bk-ink); }
+
+/* ---------- 13. 排版令牌映射 ----------
+   应用里存在大量内联 font-size（12/11/13/14px 等，共 ~160 处）。
+   内联样式优先级最高，无法用样式表逐个覆盖，也不宜批量改 HTML。
+   这里改用「令牌层 + 归一化」：
+     · 令牌层：把原站 --text-* / --fw-* / --tracking-* 全部定义好（见上）
+     · 归一化：把应用原有字号档位对齐到原站档位，视觉密度与原站一致
+       原站档位：label 11 / meta 12.5 / body 14 / row 15 / lead 17 / title 22 / display 28
+       应用档位：10,11,12,13,14,15,16,18
+       映射：10,11 → label(11)｜12 → meta(12.5)｜12.5→meta｜13 → body(14)｜14 → body(14)
+             15 → row(15)｜16 → field(16)｜18 → lead(17)
+   实现上用属性选择器 + CSS 变量无法改内联值，因此改为：
+   给常见容器设置字号，并对内联 style 覆盖不到的元素用 !important 精确重置。
+   ---------------------------------------------------------------- */
+
+/* 顶栏按钮组：原站用 meta 档（12.5px），应用内联写的是 12px —— 统一到 meta */
+.topbar button.ghost { font-size: var(--text-meta) !important; }
+
+/* 表格：原站行高 font-size 用 row 档（15px），表头 label 档（11px） */
+table { font-size: var(--text-body); }
+th { font-size: var(--text-label) !important; letter-spacing: var(--tracking-label); }
+td { font-size: var(--text-body); }
+
+/* 统计卡：数值用 title 档（22px，原站 --text-title），标签 label 档（11px） */
+.stat .k { font-size: var(--text-label) !important; letter-spacing: var(--tracking-label); font-weight: var(--fw-semibold); }
+.stat .v { font-size: var(--text-title); font-weight: var(--fw-bold); letter-spacing: var(--tracking-title); line-height: var(--lh-title); }
+/* 但内联写了 font-size 的小号数值卡（区间价、支撑位等）需要收敛到 body 档，
+   否则 22px 会把卡片撑爆。用 :has 之外的稳妥做法：带内联 font-size 的 .v 降到 body。 */
+.stat .v[style*="font-size:13px"],
+.stat .v[style*="font-size:14px"],
+.stat .v[style*="font-size:15px"] { font-size: var(--text-body) !important; line-height: var(--leading-snug); }
+
+/* 面板标题：原站用 body 档 + bold */
+.panel h2 { font-size: var(--text-body) !important; font-weight: var(--fw-bold); letter-spacing: var(--tracking-normal); }
+.panel h2 .hint { font-size: var(--text-label) !important; letter-spacing: var(--tracking-normal); }
+
+/* 表单控件：原站 field 档（16px）；用 meta 档更贴合密集行情界面 */
+input[type=text], input[type=number], select, textarea {
+    font-size: var(--text-meta) !important; letter-spacing: var(--tracking-normal);
+    font-weight: var(--fw-normal);
+}
+
+/* 按钮：原站 meta 档 + semibold */
+button { font-size: var(--text-meta); font-weight: var(--fw-semibold); letter-spacing: var(--tracking-normal); }
+
+/* Tab（.seg）：原站 meta 档 */
+.tabs button { font-size: var(--text-meta) !important; font-weight: var(--fw-semibold); }
+
+/* 徽标/胶囊：原站 meta 档 + semibold */
+.badge { font-size: var(--text-meta) !important; font-weight: var(--fw-semibold); }
+
+/* 标签类（.wl-flag / .signal-badge / .rec-rank）统一 label 档 + tag 字距 */
+.wl-flag, .signal-badge, .rec-rank, .follow-btn {
+    font-size: var(--text-label) !important;
+    font-weight: var(--fw-bold);
+    letter-spacing: var(--tracking-tag);
+}
+
+/* 自选列表：原站 row 档 */
+.watch-item { font-size: var(--text-row); }
+.watch-item .code { font-size: var(--text-meta) !important; }
+
+/* 行情条 / 提示文字：meta 档 */
+.mono, code, pre { font-family: var(--bk-font-mono); }
+.loading, .hint { font-size: var(--text-meta); }
+
+/* 大标题（弹窗标题等）：原站 display 档 */
+#rm-title { font-size: var(--text-title) !important; font-weight: var(--fw-bold); letter-spacing: var(--tracking-title); }
+
+/* 动态生成的区块标题（JS 里的 h2/h3 内联 13~14px）收敛到 body 档 */
+.panel h3 { font-size: var(--text-body); font-weight: var(--fw-bold); letter-spacing: var(--tracking-normal); }
+
+/* ---------- 14. 语义色工具类对齐 Breakaway 色阶 ---------- */
+.tone-good { color: var(--bk-green); }
+.tone-bad { color: var(--bk-red); }
+.signal-BUY { background: var(--up-bg); color: var(--up); }
+.signal-SELL { background: var(--down-bg); color: var(--down); }
+.signal-HOLD { background: var(--bk-surface-3); color: var(--bk-muted); }
+.num, .amount { font-variant-numeric: tabular-nums; }
+
+/* ============================================================================
+   动效层 —— 仅在 html[data-motion="on"] 生效（默认关；尊重 prefers-reduced-motion）
+   参照 Breakaway 的克制动效：短时长、小幅位移、不做花哨效果。
+   ========================================================================== */
+@keyframes bk-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes bk-fade    { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bk-pulse   { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+@keyframes bk-sweep   { 0% { transform: translateX(-100%); } 100% { transform: translateX(320%); } }
+
+html[data-motion="on"] .panel,
+html[data-motion="on"] .rec-card,
+html[data-motion="on"] .stat { animation: bk-fade-up .28s var(--bk-ease) both; }
+html[data-motion="on"] .stat:nth-child(1) { animation-delay: 0s; }
+html[data-motion="on"] .stat:nth-child(2) { animation-delay: .03s; }
+html[data-motion="on"] .stat:nth-child(3) { animation-delay: .06s; }
+html[data-motion="on"] .stat:nth-child(4) { animation-delay: .09s; }
+html[data-motion="on"] .stat:nth-child(5) { animation-delay: .12s; }
+html[data-motion="on"] .stat:nth-child(6) { animation-delay: .15s; }
+html[data-motion="on"] .tab-pane.active { animation: bk-fade .2s var(--bk-ease) both; }
+html[data-motion="on"] .blink { animation: bk-pulse 1.8s var(--bk-ease) infinite; }
+html[data-motion="on"] .loading { position: relative; overflow: hidden; }
+html[data-motion="on"] .loading::after {
+    content: ''; position: absolute; top: 0; left: 0; width: 30%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--bk-green), transparent);
+    animation: bk-sweep 1.4s var(--bk-ease) infinite;
+}
+
+/* ===== 全屏爆红/爆绿 + 一键静默 (P0) ===== */
+#flash-overlay {
+    position: fixed; inset: 0; z-index: 9999; display: flex;
+    align-items: center; justify-content: center; cursor: pointer;
+    transition: opacity .25s ease; backdrop-filter: blur(2px);
+}
+#flash-overlay.flash-hidden { display: none; }
+#flash-overlay.flash-out { opacity: 0; pointer-events: none; }
+#flash-overlay.dir-up   { background: radial-gradient(circle at 50% 45%, rgba(16,185,129,.92), rgba(4,60,42,.97)); }
+#flash-overlay.dir-down { background: radial-gradient(circle at 50% 45%, rgba(239,68,68,.92),  rgba(60,4,4,.97)); }
+#flash-overlay.fx-slow  { animation: flash-breathe 1s ease-in-out infinite; }
+#flash-overlay.fx-fast  { animation: flash-breathe .5s ease-in-out infinite; }
+@keyframes flash-breathe { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.55); } }
+/* 暗色模式与「已关闭动效」时降级为静态高对比，不做闪烁 */
+html[data-motion="off"] #flash-overlay.fx-slow,
+html[data-motion="off"] #flash-overlay.fx-fast { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+    #flash-overlay.fx-slow, #flash-overlay.fx-fast { animation: none; }
+}
+.flash-inner { text-align: center; color: #fff; padding: 24px; max-width: min(680px, 92vw); }
+.flash-icon  { font-size: 64px; line-height: 1; margin-bottom: 10px; }
+.flash-title { font-size: 38px; font-weight: 800; letter-spacing: 2px;
+               text-shadow: 0 3px 18px rgba(0,0,0,.55); margin-bottom: 8px; }
+.flash-sub   { font-size: 17px; opacity: .95; margin-bottom: 14px; }
+.flash-evidence {
+    text-align: left; background: rgba(0,0,0,.30); border: 1px solid rgba(255,255,255,.22);
+    border-radius: 10px; padding: 12px 16px; font-size: 13px; line-height: 1.9;
+    margin: 0 auto 16px; max-width: 520px; max-height: 34vh; overflow: auto;
+}
+.flash-btn {
+    background: rgba(255,255,255,.94); color: #111; border: none; border-radius: 999px;
+    padding: 12px 34px; font-size: 17px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 22px rgba(0,0,0,.35); transition: transform .12s ease;
+}
+.flash-btn:hover { transform: scale(1.06); }
+.flash-hint { margin-top: 12px; font-size: 12px; opacity: .75; }
+.flash-timer { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.18); }
+.flash-timer-bar { height: 100%; width: 100%; background: rgba(255,255,255,.85); }
+#flash-overlay.fx-timing .flash-timer-bar { animation: flash-countdown linear forwards; }
+@keyframes flash-countdown { from { width: 100%; } to { width: 0%; } }
+
+/* 预警悬浮摘要 */
+#alert-dock {
+    position: fixed; right: 16px; bottom: 16px; z-index: 900; width: min(340px, 88vw);
+    display: flex; flex-direction: column; gap: 8px;
+}
+#alert-dock.dock-hidden { display: none; }
+.dock-card {
+    background: var(--panel); border: 1px solid var(--border); border-left: 4px solid var(--muted);
+    border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.28);
+    font-size: 13px; animation: dock-in .28s ease;
+}
+@keyframes dock-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.dock-card.lv-up   { border-left-color: #10b981; }
+.dock-card.lv-down { border-left-color: #ef4444; }
+.dock-card .dc-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; }
+.dock-card .dc-body { color: var(--muted); margin-top: 4px; line-height: 1.6; }
+.dock-card .dc-x { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 4px; }
+
+/* ===== 依据卡片 / 参数溯源 ===== */
+.ev-factor { display: flex; align-items: center; gap: 10px; padding: 7px 0;
+             border-bottom: 1px dashed var(--border); font-size: 13px; }
+.ev-factor:last-child { border-bottom: none; }
+.ev-factor .ef-name { flex: 1 1 auto; }
+.ev-factor .ef-delta { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 58px; text-align: right; }
+.ev-factor .ef-delta.pos { color: #10b981; }
+.ev-factor .ef-delta.neg { color: #ef4444; }
+.ev-bar { flex: 0 0 88px; height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+.ev-bar > i { display: block; height: 100%; background: currentColor; }
+.ev-bar.pos { color: #10b981; }
+.ev-bar.neg { color: #ef4444; }
+.ev-src {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px;
+    border: 1px solid var(--border); color: var(--muted); cursor: help; white-space: nowrap;
+}
+.ev-src.src-backtest  { color: #10b981; border-color: #10b98155; }
+.ev-src.src-heuristic { color: #3b82f6; border-color: #3b82f655; }
+.ev-src.src-tuned     { color: #f59e0b; border-color: #f59e0b55; }
+.ev-src.src-degraded  { color: #ef4444; border-color: #ef444455; }
+.ev-degraded {
+    background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3);
+    border-radius: 8px; padding: 8px 12px; font-size: 12px; line-height: 1.8; margin-top: 8px;
+}
+.ev-tl { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ev-tl .ev-chip {
+    font-size: 12px; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--panel); white-space: nowrap;
+}
+.ev-tl .ev-chip:hover { border-color: var(--accent); }
+.ev-tl .ev-chip.dir-up   { border-left: 3px solid #10b981; }
+.ev-tl .ev-chip.dir-down { border-left: 3px solid #ef4444; }
+
+/* ===== P1: 下探预警 / 尾盘预判 ===== */
+.stage-steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.stage-step {
+    flex: 1 1 120px; padding: 8px 10px; border-radius: 8px; font-size: 12px;
+    border: 1px solid var(--border); background: var(--panel); opacity: .55;
+    position: relative; line-height: 1.5;
+}
+.stage-step .ss-name { font-weight: 700; font-size: 13px; display: block; margin-bottom: 2px; }
+.stage-step .ss-chars { color: var(--muted); font-size: 11px; }
+.stage-step.active { opacity: 1; border-width: 2px; }
+.stage-step.active.st-normal      { border-color: #64748b; background: rgba(100,116,139,.10); }
+.stage-step.active.st-accelerating{ border-color: #f59e0b; background: rgba(245,158,11,.12); }
+.stage-step.active.st-panic       { border-color: #ef4444; background: rgba(239,68,68,.12); }
+.stage-step.active.st-exhausted   { border-color: #3b82f6; background: rgba(59,130,246,.14); }
+.stage-step .ss-badge {
+    position: absolute; top: -8px; right: 8px; font-size: 10px; padding: 1px 6px;
+    border-radius: 999px; background: var(--accent); color: #fff;
+}
+
+/* 下探质量评分条 */
+.dqs-wrap { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.dqs-bar { flex: 1; height: 14px; border-radius: 7px; overflow: hidden;
+           background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%); position: relative; }
+.dqs-marker { position: absolute; top: -3px; bottom: -3px; width: 3px; background: #fff;
+              box-shadow: 0 0 6px rgba(0,0,0,.6); border-radius: 2px; }
+.dqs-score { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 62px; text-align: right; }
+.dqs-label { font-size: 13px; min-width: 96px; }
+
+/* 尾盘结论徽章 */
+.tail-badge { display: inline-block; padding: 4px 14px; border-radius: 999px;
+              font-weight: 700; font-size: 14px; }
+.tail-badge.t-real { background: rgba(16,185,129,.16); color: #10b981; border: 1px solid #10b98166; }
+.tail-badge.t-fake { background: rgba(239,68,68,.16);  color: #ef4444; border: 1px solid #ef444466; }
+.tail-badge.t-flat { background: rgba(148,163,184,.16); color: #94a3b8; border: 1px solid #94a3b866; }
+
+/* 因子贡献（尾盘六因子） */
+.tail-factor { display: grid; grid-template-columns: 1fr 78px 62px; gap: 8px; align-items: center;
+               padding: 6px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+.tail-factor:last-child { border-bottom: none; }
+.tail-factor.miss { opacity: .5; }
+.tail-factor .tf-detail { grid-column: 1 / -1; color: var(--muted); font-size: 11px; margin-top: -2px; }
+.proxy-tag { font-size: 10px; padding: 1px 6px; border-radius: 999px;
+             background: rgba(245,158,11,.16); color: #f59e0b; border: 1px solid #f59e0b55; }
+
+/* 14:30 预警线 */
+.warn-line { padding: 10px 14px; border-radius: 8px; margin: 10px 0; border-left: 5px solid; font-size: 13px; line-height: 1.7; }
+.warn-line.w-green { background: rgba(16,185,129,.10); border-color: #10b981; }
+.warn-line.w-red   { background: rgba(239,68,68,.10);  border-color: #ef4444; }
+.warn-line.w-amber { background: rgba(245,158,11,.10); border-color: #f59e0b; }
+.warn-line.w-muted { background: rgba(148,163,184,.08); border-color: #94a3b8; }
+.warn-line .wl-title { font-weight: 700; font-size: 14px; }
+
+/* 午间剧本卡 */
+.scenario { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--panel); margin-bottom: 6px; }
+.scenario.rank1 { border-color: var(--accent); border-width: 2px; }
+.scenario .sc-head { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+.scenario .sc-cond { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.scenario .sc-act  { font-size: 12px; margin-top: 3px; }
+.sc-pct { font-variant-numeric: tabular-nums; }
+
+/* ===== P2: 预警复盘（时间轴 / 快照 / 日报 / 反馈） ===== */
+.p2-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.p2-tab { padding: 5px 14px; border-radius: 999px; font-size: 12px; cursor: pointer;
+          border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
+.p2-tab.on { border-color: var(--accent); color: var(--text); font-weight: 700; }
+
+/* 时间轴 */
+.tl-track { position: relative; padding: 26px 8px 34px; overflow-x: auto; }
+.tl-axis { position: absolute; left: 8px; right: 8px; top: 44px; height: 2px;
+           background: var(--border); }
+.tl-items { position: relative; display: flex; gap: 3px; min-height: 60px; align-items: flex-start; }
+.tl-dot { position: relative; cursor: pointer; flex: 0 0 auto; text-align: center; }
+.tl-dot .td-mark { width: 12px; height: 12px; border-radius: 50%; margin: 18px auto 0;
+                   border: 2px solid var(--panel); transition: transform .12s ease; }
+.tl-dot:hover .td-mark { transform: scale(1.55); }
+.tl-dot.lv2 .td-mark { background: #f59e0b; }
+.tl-dot.lv3 .td-mark { background: #ef4444; box-shadow: 0 0 8px rgba(239,68,68,.8); }
+.tl-dot.dir-up .td-mark   { outline: 2px solid rgba(16,185,129,.75); }
+.tl-dot.dir-down .td-mark { outline: 2px solid rgba(239,68,68,.75); }
+.tl-dot .td-time { font-size: 10px; color: var(--muted); margin-top: 4px;
+                   writing-mode: vertical-rl; transform: rotate(180deg); max-height: 46px; }
+.tl-dot .td-fb { font-size: 10px; margin-top: 2px; }
+
+/* 快照卡 */
+.snap-card { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+             background: var(--panel); margin-bottom: 8px; cursor: pointer; }
+.snap-card:hover { border-color: var(--accent); }
+.snap-card .sc-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.snap-card .sc-meta { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.lv-tag { font-size: 11px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.lv-tag.lv2 { background: rgba(245,158,11,.18); color: #f59e0b; border: 1px solid #f59e0b55; }
+.lv-tag.lv3 { background: rgba(239,68,68,.18); color: #ef4444; border: 1px solid #ef444455; }
+
+/* 反馈按钮组 */
+.fb-row { display: flex; gap: 6px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.fb-btn { padding: 4px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+          border: 1px solid var(--border); background: var(--panel2); color: var(--text); }
+.fb-btn:hover { border-color: var(--accent); }
+.fb-btn.useful:hover  { border-color: #10b981; color: #10b981; }
+.fb-btn.useless:hover { border-color: #ef4444; color: #ef4444; }
+.fb-btn.late:hover    { border-color: #f59e0b; color: #f59e0b; }
+.fb-done { font-size: 12px; color: #10b981; }
+
+/* 日报统计 */
+.bar-row { display: grid; grid-template-columns: 120px 1fr 58px; gap: 8px;
+           align-items: center; font-size: 12px; padding: 3px 0; }
+.bar-row .br-track { height: 12px; border-radius: 6px; background: var(--border); overflow: hidden; }
+.bar-row .br-fill { height: 100%; background: var(--accent); }
+.bar-row .br-val { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 快照详情弹窗 */
+#snap-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 200;
+              align-items: center; justify-content: center; }
+#snap-modal .sm-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+                      width: min(860px, 95vw); max-height: 90vh; overflow: auto; padding: 18px; }
+
+/* ===== P3: 科学依据中心 / 模拟器 / 高级预判 ===== */
+.p3-tabs { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.p3-tab { padding: 5px 14px; border-radius: 999px; font-size: 12px; cursor: pointer;
+          border: 1px solid var(--border); background: var(--panel); color: var(--muted); }
+.p3-tab.on { border-color: var(--accent); color: var(--text); font-weight: 700; }
+
+/* 溯源表 */
+.pt-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pt-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 6px 8px;
+               border-bottom: 1px solid var(--border); position: sticky; top: 0;
+               background: var(--panel2); }
+.pt-table td { padding: 7px 8px; border-bottom: 1px dashed var(--border); vertical-align: top; }
+.pt-table tr.pt-changed { background: rgba(245,158,11,.06); }
+.pt-table tr.pt-degraded { opacity: .6; }
+.pt-key { font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+.pt-basis { color: var(--muted); font-size: 11px; line-height: 1.55; }
+.pt-val { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pt-from { color: var(--muted); text-decoration: line-through; }
+
+/* 诊断项 */
+.diag-item { padding: 9px 12px; border-radius: 8px; margin-bottom: 7px;
+             border-left: 4px solid var(--border); background: var(--panel); font-size: 13px; }
+.diag-item.d-ok   { border-left-color: #10b981; }
+.diag-item.d-warn { border-left-color: #f59e0b; background: rgba(245,158,11,.07); }
+.diag-item.d-info { border-left-color: #3b82f6; }
+.diag-item .di-title { font-weight: 700; }
+.diag-item .di-detail { color: var(--muted); margin-top: 3px; line-height: 1.6; font-size: 12px; }
+.diag-item .di-action { margin-top: 4px; font-size: 12px; }
+
+/* 模拟器 */
+.sim-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr));
+            gap: 12px; margin-bottom: 12px; }
+.sim-field label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+.sim-field input[type=range] { width: 100%; }
+.sim-field .sf-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+.sim-compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.sim-card { padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
+            background: var(--panel); }
+.sim-card.mod { border-color: var(--accent); }
+.sim-card .sc-label { font-size: 12px; color: var(--muted); }
+.sim-card .sc-big { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sim-note { font-size: 12px; line-height: 1.7; padding: 8px 12px; border-radius: 6px;
+            background: var(--panel); margin-top: 8px; }
+
+/* 高级预判 */
+.adv-mom { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 8px; }
+.adv-badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.adv-badge.a-flat     { background: rgba(148,163,184,.18); color: #94a3b8; }
+.adv-badge.a-decay    { background: rgba(245,158,11,.18); color: #f59e0b; }
+.adv-badge.a-reversal { background: rgba(239,68,68,.18);  color: #ef4444; }
+.adv-badge.a-turning  { background: rgba(59,130,246,.18); color: #3b82f6; }
+.adv-badge.a-up       { background: rgba(16,185,129,.18); color: #10b981; }
+.adv-badge.a-neutral  { background: rgba(148,163,184,.18); color: #94a3b8; }
+.prob-bar { height: 22px; border-radius: 11px; overflow: hidden; background: #ef4444;
+            position: relative; margin: 6px 0; }
+.prob-bar > i { display: block; height: 100%; background: #10b981; }
+.prob-bar .pb-base { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff;
+                     box-shadow: 0 0 4px rgba(0,0,0,.7); }
+.degraded-box { background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.3);
+                border-radius: 8px; padding: 10px 14px; font-size: 12px; line-height: 1.8; }
+
+/* ===== 实时盯盘 · 红绿频闪（交易舱 v1 / P0） ===== */
+/* A 股惯例：红涨绿跌。买点 → 绿闪；卖点 → 红闪。 */
+:root { --live-up: #ef4444; --live-down: #10b981; }
+html[data-scheme="cn"] { --live-up: #ef4444; --live-down: #10b981; }
+html[data-scheme="western"] { --live-up: #10b981; --live-down: #ef4444; }
+
+.live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(188px, 1fr)); gap: 10px; }
+.live-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; position: relative; overflow: hidden;
+    transition: border-color .15s ease, box-shadow .15s ease;
+}
+.live-card .lc-name { font-weight: 700; font-size: 13px; display: flex;
+                      justify-content: space-between; align-items: center; gap: 6px; }
+.live-card .lc-code { color: var(--muted); font-size: 11px; font-family: ui-monospace, Consolas, monospace; }
+.live-card .lc-price { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0 2px; }
+.live-card .lc-pct { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.live-card .lc-meta { color: var(--muted); font-size: 11px; margin-top: 6px; line-height: 1.6; }
+.live-card .lc-period {
+    position: absolute; top: 8px; right: 10px; font-size: 10px; padding: 1px 6px;
+    border-radius: 999px; border: 1px solid var(--border); color: var(--muted);
+}
+.live-card.stale { opacity: .62; border-style: dashed; }
+
+/* 频闪：买点绿闪 / 卖点红闪 */
+@keyframes live-flash-green {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); border-color: var(--border); background: var(--panel); }
+    50%      { box-shadow: 0 0 22px 6px rgba(16,185,129,.75); border-color: #10b981; background: rgba(16,185,129,.16); }
+}
+@keyframes live-flash-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); border-color: var(--border); background: var(--panel); }
+    50%      { box-shadow: 0 0 22px 6px rgba(239,68,68,.75); border-color: #ef4444; background: rgba(239,68,68,.16); }
+}
+.live-card.flash-green { animation: live-flash-green 0.9s ease-in-out infinite; }
+.live-card.flash-red   { animation: live-flash-red   0.9s ease-in-out infinite; }
+.live-card.flash-green .lc-price { color: #10b981; }
+.live-card.flash-red   .lc-price { color: #ef4444; }
+
+/* 降低动效：改为静态描边 */
+html[data-motion="off"] .live-card.flash-green { animation: none; border: 2px solid #10b981; box-shadow: 0 0 14px rgba(16,185,129,.5); }
+html[data-motion="off"] .live-card.flash-red   { animation: none; border: 2px solid #ef4444; box-shadow: 0 0 14px rgba(239,68,68,.5); }
+@media (prefers-reduced-motion: reduce) {
+    .live-card.flash-green, .live-card.flash-red { animation: none; }
+    .live-card.flash-green { border: 2px solid #10b981; }
+    .live-card.flash-red   { border: 2px solid #ef4444; }
+}
+
+/* 盯盘事件列表 */
+.live-ev { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px;
+           border-radius: 8px; margin-bottom: 6px; border-left: 4px solid var(--border);
+           background: var(--panel); font-size: 13px; }
+.live-ev.ev-buy  { border-left-color: #10b981; background: rgba(16,185,129,.08); }
+.live-ev.ev-sell { border-left-color: #ef4444; background: rgba(239,68,68,.08); }
+.live-ev.ev-watch{ border-left-color: #f59e0b; background: rgba(245,158,11,.07); }
+.live-ev .le-side { font-weight: 800; white-space: nowrap; }
+.live-ev.ev-buy  .le-side { color: #10b981; }
+.live-ev.ev-sell .le-side { color: #ef4444; }
+.live-ev.ev-watch .le-side { color: #f59e0b; }
+.live-ev .le-why { color: var(--muted); font-size: 12px; line-height: 1.6; margin-top: 3px; }
+.live-ev .le-time { margin-left: auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+/* 周期配置行 */
+.live-cfg-row { display: grid; grid-template-columns: 1fr 110px 90px 90px; gap: 8px;
+                align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--border);
+                font-size: 13px; }
+.live-cfg-row:last-child { border-bottom: none; }
+.live-cfg-row select, .live-cfg-row input { font-size: 12px; padding: 2px 4px; }
+
+/* 探针结果 */
+.probe-tier { padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+              background: var(--panel); margin-bottom: 8px; }
+.probe-tier .pt-head { display: flex; justify-content: space-between; align-items: center;
+                       font-weight: 700; margin-bottom: 6px; }
+.probe-ok   { color: #10b981; }
+.probe-warn { color: #f59e0b; }
+.probe-bad  { color: #ef4444; }
 </style>
 <script>
 /* 主题与动效开关必须在首屏渲染前定好，否则会闪一下错误配色。
@@ -355,23 +1714,33 @@ tr:hover { background: rgba(212,91,182,.06); }
    否则用新默认值 —— 避免改了默认主题后，老用户被浏览器里存的旧选择永久锁死
    （之前就踩过：把浅色设成默认时初始化误写入了 localStorage，
     导致后来默认改成深灰+橙，浏览器仍一直显示白色底）。 */
-var KRONOS_UI_VER = '5';
+var KRONOS_UI_VER = '6';
 (function () {
-    var t = 'sn', m = 'off';
+    var t = 'ths', m = 'off', k = '';
     try {
         var q = new URLSearchParams(location.search || '');
-        var qt = q.get('theme'), qm = q.get('motion');
+        var qt = q.get('theme'), qm = q.get('motion'), qk = q.get('kline');
         var verOk = localStorage.getItem('kronos_ui_ver') === KRONOS_UI_VER;
-        if (qt === 'sn' || qt === 'tan' || qt === 'tandark' || qt === 'cyber') t = qt;
+        if (qt === 'ths' || qt === 'sn' || qt === 'tan' || qt === 'tandark' || qt === 'cyber') t = qt;
         else if (verOk) {
             var v = localStorage.getItem('kronos_theme');
-            if (v === 'sn' || v === 'tan' || v === 'tandark' || v === 'cyber') t = v;
+            if (v === 'ths' || v === 'sn' || v === 'tan' || v === 'tandark' || v === 'cyber') t = v;
         }
         if (qm === 'on' || qm === 'off') m = qm;
         else if (verOk && localStorage.getItem('kronos_motion') === 'on') m = 'on';
-    } catch (e) {}
+        // 看盘区明暗：优先 URL 参数，其次本地保存，最后跟随主题
+        if (qk === 'dark' || qk === 'light') k = qk;
+        else {
+            var kv = localStorage.getItem('kronos_kline_mode');
+            if (kv === 'dark' || kv === 'light') k = kv;
+            else k = (t === 'ths' || t === 'tandark' || t === 'cyber') ? 'dark' : 'light';
+        }
+    } catch (e) {
+        k = 'dark';
+    }
     document.documentElement.setAttribute('data-theme', t);
     document.documentElement.setAttribute('data-motion', m);
+    document.documentElement.setAttribute('data-kline', k || 'dark');
 })();
 </script>
 </head>
@@ -399,7 +1768,7 @@ var KRONOS_UI_VER = '5';
     <div class="row">
         <label>背景模式</label>
         <div class="seg">
-            <button class="ghost" id="bg-mode-tech" onclick="setBgMode('tech')">炭金纸面（默认）</button>
+            <button class="ghost" id="bg-mode-tech" onclick="setBgMode('tech')">科技网格</button>
             <button class="ghost" id="bg-mode-paper" onclick="setBgMode('paper')">纸面</button>
             <button class="ghost" id="bg-mode-galaxy" onclick="setBgMode('galaxy')">银河</button>
             <button class="ghost" id="bg-mode-cyber" onclick="setBgMode('cyber')">赛博网格</button>
@@ -442,9 +1811,9 @@ var KRONOS_UI_VER = '5';
     <button class="ghost" id="theme-toggle" style="font-size:12px" onclick="toggleTheme()"
             title="切换主题：深色 / 浅色 / 赛博">◉ 共享网络</button>
     <button class="ghost" style="font-size:12px" onclick="resetAppearance()"
-            title="清掉浏览器里记住的外观选择，恢复到默认（深灰底 + 橙字）">↺ 恢复默认外观</button>
+            title="清掉浏览器里记住的外观选择，恢复到默认（共享网络浅蓝白主题）">↺ 恢复默认外观</button>
     <button class="ghost" id="scheme-toggle" style="font-size:12px" onclick="toggleScheme()"
-            title="切换涨跌配色：A股习惯红涨绿跌 / 欧美习惯绿涨红跌">🔴涨🟢跌（A股）</button>
+            title="切换涨跌配色：默认绿涨红跌（与参照站一致）/ 可切 A股习惯红涨绿跌">🟢涨🔴跌（欧美）</button>
     <button class="ghost" id="fx-toggle" style="font-size:12px" onclick="toggleBgPanel()"
             title="背景设置：银河 / 赛博网格 / 流线 / 碎片 / Spline 3D">🎨 背景</button>
     <span style="display:inline-flex;align-items:center;gap:2px">
@@ -533,6 +1902,7 @@ var KRONOS_UI_VER = '5';
         <div class="panel">
             <div class="tabs">
                 <button class="active" data-tab="tab-chart">K线 + 指标 + 预测</button>
+                <button data-tab="tab-live">🔴 实时盯盘</button>
                 <button data-tab="tab-overview">📋 盘前速览</button>
                 <button data-tab="tab-research">🏛️ 投研会</button>
                 <button data-tab="tab-recommend">⭐ 荐股</button>
@@ -666,6 +2036,77 @@ var KRONOS_UI_VER = '5';
                 <div class="msg" id="rs-msg"></div>
             </div>
 
+            <!-- tab-live: 实时盯盘（交易舱 v1 / P0） -->
+            <div class="tab-pane" id="tab-live">
+                <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                    <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        🔴 实时盯盘
+                        <span class="hint" id="live-session">检测中...</span>
+                        <span style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <label class="hint" style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                                <input type="checkbox" id="live-dnd" onchange="toggleLiveDnd(this.checked)"> 静音频闪
+                            </label>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="liveStart()">▶ 启动轮询</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="liveStop()">⏸ 停止</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="liveCheckNow()">⚡ 立即检查</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="loadLive(true)">刷新</button>
+                        </span>
+                    </h2>
+                    <div id="live-status" class="hint" style="margin-bottom:8px"></div>
+                    <div id="live-quotes"></div>
+                </div>
+
+                <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                    <h2 style="font-size:13px">⚙️ 预警周期配置 <span class="hint">按股独立设置</span></h2>
+                    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+                        <label class="hint">引擎 tick 间隔
+                            <select id="live-tick" onchange="liveSetTick()" style="margin-left:6px">
+                                <option value="0.5">0.5 秒</option>
+                                <option value="1" selected>1 秒（实验档）</option>
+                                <option value="5">5 秒</option>
+                                <option value="30">30 秒（保守档）</option>
+                            </select>
+                        </label>
+                        <label class="hint">请求节流
+                            <select id="live-interval" onchange="liveSetInterval()" style="margin-left:6px">
+                                <option value="500" selected>500 ms</option>
+                                <option value="1000">1000 ms</option>
+                                <option value="2000">2000 ms</option>
+                            </select>
+                        </label>
+                        <span class="hint">单批上限 500 只 · 缓存 5 秒 · 并发 3</span>
+                    </div>
+                    <div id="live-config"></div>
+                </div>
+
+                <div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                    <h2 style="font-size:13px">📡 预警事件 <span class="hint">买点绿闪 · 卖点红闪</span></h2>
+                    <div id="live-events"><div class="loading">加载中...</div></div>
+                </div>
+
+                <div class="panel" style="background:var(--panel2)">
+                    <h2 style="font-size:13px">🧪 接口频次探针 <span class="hint">实测成功率 / 耗时 / 限流</span></h2>
+                    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+                        <label class="hint">档位
+                            <select id="probe-tiers" style="margin-left:6px">
+                                <option value="30s" selected>30 秒（保守）</option>
+                                <option value="1s">1 秒（实验）</option>
+                                <option value="0.5s">0.5 秒（激进）</option>
+                                <option value="30s,1s,0.5s">三档全测</option>
+                            </select>
+                        </label>
+                        <label class="hint">每档次数
+                            <input type="number" id="probe-samples" value="10" min="1" max="100"
+                                   style="width:64px;margin-left:6px">
+                        </label>
+                        <button onclick="runProbe()">▶ 运行探针</button>
+                        <button class="ghost" onclick="loadProbeReport()">查看上次报告</button>
+                        <span class="hint">30秒×10次≈5分钟；三档全测≈6分钟</span>
+                    </div>
+                    <div id="probe-result"></div>
+                </div>
+            </div>
+
             <!-- tab-overview: daily overview -->
             <div class="tab-pane" id="tab-overview">
                 <div class="panel" style="background:var(--panel2);margin-bottom:10px">
@@ -762,11 +2203,130 @@ var KRONOS_UI_VER = '5';
                         <button id="refresh-btn" onclick="loadChart(true)">刷新行情</button>
                         <button class="ghost" onclick="exportReport()">📄 导出报告</button>
                     </div>
+                    <div class="kline-tools">
+                        <button id="kline-mode-btn" class="ghost" onclick="toggleKlineMode()" title="切换看盘区深色/浅色">🌙 深色</button>
+                        <button id="kline-zoom-out" onclick="klineZoom(-1)" title="缩小（K线变细，显示更多）">−</button>
+                        <button id="kline-zoom-in" onclick="klineZoom(1)" title="放大（K线变粗，显示更少）">＋</button>
+                        <button class="ghost" onclick="klineResetZoom()" title="重置显示根数">⟲</button>
+                        <button class="ghost" id="kline-fs-btn" onclick="toggleKlineFullscreen()" title="全屏看盘（F 键）">⛶</button>
+                    </div>
                 </div>
                 <div id="chart-main" class="chart-box"><div class="loading">选择股票后加载图表...</div></div>
                 <div id="chart-sub" class="chart-box small" style="display:none"></div>
                 <div id="chart-loading" class="loading hidden">⏳ Kronos 正在预测（首次约 10~30 秒）...</div>
                 <div class="msg" id="chart-msg"></div>
+
+                <!-- 盘中变化时刻线 · 前置预警线 · 依据卡片 (P0) -->
+                <div class="panel" style="background:var(--panel2);margin-top:10px">
+                    <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        ⚡ 盘中变化时刻线
+                        <span class="hint" id="anomaly-range">基于 1 分钟 K 线</span>
+                        <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                            <label class="hint" style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                                <input type="checkbox" id="anomaly-show-marks" checked onchange="toggleAnomalyMarks(this.checked)"> 显示时刻线
+                            </label>
+                            <label class="hint" style="display:flex;align-items:center;gap:4px;cursor:pointer">
+                                <input type="checkbox" id="anomaly-show-lead" checked onchange="toggleAnomalyMarks()"> 前置预警线
+                            </label>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="toggleAlertSettings()">⚙️ 预警设置</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="loadAnomaly(true)">刷新</button>
+                        </span>
+                    </h2>
+                    <div id="alert-settings-panel" class="panel" style="display:none;background:var(--panel);margin-bottom:10px">
+                        <h2 style="font-size:13px">⚙️ 预警与防干扰设置 <span class="hint">本地保存，仅本机生效</span></h2>
+                        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
+                            <div>
+                                <label class="hint">触发强度阈值：<b id="ap-strength-val">70</b> 分</label>
+                                <input type="range" id="ap-strength" min="30" max="95" step="5" style="width:100%"
+                                       oninput="document.getElementById('ap-strength-val').textContent=this.value">
+                                <div class="hint">分数越高越少打扰，70 分为默认（仅强烈异动才全屏）</div>
+                            </div>
+                            <div>
+                                <label class="hint">冷静期（分钟）</label>
+                                <input type="number" id="ap-cooldown" min="1" max="60" value="5" style="width:100%">
+                                <div class="hint">全屏预警关闭后，同方向 N 分钟内不再触发</div>
+                            </div>
+                            <div>
+                                <label class="hint">免打扰时段</label>
+                                <div style="display:flex;gap:6px;align-items:center">
+                                    <input type="time" id="ap-dnd-start" style="flex:1">
+                                    <span class="hint">至</span>
+                                    <input type="time" id="ap-dnd-end" style="flex:1">
+                                </div>
+                                <div class="hint">留空则关闭免打扰；支持跨零点（如 22:00~09:00）</div>
+                            </div>
+                            <div>
+                                <label class="hint">单一标的锁定（1~3 只，逗号分隔）</label>
+                                <input type="text" id="ap-locked" placeholder="如 600585,300750" style="width:100%">
+                                <div class="hint">留空 = 全部自选均可触发；填了则仅这些标的全感官预警，其余仅记录</div>
+                            </div>
+                            <div>
+                                <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                                    <input type="checkbox" id="ap-sound" checked> 提示音
+                                </label>
+                                <label class="hint" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                                    <input type="checkbox" id="ap-vibrate" checked> 震动（移动端）
+                                </label>
+                                <button class="ghost" style="margin-top:6px" onclick="requestNotifyPermission()">🔔 开启桌面通知</button>
+                            </div>
+                        </div>
+                        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+                            <button onclick="applyAlertSettings()">保存设置</button>
+                            <button class="ghost" onclick="testFlashAlert()">▶ 测试全屏预警</button>
+                            <span class="hint">提示：按 Esc 或点击全屏任意位置可立即静默</span>
+                        </div>
+                        <div class="msg" id="alert-pref-msg"></div>
+                    </div>
+                    <div id="anomaly-body"><div class="loading">加载中...</div></div>
+                </div>
+
+                <!-- 下探过程实时预警 + 尾盘走势预判 + 午间复盘 (P1) -->
+                <div class="panel" style="background:var(--panel2);margin-top:10px">
+                    <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        📉 下探预警 · 尾盘预判
+                        <span class="hint" id="p1-range">基于 1 分钟 K 线</span>
+                        <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="toggleP1Settings()">🧭 判定口径</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="loadP1(true)">刷新</button>
+                        </span>
+                    </h2>
+                    <div id="p1-scope" class="panel" style="display:none;background:var(--panel);margin-bottom:10px">
+                        <h2 style="font-size:13px">🧭 判定口径与降级声明</h2>
+                        <div id="p1-scope-body" class="hint"></div>
+                    </div>
+                    <div id="p1-body"><div class="loading">加载中...</div></div>
+                </div>
+
+                <!-- 预警快照 / 时间轴 / 日报 / 反馈 (P2) -->
+                <div class="panel" style="background:var(--panel2);margin-top:10px">
+                    <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        🗂️ 预警复盘
+                        <span class="hint" id="p2-range">二级及以上自动存档</span>
+                        <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="switchP2('timeline')">时间轴</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="switchP2('snapshots')">快照</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="switchP2('daily')">日报</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="loadP2(true)">刷新</button>
+                        </span>
+                    </h2>
+                    <div id="p2-body"><div class="loading">加载中...</div></div>
+                </div>
+
+                <!-- 科学依据中心 + 高级算法预判 (P3) -->
+                <div class="panel" style="background:var(--panel2);margin-top:10px">
+                    <h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                        🔬 科学依据中心 · 高级预判
+                        <span class="hint" id="p3-range">参数溯源 · 诊断 · 模拟器 · V3.1</span>
+                        <span style="margin-left:auto;display:flex;gap:8px;align-items:center">
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="switchP3('params')">参数溯源</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="switchP3('diagnose')">诊断</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="switchP3('simulator')">模拟器</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="switchP3('advanced')">高级预判</button>
+                            <button class="ghost" style="padding:2px 8px;font-size:12px" onclick="loadP3(true)">刷新</button>
+                        </span>
+                    </h2>
+                    <div id="p3-body"><div class="loading">加载中...</div></div>
+                </div>
             </div>
 
             <!-- tab-fund: fundamentals -->
@@ -1257,25 +2817,28 @@ function startShards() {
 // ---------- 涨跌配色方案（A股：红涨绿跌 / 欧美：绿涨红跌）----------
 function schemeColor(kind) {
     const v = getComputedStyle(document.documentElement).getPropertyValue('--' + kind).trim();
-    return v || (kind === 'up' ? '#ef4444' : '#22c55e');
+    return v || (kind === 'up' ? '#34d399' : '#f87171');
 }
+/* 默认配色 = western（绿涨红跌），与参照站 getbreakaway.com 一致。
+   A 股习惯（红涨绿跌）仍可通过顶栏按钮切到 cn。 */
+var SCHEME_DEFAULT = 'western';
 function applyScheme(name) {
-    // name: 'cn'（红涨绿跌）| 'western'（绿涨红跌）
-    document.documentElement.setAttribute('data-scheme', name === 'western' ? 'western' : 'cn');
+    // name: 'western'（绿涨红跌，默认）| 'cn'（A股习惯：红涨绿跌）
+    document.documentElement.setAttribute('data-scheme', name === 'cn' ? 'cn' : 'western');
     try { localStorage.setItem('kronos_color_scheme', name); } catch (e) {}
     const btn = document.getElementById('scheme-toggle');
     if (btn) {
-        btn.textContent = name === 'western' ? '🟢涨🔴跌（欧美）' : '🔴涨🟢跌（A股）';
+        btn.textContent = name === 'cn' ? '🔴涨🟢跌（A股）' : '🟢涨🔴跌（欧美）';
         const u = schemeColor('up'), d = schemeColor('down');
-        btn.title = `当前配色：上涨 ${u} / 下跌 ${d}。点一下切换（A股习惯：红涨绿跌；欧美习惯：绿涨红跌）`;
+        btn.title = `当前配色：上涨 ${u} / 下跌 ${d}。点一下切换（默认绿涨红跌；可切 A股习惯红涨绿跌）`;
     }
     try {
         if (typeof currentSymbol !== 'undefined' && currentSymbol) loadChart();
     } catch (e) {}
 }
 function toggleScheme() {
-    const cur = document.documentElement.getAttribute('data-scheme') === 'western' ? 'western' : 'cn';
-    applyScheme(cur === 'western' ? 'cn' : 'western');
+    const cur = document.documentElement.getAttribute('data-scheme') === 'cn' ? 'cn' : 'western';
+    applyScheme(cur === 'cn' ? 'western' : 'cn');
 }
 
 // ---------- 界面缩放（默认 1.5 倍） ----------
@@ -1319,22 +2882,71 @@ applyScale(uiScale());
 
 // ---------- 主题（科技风默认 / 浅色 TypeSafe / 赛博终端） ----------
 // 图表底色/网格/字色跟随主题（Plotly 需要具体颜色值，不能用 CSS 变量）
-function chartBg() {
-    var t = currentTheme();
-    return t === 'cyber' ? '#171122' : (t === 'tandark' ? '#212D3B' : '#FFFFFF');
-}
-function chartGrid() {
-    var t = currentTheme();
-    return t === 'cyber' ? 'rgba(137,106,189,.18)'
-        : (t === 'tandark' ? 'rgba(250,250,248,.10)' : 'rgba(26,36,48,.10)');
-}
-function chartFont() {
-    var t = currentTheme();
-    return t === 'cyber' ? '#E9E3F5' : (t === 'tandark' ? '#FAFAF8' : '#002147');
+
+/* ============================================================================
+   看盘板块独立明暗模式（仅 K 线图区域）
+   ----------------------------------------------------------------------------
+   与全站主题解耦：全站可以是同花顺深色而看盘区独立切浅色，反之亦然。
+   状态记录在 <html data-kline="dark|light"> 与 localStorage('kronos_kline_mode')。
+   ========================================================================== */
+var KLINE_MODE_KEY = 'kronos_kline_mode';
+
+function klineMode() {
+    try {
+        var v = localStorage.getItem(KLINE_MODE_KEY);
+        if (v === 'dark' || v === 'light') return v;
+    } catch (e) {}
+    // 未手动设置时跟随主题：同花顺 → 深色，其余 → 浅色
+    return currentTheme() === 'ths' ? 'dark' : 'light';
 }
 
-var THEMES = ['sn', 'tandark', 'tan', 'cyber'];
-var THEME_LABEL = { sn: '◉ 共享网络', tandark: '◆ 炭金·深', tan: '◈ 炭金·浅', cyber: '🌙 赛博' };
+function applyKlineMode(mode, persist) {
+    var m = (mode === 'light') ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-kline', m);
+    if (persist) {
+        try { localStorage.setItem(KLINE_MODE_KEY, m); } catch (e) {}
+    }
+    var btn = document.getElementById('kline-mode-btn');
+    if (btn) {
+        btn.textContent = m === 'dark' ? '🌙 深色' : '☀️ 浅色';
+        btn.title = m === 'dark' ? '当前深色，点击切到浅色' : '当前浅色，点击切到深色';
+    }
+    // 立即重绘图表应用新配色
+    if (typeof lastKlinePayload !== 'undefined' && lastKlinePayload) {
+        drawChart(lastKlinePayload,
+            document.getElementById('indicator-select').value,
+            document.getElementById('pred-len').value, chartReqSeq);
+    }
+}
+
+function toggleKlineMode() {
+    var next = (klineMode() === 'dark') ? 'light' : 'dark';
+    applyKlineMode(next, true);
+    klineHint(next === 'dark' ? '看盘：深色模式' : '看盘：浅色模式');
+}
+
+/** 看盘区配色令牌：图表与工具栏都从这里取，保证深浅一致 */
+function klinePalette() {
+    var dark = klineMode() === 'dark';
+    return dark ? {
+        bg: '#0B0E11', plot: '#0B0E11',
+        grid: '#20262D', axis: '#4A545E', text: '#A8B0B8',
+        hoverBg: 'rgba(20,24,29,.96)', hoverBd: '#2A3138', hoverFg: '#E8EAED',
+        toolBg: '#10151A', toolBd: '#2A3138', toolFg: '#E8EAED', toolFg2: '#6B747D'
+    } : {
+        bg: '#FFFFFF', plot: '#FFFFFF',
+        grid: '#E6E9EC', axis: '#C7CDD3', text: '#5A6470',
+        hoverBg: 'rgba(255,255,255,.98)', hoverBd: '#D5DAE0', hoverFg: '#1A2430',
+        toolBg: '#F5F7F9', toolBd: '#D5DAE0', toolFg: '#1A2430', toolFg2: '#6B747D'
+    };
+}
+
+function chartBg() { return klinePalette().bg; }
+function chartGrid() { return klinePalette().grid; }
+function chartFont() { return klinePalette().text; }
+
+var THEMES = ['ths', 'sn', 'tandark', 'tan', 'cyber'];
+var THEME_LABEL = { ths: '📈 同花顺', sn: '◉ 共享网络', tandark: '◆ 炭金·深', tan: '◈ 炭金·浅', cyber: '🌙 赛博' };
 
 function currentTheme() {
     try {
@@ -1348,7 +2960,7 @@ function currentTheme() {
             if (THEMES.indexOf(v) >= 0) return v;
         }
     } catch (e) {}
-    return 'sn';   // 默认：SharedNet 风
+    return 'ths';   // 默认：同花顺风格（深色 + 红涨绿跌 + 高信息密度）
 }
 
 /** persist 只在用户手动切换时为 true —— 初始化绝不能写入存储，
@@ -1364,6 +2976,20 @@ function applyTheme(name, switchBg, persist) {
     }
     var b = document.getElementById('theme-toggle');
     if (b) b.textContent = THEME_LABEL[name];
+    // 看盘区明暗：用户未单独指定过时，跟随主题（同花顺 → 深色）
+    try {
+        if (!localStorage.getItem(KLINE_MODE_KEY)) {
+            applyKlineMode(name === 'ths' || name === 'tandark' || name === 'cyber'
+                ? 'dark' : 'light', false);
+        } else if (typeof applyKlineMode === 'function') {
+            // 用户已单独选定，刷新按钮文案即可
+            applyKlineMode(klineMode(), false);
+        }
+    } catch (e) {
+        if (typeof applyKlineMode === 'function') {
+            applyKlineMode(name === 'ths' ? 'dark' : 'light', false);
+        }
+    }
     // 主题与背景配套：浅色主题（共享网络 / 炭金浅）↔ 静态纸面；深色主题 ↔ 炭金网格
     if (switchBg && window.SplineBackground) {
         var m = window.SplineBackground.mode;
@@ -1385,7 +3011,7 @@ function resetAppearance() {
         ['kronos_theme', 'kronos_ui_ver', 'kronos_bg_mode', 'kronos_motion', 'kronos_ui_scale']
             .forEach(function (k) { localStorage.removeItem(k); });
     } catch (e) {}
-    applyTheme('sn', true, false);
+    applyTheme('ths', true, false);
     applyMotion('off');
     applyScale(SCALE_DEFAULT);
     if (window.SplineBackground) window.SplineBackground.setMode('paper');
@@ -1440,9 +3066,19 @@ let lastRecLLM = {};
 let currentQuote = null;
 
 // 初始化配色（必须在 currentSymbol 声明之后调用，避免 TDZ）
+// 默认 western（绿涨红跌），与参照站 getbreakaway.com 一致。
+// 注意：旧的 localStorage 里可能存着 'cn'，那会覆盖默认值——
+// 因此这里带版本号：旧版本存的选择一律忽略一次，保证默认即参照站配色。
 (function initScheme() {
-    let saved = 'cn';
-    try { saved = localStorage.getItem('kronos_color_scheme') || 'cn'; } catch (e) {}
+    let saved = SCHEME_DEFAULT;
+    try {
+        if (localStorage.getItem('kronos_scheme_ver') === 'bk1') {
+            saved = localStorage.getItem('kronos_color_scheme') || SCHEME_DEFAULT;
+        } else {
+            localStorage.setItem('kronos_scheme_ver', 'bk1');
+        }
+        localStorage.removeItem('kronos_color_scheme');
+    } catch (e) {}
     applyScheme(saved);
 })();
 let tradeMode = '';
@@ -1691,7 +3327,143 @@ async function loadRealtime() {
     refreshTradePanel();
 }
 
+// ---------- K线看板：缩放 / 全屏（同花顺式） ----------
+// 注：lastKlinePayload / chartReqSeq 在此处提前声明，
+//     供下方 zoom/fullscreen 函数引用（避免 let 的暂时性死区问题）。
 let chartReqSeq = 0;
+let lastKlinePayload = null;   // 最近一次 K 线响应，供时刻线/缩放重绘使用
+
+/** 显示根数档位：放大=更少根数(柱更粗)，缩小=更多根数 */
+const KLINE_ZOOM_STEPS = [60, 120, 250, 400, 600];
+
+function klineZoomStep() {
+    const sel = document.getElementById('bars-select');
+    const cur = Number(sel && sel.value) || 250;
+    let idx = KLINE_ZOOM_STEPS.indexOf(cur);
+    if (idx < 0) {
+        // 当前值不在档位里，找最近的
+        idx = KLINE_ZOOM_STEPS.reduce((best, v, i) =>
+            Math.abs(v - cur) < Math.abs(KLINE_ZOOM_STEPS[best] - cur) ? i : best, 0);
+    }
+    return {sel, idx, cur};
+}
+
+/** dir: +1 放大（更少根数） / -1 缩小（更多根数） */
+function klineZoom(dir) {
+    const {sel, idx} = klineZoomStep();
+    if (!sel) return;
+    const next = Math.max(0, Math.min(KLINE_ZOOM_STEPS.length - 1, idx - dir));
+    if (KLINE_ZOOM_STEPS[next] === Number(sel.value)) {
+        klineHint(next === 0 ? '已到最大放大' : '已到最大缩小');
+        return;
+    }
+    applyKlineBars(KLINE_ZOOM_STEPS[next]);
+}
+
+function klineResetZoom() {
+    applyKlineBars(250);
+    klineHint('已重置为 250 根');
+}
+
+function applyKlineBars(n) {
+    const sel = document.getElementById('bars-select');
+    if (!sel) return;
+    // 若目标根数不在下拉项里，动态补一个 option
+    if (![...sel.options].some(o => Number(o.value) === n)) {
+        const opt = document.createElement('option');
+        opt.value = String(n);
+        opt.textContent = `最近 ${n} 根`;
+        // 插入到合适位置（按数值升序）
+        const idx = [...sel.options].findIndex(o => Number(o.value) > n);
+        sel.add(opt, idx < 0 ? undefined : sel.options[idx]);
+    }
+    sel.value = String(n);
+    loadChart();
+    klineHint('显示 ' + n + ' 根');
+}
+
+function klineHint(text) {
+    let el = document.getElementById('kline-fs-hint');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'kline-fs-hint';
+        document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 1400);
+}
+
+/** 全屏看盘：图表铺满视口 */
+function toggleKlineFullscreen(on) {
+    const pane = document.getElementById('tab-chart');
+    if (!pane) return;
+    const willOn = (on === undefined) ? !pane.classList.contains('kline-fs') : !!on;
+
+    if (willOn) {
+        // 记录进入前的滚动位置，退出时恢复
+        pane._scrollY = window.scrollY;
+        pane.classList.add('kline-fs');
+        document.body.style.overflow = 'hidden';
+        const btn = document.getElementById('kline-fs-btn');
+        if (btn) btn.classList.add('active');
+        klineHint('全屏看盘：+放大 / −缩小 / Esc 退出');
+    } else {
+        pane.classList.remove('kline-fs');
+        document.body.style.overflow = '';
+        const btn = document.getElementById('kline-fs-btn');
+        if (btn) btn.classList.remove('active');
+        if (pane._scrollY != null) window.scrollTo(0, pane._scrollY);
+    }
+    // 重绘以适配新高度
+    requestAnimationFrame(() => {
+        if (lastKlinePayload) {
+            drawChart(lastKlinePayload,
+                document.getElementById('indicator-select').value,
+                document.getElementById('pred-len').value, chartReqSeq);
+        } else if (lastKlinePayload === null && currentSymbol) {
+            loadChart();
+        }
+    });
+}
+
+// 键盘快捷键：F 全屏 / Esc 退出 / +- 缩放（仅在看盘页生效）
+document.addEventListener('keydown', e => {
+    const pane = document.getElementById('tab-chart');
+    if (!pane) return;
+    const activeTab = document.querySelector('.tabs button.active')?.dataset.tab;
+    if (activeTab !== 'tab-chart') return;
+    // 输入框内不拦截
+    const tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+    if (e.key === 'Escape' && pane.classList.contains('kline-fs')) {
+        toggleKlineFullscreen(false); e.preventDefault(); return;
+    }
+    if (e.key === 'f' || e.key === 'F') {
+        toggleKlineFullscreen(); e.preventDefault(); return;
+    }
+    if (e.key === '+' || e.key === '=') { klineZoom(1); e.preventDefault(); return; }
+    if (e.key === '-' || e.key === '_') { klineZoom(-1); e.preventDefault(); return; }
+    if (e.key === 'r' || e.key === 'R') { klineResetZoom(); e.preventDefault(); return; }
+});
+
+// 窗口尺寸变化时，全屏下重绘图表以撑满
+let _klineResizeTimer = null;
+window.addEventListener('resize', () => {
+    const pane = document.getElementById('tab-chart');
+    if (!pane || !pane.classList.contains('kline-fs')) return;
+    clearTimeout(_klineResizeTimer);
+    _klineResizeTimer = setTimeout(() => {
+        if (lastKlinePayload) {
+            drawChart(lastKlinePayload,
+                document.getElementById('indicator-select').value,
+                document.getElementById('pred-len').value, chartReqSeq);
+        }
+    }, 180);
+});
+
 async function loadChart(force) {
     if (!currentSymbol) return;
     const seq = ++chartReqSeq;           // guard against out-of-order responses
@@ -1708,7 +3480,11 @@ async function loadChart(force) {
             return;
         }
         document.getElementById('detail-title').textContent = `${currentSymbol} 分析`;
+        lastKlinePayload = k;
         drawChart(k, indSel, predLen, seq);
+        loadAnomaly(force);   // 盘中变化时刻线随图表一起刷新
+        loadP1(force);        // P1：下探阶段 + 尾盘预判 + 午间复盘
+        loadP2(force);        // P2：预警时间轴 / 快照 / 日报
     } finally {
         document.getElementById('chart-loading').classList.add('hidden');
     }
@@ -1724,12 +3500,61 @@ function drawChart(k, indicator, predLen, seq) {
         increasing:inc, decreasing:dec, yaxis:'y' };
 
     const traces = [candle];
+
+    // —— 同花顺式成交量副图：贴底 22% 高度，红涨绿跌 ——
+    const volColors = c.map((cv, i) => (cv >= o[i]) ? schemeColor('up') : schemeColor('down'));
+    traces.push({
+        x: x, y: v, type: 'bar', name: '成交量', yaxis: 'y2',
+        marker: { color: volColors, line: { width: 0 } },
+        hovertemplate: '%{y:,.0f}<extra>量</extra>',
+        showlegend: false,
+    });
+
+    // —— 同花顺风格布局：左侧价格轴、右侧成交量轴、十字光标、贴边网格 ——
+    const isFs = document.getElementById('tab-chart').classList.contains('kline-fs');
+    const fsH = isFs ? Math.max(360, window.innerHeight - 120) : 420;
+    const pal = klinePalette();          // 看盘区明暗配色（独立于全站主题）
+    const gridCol = pal.grid;
+    const axisCol = pal.axis;
+    const axisFont = { size: 10, color: pal.text };
+
     const layout = {
-        paper_bgcolor:chartBg(), plot_bgcolor:chartBg(), font:{color:chartFont()},
-        xaxis:{rangeslider:{visible:false}, gridcolor:chartGrid()},
-        yaxis:{gridcolor:chartGrid(), title:'价格'},
-        margin:{l:50,r:20,t:30,b:30},
-        height:420, dragmode:'pan'
+        paper_bgcolor: pal.bg, plot_bgcolor: pal.plot, font: { color: pal.text },
+        xaxis: {
+            rangeslider: { visible: false },
+            gridcolor: gridCol,
+            showspikes: true, spikemode: 'across', spikesnap: 'cursor',
+            spikecolor: axisCol, spikethickness: 1, spikedash: 'dot',
+            tickfont: axisFont, showline: true, linecolor: axisCol, linewidth: 1,
+            mirror: false,
+        },
+        yaxis: {
+            gridcolor: gridCol, title: '',
+            domain: [0.24, 1],            // 主图占上方 76%
+            side: 'left',
+            tickfont: axisFont, showline: true, linecolor: axisCol, linewidth: 1,
+            showspikes: true, spikemode: 'across', spikesnap: 'cursor',
+            spikecolor: axisCol, spikethickness: 1, spikedash: 'dot',
+            zeroline: false,
+        },
+        yaxis2: {
+            gridcolor: gridCol, domain: [0, 0.20],  // 成交量副图占下方 20%
+            side: 'right', showgrid: false, zeroline: false,
+            tickfont: axisFont, showline: true, linecolor: axisCol, linewidth: 1,
+            anchor: 'x',
+        },
+        margin: { l: 56, r: 52, t: 24, b: 24 },
+        height: fsH, dragmode: 'pan',
+        hovermode: 'x unified',
+        hoverlabel: {
+            bgcolor: pal.hoverBg, bordercolor: pal.hoverBd,
+            font: { color: pal.hoverFg, size: 11 },
+        },
+        legend: {
+            orientation: 'h', x: 0, y: 1.02, xanchor: 'left', yanchor: 'bottom',
+            font: { size: 10, color: pal.text }, bgcolor: 'rgba(0,0,0,0)',
+        },
+        showlegend: true,
     };
 
     if (indicator === 'ma') {
@@ -1741,22 +3566,34 @@ function drawChart(k, indicator, predLen, seq) {
             traces.push({x, y:bars.map(b=>b[m]), type:'scatter', mode:'lines', name:m, line:{width:1, dash:'dot'}});
         });
     } else if (indicator === 'rsi') {
-        traces.push({x, y:bars.map(b=>b.rsi), type:'scatter', mode:'lines', name:'RSI', yaxis:'y2', line:{color:'#f59e0b'}});
-        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:chartGrid(), showgrid:false};
+        traces.push({x, y:bars.map(b=>b.rsi), type:'scatter', mode:'lines', name:'RSI', yaxis:'y3', line:{color:'#f59e0b'}});
+        layout.yaxis3 = {overlaying:'y', side:'right', range:[0,100], gridcolor:gridCol, showgrid:false, anchor:'x',
+                         tickfont:axisFont, showline:true, linecolor:gridCol, linewidth:1};
+        layout.yaxis.domain = [0.46, 1];      // 有副指标时主图收窄
+        layout.yaxis3.domain = [0.24, 0.42];
+        layout.yaxis2.domain = [0.0, 0.20];
     } else if (indicator === 'kdj') {
         ['kdj_k','kdj_d','kdj_j'].forEach((m,i)=>{
-            traces.push({x, y:bars.map(b=>b[m]), type:'scatter', mode:'lines', name:m, yaxis:'y2', line:{width:1.2, color:['#3b82f6','#f59e0b','#a78bfa'][i]}});
+            traces.push({x, y:bars.map(b=>b[m]), type:'scatter', mode:'lines', name:m, yaxis:'y3', line:{width:1.2, color:['#3b82f6','#f59e0b','#a78bfa'][i]}});
         });
-        layout.yaxis2 = {overlaying:'y', side:'right', range:[0,100], gridcolor:chartGrid(), showgrid:false};
+        layout.yaxis3 = {overlaying:'y', side:'right', range:[0,100], gridcolor:gridCol, showgrid:false, anchor:'x',
+                         tickfont:axisFont, showline:true, linecolor:gridCol, linewidth:1};
+        layout.yaxis.domain = [0.46, 1];
+        layout.yaxis3.domain = [0.24, 0.42];
+        layout.yaxis2.domain = [0.0, 0.20];
     } else if (indicator === 'macd') {
         const dif = bars.map(b=>b.dif), dea = bars.map(b=>b.dea), macd = bars.map(b=>b.macd);
         const colors = macd.map(v=>v>=0?inc.color:dec.color);
         traces.push(
-            {x, y:macd, type:'bar', name:'MACD', marker:{color:colors}, yaxis:'y2'},
-            {x, y:dif, type:'scatter', mode:'lines', name:'DIF', yaxis:'y2', line:{width:1, color:'#3b82f6'}},
-            {x, y:dea, type:'scatter', mode:'lines', name:'DEA', yaxis:'y2', line:{width:1, color:'#f59e0b'}}
+            {x, y:macd, type:'bar', name:'MACD', marker:{color:colors}, yaxis:'y3'},
+            {x, y:dif, type:'scatter', mode:'lines', name:'DIF', yaxis:'y3', line:{width:1, color:'#3b82f6'}},
+            {x, y:dea, type:'scatter', mode:'lines', name:'DEA', yaxis:'y3', line:{width:1, color:'#f59e0b'}}
         );
-        layout.yaxis2 = {overlaying:'y', side:'right', gridcolor:chartGrid(), showgrid:false};
+        layout.yaxis3 = {overlaying:'y', side:'right', gridcolor:gridCol, showgrid:false, anchor:'x',
+                         tickfont:axisFont, showline:true, linecolor:gridCol, linewidth:1};
+        layout.yaxis.domain = [0.46, 1];
+        layout.yaxis3.domain = [0.24, 0.42];
+        layout.yaxis2.domain = [0.0, 0.20];
     }
 
     // Kronos forecast
@@ -1777,6 +3614,7 @@ function drawChart(k, indicator, predLen, seq) {
                 line:{color:'#e879f9', width:2}, marker:{size:4}, opacity:.9});
             traces.push({x:fx, y:fc.high, type:'scatter', mode:'lines', name:'预测上轨', line:{color:'#e879f9', width:1, dash:'dot'}, opacity:.5});
             traces.push({x:fx, y:fc.low, type:'scatter', mode:'lines', name:'预测下轨', line:{color:'#e879f9', width:1, dash:'dot'}, opacity:.5});
+            applyAnomalyMarks(layout, bars);
             Plotly.react('chart-main', traces, layout);
             const conf = fc.confidence || {};
             const accNote = conf.dir_acc_pct!=null ? ` · 历史方向准确率 ${conf.dir_acc_pct}%` : '';
@@ -1785,9 +3623,1597 @@ function drawChart(k, indicator, predLen, seq) {
         });
         return;
     }
+    applyAnomalyMarks(layout, bars);
     Plotly.react('chart-main', traces, layout);
     document.getElementById('chart-sub').style.display='none';
 }
+
+// ---------- 盘中变化时刻线 + 前置预警线 (P0) ----------
+let anomalyData = null;       // last /api/anomaly payload
+let anomalyMarksOn = true;    // 显示时刻线
+let anomalyLeadOn = true;     // 显示前置预警线
+
+function toggleAnomalyMarks(marksChecked) {
+    if (marksChecked !== undefined) anomalyMarksOn = !!marksChecked;
+    const el = document.getElementById('anomaly-show-lead');
+    if (el) anomalyLeadOn = !!el.checked;
+    // 重绘当前图表以应用/移除标记（不重新请求数据）
+    if (lastKlinePayload) {
+        drawChart(lastKlinePayload, document.getElementById('indicator-select').value,
+                  document.getElementById('pred-len').value, chartReqSeq);
+    }
+}
+
+async function loadAnomaly(force) {
+    const box = document.getElementById('anomaly-body');
+    if (!currentSymbol) { if (box) box.innerHTML = '<div class="loading">选择股票后加载...</div>'; return; }
+    if (box) box.innerHTML = '<div class="loading">⏳ 扫描 1 分钟 K 线异动...</div>';
+    try {
+        const r = await api(`/api/anomaly?symbol=${currentSymbol}&bars=400${force?'&force=1':''}`);
+        if (r.error || !r.ok) {
+            if (box) box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${r.error||'分析失败'}</div>`;
+            anomalyData = null;
+            return;
+        }
+        anomalyData = r;
+        renderAnomaly(r);
+        // 同步刷新图表上的时刻线
+        if (lastKlinePayload) {
+            drawChart(lastKlinePayload, document.getElementById('indicator-select').value,
+                      document.getElementById('pred-len').value, chartReqSeq);
+        }
+    } catch (e) {
+        if (box) box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">加载失败: ${e}</div>`;
+    }
+}
+
+/** 把异动时刻线注入 Plotly layout（垂直虚线 + 前置预警线）。 */
+function applyAnomalyMarks(layout, bars) {
+    if (!anomalyData || !anomalyData.events) return layout;
+    if (!anomalyMarksOn && !anomalyLeadOn) return layout;
+    const validTs = new Set((bars || []).map(b => String(b.timestamps).slice(0, 16)));
+    const shapes = [], annotations = [];
+
+    anomalyData.events.forEach(ev => {
+        if (anomalyMarksOn && validTs.has(ev.ts)) {
+            const up = ev.direction === 'up';
+            shapes.push({
+                type: 'line', xref: 'x', yref: 'paper',
+                x0: ev.ts, x1: ev.ts, y0: 0, y1: 1,
+                line: { color: up ? 'rgba(16,185,129,.85)' : 'rgba(239,68,68,.85)',
+                        width: 1.6, dash: 'dash' },
+                layer: 'above',
+            });
+            annotations.push({
+                x: ev.ts, y: 1, xref: 'x', yref: 'paper',
+                text: up ? '▲' : '▼', showarrow: false, yanchor: 'bottom',
+                font: { size: 11, color: up ? '#10b981' : '#ef4444' },
+            });
+        }
+        if (anomalyLeadOn && ev.lead_ts && validTs.has(ev.lead_ts)) {
+            shapes.push({
+                type: 'line', xref: 'x', yref: 'paper',
+                x0: ev.lead_ts, x1: ev.lead_ts, y0: 0, y1: 1,
+                line: { color: 'rgba(245,158,11,.55)', width: 1, dash: 'dot' },
+                layer: 'above',
+            });
+        }
+    });
+
+    if (shapes.length) {
+        layout.shapes = (layout.shapes || []).concat(shapes);
+        layout.annotations = (layout.annotations || []).concat(annotations);
+    }
+    return layout;
+}
+
+function srcBadge(p) {
+    const cls = 'ev-src src-' + (p.source || 'heuristic');
+    const tip = `${p.basis}${p.sample ? ' （样本 ' + p.sample + '）' : ''}`;
+    return `<span class="${cls}" title="${esc(tip)}">${p.source_label} · ${p.value}${p.unit}</span>`;
+}
+
+function esc(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderAnomaly(r) {
+    const box = document.getElementById('anomaly-body');
+    if (!box) return;
+    const card = r.card || {};
+    const evs = r.events || [];
+    const dq = r.data_quality || {};
+    const bt = card.backtest;
+
+    const rangeEl = document.getElementById('anomaly-range');
+    if (rangeEl && r.range) {
+        rangeEl.textContent = `${r.range.start} ~ ${r.range.end} · ${r.range.bars} 根 1 分钟 K 线`;
+    }
+
+    let html = '';
+
+    // --- 结论 ---
+    const lvColor = card.level === 'high' ? '#ef4444' : (card.level === 'mid' ? '#f59e0b' : 'var(--muted)');
+    html += `<div class="stat-grid" style="margin-bottom:10px">
+        <div class="stat"><div class="k">异动次数</div><div class="v">${evs.length}</div></div>
+        <div class="stat"><div class="k">强度评分</div><div class="v" style="color:${lvColor}">${card.score==null?'-':card.score}</div></div>
+        <div class="stat"><div class="k">判定</div><div class="v" style="color:${lvColor};font-size:14px">${esc(card.level_label||'-')}</div></div>
+        <div class="stat"><div class="k">有效 K 线</div><div class="v" style="font-size:14px">${dq.valid==null?'-':dq.valid}/${dq.bars==null?'-':dq.bars}</div></div>
+    </div>`;
+
+    html += `<div style="padding:8px 12px;background:var(--panel);border-radius:6px;margin-bottom:10px;line-height:1.7">
+        ${esc(card.conclusion || '暂无结论')}
+    </div>`;
+
+    // --- 因子贡献明细 ---
+    if ((card.factors||[]).length || (card.risks||[]).length) {
+        html += `<div class="panel" style="background:var(--panel);margin-bottom:10px">
+            <h2 style="font-size:13px">📊 依据卡片 · 因子贡献明细</h2>`;
+        (card.factors||[]).forEach(f => {
+            const d = Number(f.delta||0);
+            const cls = d > 0 ? 'pos' : (d < 0 ? 'neg' : '');
+            const w = Math.min(100, Math.abs(d) * 4);
+            html += `<div class="ev-factor">
+                <span class="ef-name">${esc(f.name)} ${srcBadge({source:'heuristic',source_label:'权重 ' + (f.weight!=null?f.weight:'-'),value:'',unit:'',basis:f.basis||''})}</span>
+                <span class="ev-bar ${cls}"><i style="width:${w}%"></i></span>
+                <span class="ef-delta ${cls}">${d>0?'+':''}${d.toFixed(1)}</span>
+            </div>`;
+        });
+        (card.risks||[]).forEach(k => {
+            const d = Number(k.delta||0);
+            html += `<div class="ev-factor">
+                <span class="ef-name">⚠️ ${esc(k.name)} <span class="ev-src src-degraded" title="${esc(k.basis||'')}">风险因子</span></span>
+                <span class="ev-bar neg"><i style="width:${Math.min(100,Math.abs(d)*4)}%"></i></span>
+                <span class="ef-delta neg">${d.toFixed(1)}</span>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    // --- 回测参考 ---
+    if (bt && bt.ok) {
+        html += `<div style="padding:8px 12px;background:var(--panel);border-radius:6px;margin-bottom:10px;font-size:13px;line-height:1.8">
+            <b>📈 回测参考</b>（${bt.horizon_min} 分钟持有期，样本 ${bt.sample} 例）<br>
+            方向延续准确率 <b style="color:${bt.accuracy_pct>=50?'#10b981':'#ef4444'}">${bt.accuracy_pct}%</b>
+            · 平均收益 <b>${bt.avg_return_pct>=0?'+':''}${bt.avg_return_pct}%</b>
+            <div class="hint" style="margin-top:4px">${esc(bt.note)}</div>
+        </div>`;
+    } else if (bt && !bt.ok) {
+        html += `<div class="hint" style="margin-bottom:10px">📈 回测参考：${esc(bt.reason)}</div>`;
+    }
+
+    // --- 参数溯源 ---
+    if ((r.params||[]).length) {
+        html += `<div style="margin-bottom:10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <span class="hint">参数溯源：</span>`;
+        r.params.forEach(p => { html += srcBadge(p); });
+        html += `</div>`;
+    }
+
+    // --- 数据降级声明 ---
+    if ((r.degraded||[]).length) {
+        html += `<div class="ev-degraded"><b>⚠️ 以下因子当前数据源不可得，未参与评分（未编造数值）：</b><ul style="margin:6px 0 0;padding-left:20px">`;
+        r.degraded.forEach(d => { html += `<li>${esc(d.basis)}</li>`; });
+        html += `</ul></div>`;
+    }
+
+    // --- 数据质量 ---
+    if ((dq.notes||[]).length) {
+        html += `<div class="hint" style="margin-top:8px">🧹 数据清洗：${dq.notes.map(esc).join('；')}</div>`;
+    }
+
+    // --- 异动时间轴（点击回溯） ---
+    if (evs.length) {
+        html += `<div style="margin-top:10px"><b style="font-size:13px">🕐 异动时间轴</b>（点击跳转对应位置）<div class="ev-tl">`;
+        evs.slice().reverse().forEach((ev, i) => {
+            const up = ev.direction === 'up';
+            html += `<span class="ev-chip dir-${up?'up':'down'}" onclick="focusAnomaly('${ev.ts}')"
+                title="${esc(ev.reason)}${ev.lead_ts?' · 前置预警 '+ev.lead_ts:''}">
+                ${up?'▲':'▼'} ${ev.ts.slice(5)} <span style="color:var(--muted)">${esc(ev.reason)}</span>
+            </span>`;
+        });
+        html += `</div></div>`;
+    }
+
+    box.innerHTML = html;
+}
+
+/** 点击时间轴 chip → 把图表视图挪到该时刻。 */
+function focusAnomaly(ts) {
+    const gd = document.getElementById('chart-main');
+    if (!gd || !gd.data) return;
+    try {
+        const d = new Date(ts.replace(' ', 'T') + ':00');
+        const pad = 30 * 60 * 1000;  // 前后各 30 分钟
+        Plotly.relayout(gd, {
+            'xaxis.range': [new Date(d.getTime() - pad), new Date(d.getTime() + pad)],
+        });
+    } catch (e) { /* 忽略 */ }
+}
+
+// ---------- P1: 下探预警 / 尾盘预判 / 午间复盘 ----------
+let p1Data = null;
+
+function toggleP1Settings() {
+    const el = document.getElementById('p1-scope');
+    if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+async function loadP1(force) {
+    const box = document.getElementById('p1-body');
+    if (!currentSymbol) { if (box) box.innerHTML = '<div class="loading">选择股票后加载...</div>'; return; }
+    if (box) box.innerHTML = '<div class="loading">⏳ 分析下探阶段与尾盘信号...</div>';
+    try {
+        const r = await api(`/api/p1/overview?symbol=${currentSymbol}${force?'&force=1':''}`);
+        if (r.error || !r.ok) {
+            if (box) box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${esc(r.error||'分析失败')}</div>`;
+            p1Data = null; return;
+        }
+        p1Data = r;
+        renderP1(r);
+    } catch (e) {
+        if (box) box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">加载失败: ${esc(e)}</div>`;
+    }
+}
+
+const STAGE_ORDER = [
+    ['normal', '正常回撤'], ['accelerating', '加速下杀'],
+    ['panic', '恐慌释放'], ['exhausted', '抛压衰竭'],
+];
+
+function renderP1(r) {
+    const box = document.getElementById('p1-body');
+    if (!box) return;
+    const dip = r.dip || {}, tailR = r.tail || {}, noon = r.noon || {}, cal = r.calibration || {};
+    let html = '';
+
+    // ===== 1. 下探阶段 =====
+    html += `<div class="panel" style="background:var(--panel);margin-bottom:10px">
+        <h2 style="font-size:13px">📉 下探过程实时预警</h2>`;
+    if (!dip.ok) {
+        html += `<div class="hint">${esc(dip.error || '暂无数据')}</div>`;
+    } else {
+        html += `<div class="stage-steps">`;
+        STAGE_ORDER.forEach(([k, label]) => {
+            const on = dip.stage === k;
+            html += `<div class="stage-step st-${k}${on?' active':''}">
+                ${on ? '<span class="ss-badge">当前</span>' : ''}
+                <span class="ss-name">${label}</span>
+                <span class="ss-chars">${esc(dip.stage_chars || '')}</span>
+            </div>`;
+        });
+        html += `</div>`;
+        html += `<div style="font-size:13px;line-height:1.8;margin-top:6px">
+            <b>判定依据：</b>${esc(dip.stage_why || '')}<br>
+            <b>系统行为：</b>${esc(dip.stage_action || '')}
+        </div>`;
+
+        const sc = Number(dip.score || 0);
+        const col = sc >= 65 ? '#10b981' : (sc <= 40 ? '#ef4444' : '#f59e0b');
+        html += `<div class="dqs-wrap">
+            <div class="dqs-label" style="color:${col}">${esc(dip.dip_type_label || '')}</div>
+            <div class="dqs-bar"><div class="dqs-marker" style="left:calc(${sc}% - 1.5px)"></div></div>
+            <div class="dqs-score" style="color:${col}">${sc}</div>
+        </div>
+        <div class="hint" style="margin-top:-4px">Dip Quality Score（0-100）：≥65 洗盘型 · ≤40 出货型 · 中间中性</div>`;
+
+        html += `<div style="margin-top:8px">`;
+        (dip.factors || []).forEach(f => {
+            html += `<div class="ev-factor"><span class="ef-name">${esc(f.name)}</span>
+                <span class="ev-bar pos"><i style="width:${Math.min(100, Math.abs(f.delta)*4)}%"></i></span>
+                <span class="ef-delta pos">+${Number(f.delta).toFixed(1)}</span></div>`;
+        });
+        (dip.risks || []).forEach(k => {
+            html += `<div class="ev-factor"><span class="ef-name">⚠️ ${esc(k.name)}</span>
+                <span class="ev-bar neg"><i style="width:${Math.min(100, Math.abs(k.delta)*4)}%"></i></span>
+                <span class="ef-delta neg">${Number(k.delta).toFixed(1)}</span></div>`;
+        });
+        html += `</div>`;
+
+        const m = dip.metrics || {};
+        html += `<div class="stat-grid" style="margin-top:8px">
+            <div class="stat"><div class="k">现价</div><div class="v">${fmt(m.close)}</div></div>
+            <div class="stat"><div class="k">均价线</div><div class="v">${fmt(m.vwap)}</div></div>
+            <div class="stat"><div class="k">自高点回撤</div><div class="v">${fmt(m.depth_pct)}%</div></div>
+            <div class="stat"><div class="k">量能倍数</div><div class="v">${fmt(m.vol_expand)}</div></div>
+        </div>`;
+        html += `<div class="hint" style="margin-top:4px">会话日期 ${esc(dip.session_date || '-')} ·
+            有效 K 线 ${dip.bars_used} 根（已排除 ${dip.excluded_bars} 根竞价/零成交 bar）</div>`;
+    }
+    html += `</div>`;
+
+    // ===== 2. 尾盘走势预判 =====
+    html += `<div class="panel" style="background:var(--panel);margin-bottom:10px">
+        <h2 style="font-size:13px">🎯 尾盘拉板信号预判 <span class="hint">14:00 后持续计算</span></h2>`;
+    if (!tailR.ok) {
+        html += `<div class="hint">${esc(tailR.error || '暂无数据')}</div>`;
+    } else {
+        const c = tailR.conclusion || {};
+        const pc = Number(tailR.prob_pct || 0);
+        html += `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:8px">
+            <span class="tail-badge t-${c.type}">${esc(c.label || '-')}</span>
+            <span style="font-size:15px"><b>拉板概率 ${pc}%</b>
+                <span class="hint">（阈值 ${tailR.threshold_pct}%）</span></span>
+            ${tailR.triggered ? '<span style="color:#10b981;font-weight:700">✓ 已触发</span>' : ''}
+        </div>
+        <div style="font-size:13px;line-height:1.8"><b>提示：</b>${esc(c.hint || '')}<br>
+            <b>依据：</b>${esc(c.why || '')}</div>`;
+
+        const w = tailR.warning || {};
+        html += `<div class="warn-line w-${w.color || 'muted'}">
+            <div class="wl-title">⏰ 14:30 预警线 · ${esc(w.label || '-')}</div>
+            <div>${esc(w.detail || '')}</div>
+        </div>`;
+
+        html += `<div style="margin-top:6px">`;
+        (tailR.breakdown || []).forEach(b => {
+            const miss = b.hit === null || b.hit === undefined;
+            const got = b.hit === true;
+            html += `<div class="tail-factor${miss?' miss':''}">
+                <span>${got?'✅':'⬜'} ${esc(b.name)}
+                    ${b.proxy ? '<span class="proxy-tag" title="代理指标，非真实 Level-2 数据">代理</span>' : ''}
+                    ${miss ? '<span class="ev-src src-degraded">数据不可得</span>' : ''}</span>
+                <span class="ev-bar ${got?'pos':'neg'}"><i style="width:${miss?0:(got?Math.min(100,b.weight*100):0)}%"></i></span>
+                <span class="ef-delta ${got?'pos':'neg'}" style="text-align:right">${got?'+':''}${Number(b.delta).toFixed(1)}</span>
+                <span class="tf-detail">权重 ${b.weight} · ${esc(b.detail)}</span>
+            </div>`;
+        });
+        html += `</div>
+            <div class="hint" style="margin-top:6px">📐 ${esc(tailR.coverage_note || '')}</div>`;
+    }
+    html += `</div>`;
+
+    // ===== 3. 午间复盘 =====
+    html += `<div class="panel" style="background:var(--panel);margin-bottom:10px">
+        <h2 style="font-size:13px">🕛 午间复盘快照 <span class="hint">11:30 口径</span></h2>`;
+    if (!noon.ok) {
+        html += `<div class="hint">${esc(noon.error || '暂无数据')}</div>`;
+    } else {
+        const s = noon.snapshot || {};
+        html += `<div class="stat-grid" style="margin-bottom:8px">
+            <div class="stat"><div class="k">上午最低</div><div class="v">${fmt(s.am_low)}</div></div>
+            <div class="stat"><div class="k">最大跌幅</div><div class="v">${fmt(s.max_drop_pct)}%</div></div>
+            <div class="stat"><div class="k">均价线</div><div class="v">${fmt(s.am_vwap)}</div></div>
+            <div class="stat"><div class="k">上午量能占比</div><div class="v">${s.am_vol_share_pct==null?'-':fmt(s.am_vol_share_pct)+'%'}</div></div>
+        </div>
+        <div style="font-size:13px;margin-bottom:8px">
+            上午收 ${fmt(s.am_close)}（${(s.am_gain_pct||0)>=0?'+':''}${fmt(s.am_gain_pct)}%）·
+            ${s.below_vwap ? '<span style="color:var(--red)">位于均价线下方</span>' : '<span style="color:#10b981">站于均价线上方</span>'}
+            ${noon.sector && noon.sector.industry ? ' · 板块 '+esc(noon.sector.industry)+' 排名 '+(noon.sector.rank||'-')+'/'+(noon.sector.total||'-') : ''}
+        </div>`;
+        html += `<div style="font-size:13px;margin-bottom:6px"><b>午间假设（三剧本）：</b></div>`;
+        (noon.scenarios || []).forEach(sc => {
+            html += `<div class="scenario${sc.rank===1?' rank1':''}">
+                <div class="sc-head"><span>${sc.rank===1?'⭐ ':''}${esc(sc.label)}</span>
+                    <span class="sc-pct">${sc.prob_pct}%</span></div>
+                <div class="sc-cond">触发特征：${esc(sc.cond)}</div>
+                <div class="sc-act">→ ${esc(sc.action)}</div>
+            </div>`;
+        });
+    }
+    html += `</div>`;
+
+    // ===== 4. 自适应校准 =====
+    html += `<div class="panel" style="background:var(--panel)">
+        <h2 style="font-size:13px">🔧 日内自适应校准 <span class="hint">开盘 30 分钟后生效</span></h2>`;
+    const calApplied = cal.applied;
+    html += `<div style="font-size:13px;line-height:1.8">
+        <b>缩放系数：</b><span style="color:${calApplied?'#10b981':'var(--muted)'}">${calApplied?('× '+cal.scale):'未校准'}</span>
+        ${cal.today_vol!=null?` · 当日波动率 ${cal.today_vol}`:''}
+        ${cal.baseline_vol!=null?` / 基准 ${cal.baseline_vol}（${cal.baseline_days||'-'} 日）`:''}<br>
+        <b>生效阈值：</b>振幅 ${cal.effective ? cal.effective.wave_pct : '-'}% ·
+            量能 ${cal.effective ? cal.effective.vol_ratio : '-'} 倍<br>
+        <b>依据：</b>${esc(cal.reason || '')}
+    </div>`;
+    html += `</div>`;
+
+    box.innerHTML = html;
+
+    const scopeBody = document.getElementById('p1-scope-body');
+    if (scopeBody) {
+        const deg = (dip.degraded || []);
+        let sh = `<div style="margin-bottom:6px"><b>可取得的真实数据：</b>1 分钟 OHLCV + 成交额、
+            均价线 VWAP（由 amount/volume 还原）、行业板块涨跌幅、大盘指数、日线历史。</div>
+        <div><b>⚙️ 参数溯源：</b></div>`;
+        (dip.params || []).forEach(p => {
+            sh += `<div style="margin:4px 0"><span class="ev-src src-${p.source}" title="${esc(p.basis)}">
+                ${esc(p.key)} · ${p.source_label} · ${p.value}${esc(p.unit||'')}</span>
+                <span style="font-size:11px">${esc((p.basis||'').slice(0,90))}${(p.basis||'').length>90?'…':''}</span></div>`;
+        });
+        if (deg.length) {
+            sh += `<div class="ev-degraded" style="margin-top:8px"><b>⚠️ 数据源不可得、已降级不参与评分的因子：</b>
+                <ul style="margin:6px 0 0;padding-left:20px">`;
+            deg.forEach(d => { sh += `<li>${esc(d.basis)}</li>`; });
+            sh += `</ul></div>`;
+        }
+        scopeBody.innerHTML = sh;
+    }
+}
+
+// ---------- P2: 预警复盘（时间轴 / 快照 / 日报 / 反馈闭环） ----------
+let p2Mode = 'timeline';
+let p2Data = { timeline: null, snapshots: null, daily: null };
+
+function switchP2(mode) {
+    p2Mode = mode;
+    const box = document.getElementById('p2-body');
+    if (box) {
+        const cached = p2Data[mode];
+        if (cached) { renderP2(mode, cached); return; }
+    }
+    loadP2();
+}
+
+async function loadP2(force) {
+    const box = document.getElementById('p2-body');
+    if (!box) return;
+    if (!currentSymbol) { box.innerHTML = '<div class="loading">选择股票后加载...</div>'; return; }
+    box.innerHTML = '<div class="loading">⏳ 加载预警复盘数据...</div>';
+    if (force) p2Data = { timeline: null, snapshots: null, daily: null };
+    try {
+        if (p2Mode === 'timeline') {
+            const r = await api(`/api/timeline?symbol=${currentSymbol}`);
+            p2Data.timeline = r; renderP2('timeline', r);
+        } else if (p2Mode === 'snapshots') {
+            const r = await api(`/api/snapshots?symbol=${currentSymbol}&limit=50`);
+            p2Data.snapshots = r; renderP2('snapshots', r);
+        } else {
+            const r = await api(`/api/daily-report?verify=1`);
+            p2Data.daily = r; renderP2('daily', r);
+        }
+    } catch (e) {
+        box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">加载失败: ${esc(e)}</div>`;
+    }
+}
+
+function p2TabsHtml() {
+    const tabs = [['timeline', '🕐 预警时间轴'], ['snapshots', '🗂️ 预警快照'], ['daily', '📊 每日日报']];
+    return `<div class="p2-tabs">` + tabs.map(([k, label]) =>
+        `<span class="p2-tab${p2Mode===k?' on':''}" onclick="switchP2('${k}')">${label}</span>`
+    ).join('') + `</div>`;
+}
+
+function renderP2(mode, r) {
+    const box = document.getElementById('p2-body');
+    if (!box) return;
+    let html = p2TabsHtml();
+
+    if (mode === 'timeline') {
+        html += renderTimeline(r);
+    } else if (mode === 'snapshots') {
+        html += renderSnapshots(r);
+    } else {
+        html += renderDaily(r);
+    }
+    box.innerHTML = html;
+}
+
+/* ---- 时间轴 ---- */
+function renderTimeline(r) {
+    if (!r || !r.ok) return `<div class="hint">${esc((r && r.error) || '暂无数据')}</div>`;
+    if (!r.count) {
+        return `<div class="hint">${esc(r.day)} 暂无二级及以上预警记录。
+                预警达到二级（警告级）后会自动存档，届时在这里按时间顺序呈现。</div>`;
+    }
+    const pts = r.points || [];
+    let html = `<div class="hint" style="margin-bottom:6px">
+        ${esc(r.day)} · 共 ${r.count} 条预警（点击圆点跳转 K 线对应位置）</div>`;
+    html += `<div class="tl-track"><div class="tl-axis"></div><div class="tl-items">`;
+    pts.forEach(p => {
+        const lv = p.level >= 3 ? 3 : 2;
+        const fb = p.feedback ? { useful: '👍', useless: '👎', late: '⏰' }[p.feedback] || '' : '';
+        html += `<div class="tl-dot lv${lv} dir-${p.direction}" title="${esc(p.reason || '')}"
+                      onclick="focusAnomaly('${esc(p.ts_label.slice(0,16))}');openSnapModal(${p.id})">
+            <div class="td-mark"></div>
+            <div class="td-time">${esc(p.ts_label.slice(11,16))}</div>
+            <div class="td-fb">${fb}</div>
+        </div>`;
+    });
+    html += `</div></div>`;
+    return html;
+}
+
+/* ---- 快照列表 ---- */
+function renderSnapshots(r) {
+    if (!r || !r.snapshots) return '<div class="hint">暂无数据</div>';
+    if (!r.count) {
+        return `<div class="hint">暂无预警快照。二级及以上预警触发时会自动截存
+                当时的 K 线窗口与关键指标，便于事后复盘「当时到底长什么样」。</div>`;
+    }
+    let html = `<div class="hint" style="margin-bottom:6px">共 ${r.count} 条快照（点击查看详情）</div>`;
+    r.snapshots.forEach(s => {
+        const lv = s.level >= 3 ? 3 : 2;
+        html += `<div class="snap-card" onclick="openSnapModal(${s.id})">
+            <div class="sc-top">
+                <span><b>${esc(s.name || s.symbol)}</b> ${esc(s.symbol)}
+                    <span class="lv-tag lv${lv}">${s.level}级 ${esc(s.level_label)}</span>
+                    <span style="color:${s.direction==='up'?'#10b981':'#ef4444'}">
+                        ${s.direction==='up'?'▲ 向上':'▼ 向下'}</span></span>
+                <span class="hint">${esc(s.ts_label || '')}</span>
+            </div>
+            <div class="sc-meta">${esc(s.reason || '')}
+                ${s.score!=null?' · 强度 '+s.score+' 分':''}
+                ${s.price!=null?' · 价格 '+s.price:''}</div>
+        </div>`;
+    });
+    return html;
+}
+
+/* ---- 日报 ---- */
+function renderDaily(r) {
+    if (!r || !r.ok) return `<div class="hint">${esc((r && r.error) || '暂无数据')}</div>`;
+    const v = r.verification || {};
+    const maxOf = obj => Math.max(1, ...Object.values(obj || {}) );
+    const barRows = (obj, title) => {
+        const keys = Object.keys(obj || {});
+        if (!keys.length) return `<div class="hint" style="margin:4px 0">${title}：暂无</div>`;
+        const mx = maxOf(obj);
+        return `<div style="margin:8px 0"><b style="font-size:13px">${title}</b>` +
+            keys.map(k => `<div class="bar-row">
+                <span>${esc(k)}</span>
+                <span class="br-track"><i class="br-fill" style="width:${(obj[k]/mx*100).toFixed(0)}%"></i></span>
+                <span class="br-val">${obj[k]}</span></div>`).join('') + `</div>`;
+    };
+
+    let html = `<div class="hint" style="margin-bottom:8px">报告日期 ${esc(r.day)} · 生成于 ${esc(r.generated_at)}</div>`;
+    html += `<div class="stat-grid" style="margin-bottom:10px">
+        <div class="stat"><div class="k">快照数</div><div class="v">${r.snapshots}</div></div>
+        <div class="stat"><div class="k">事件总数</div><div class="v">${r.events_total}</div></div>
+        <div class="stat"><div class="k">方向兑现率</div>
+            <div class="v" style="font-size:15px">${v.accuracy_pct==null?'待验证':v.accuracy_pct+'%'}</div></div>
+        <div class="stat"><div class="k">用户反馈</div><div class="v">${(r.feedback||{}).total||0}</div></div>
+    </div>`;
+
+    html += barRows(r.by_type, '类型分布');
+    html += barRows(r.by_symbol, '标的分布');
+    html += barRows(r.by_direction, '方向分布');
+    html += barRows(r.by_level, '级别分布');
+    html += barRows(r.hour_distribution, '小时分布');
+
+    html += `<div class="warn-line w-${v.accuracy_pct==null?'muted':'green'}" style="margin-top:8px">
+        <div class="wl-title">📈 走势回溯</div>
+        <div>已验证 ${v.verified||0} 条 / 待验证 ${v.pending||0} 条 · ${esc(v.note||'')}</div>
+    </div>`;
+
+    const f = r.feedback || {};
+    if (f.total) {
+        html += `<div style="margin-top:8px;font-size:13px">
+            <b>用户反馈：</b>👍 有用 ${f.useful} · 👎 无用 ${f.useless} · ⏰ 晚了 ${f.late}
+            <span class="hint">（主观评价，非模型准确率）</span></div>`;
+    }
+    return html;
+}
+
+/* ---- 快照详情 ---- */
+async function openSnapModal(sid) {
+    const modal = document.getElementById('snap-modal');
+    const body = document.getElementById('sm-body');
+    if (!modal || !body) return;
+    modal.style.display = 'flex';
+    body.innerHTML = '<div class="loading">加载中...</div>';
+    try {
+        const s = await api(`/api/snapshots/${sid}`);
+        if (s.error) { body.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${esc(s.error)}</div>`; return; }
+        document.getElementById('sm-title').textContent = `${s.name || s.symbol} ${s.symbol} · ${s.ts_label}`;
+        const ind = s.indicators || {};
+        let h = `<div class="stat-grid" style="margin-bottom:10px">
+            <div class="stat"><div class="k">级别</div><div class="v" style="font-size:14px">${s.level}级 ${esc(s.level_label)}</div></div>
+            <div class="stat"><div class="k">方向</div><div class="v" style="color:${s.direction==='up'?'#10b981':'#ef4444'}">${s.direction==='up'?'▲ 向上':'▼ 向下'}</div></div>
+            <div class="stat"><div class="k">强度评分</div><div class="v">${s.score==null?'-':s.score}</div></div>
+            <div class="stat"><div class="k">价格</div><div class="v">${s.price==null?'-':fmt(s.price)}</div></div>
+        </div>`;
+        h += `<div style="padding:8px 12px;background:var(--panel2);border-radius:6px;margin-bottom:10px;line-height:1.7">
+            <b>触发原因：</b>${esc(s.reason||'-')}<br>${esc(s.summary||'')}</div>`;
+
+        if (Object.keys(ind).length) {
+            h += `<div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                <h2 style="font-size:13px">📐 快照时点指标</h2>
+                <div class="stat-grid">
+                    <div class="stat"><div class="k">窗口涨跌</div><div class="v">${fmt(ind.chg_window_pct)}%</div></div>
+                    <div class="stat"><div class="k">窗口振幅</div><div class="v">${fmt(ind.amp_window_pct)}%</div></div>
+                    <div class="stat"><div class="k">末根量比</div><div class="v">${fmt(ind.vol_ratio_last)}</div></div>
+                    <div class="stat"><div class="k">窗口高点</div><div class="v">${fmt(ind.high)}</div></div>
+                    <div class="stat"><div class="k">窗口低点</div><div class="v">${fmt(ind.low)}</div></div>
+                    <div class="stat"><div class="k">K 线根数</div><div class="v">${ind.bars||'-'}</div></div>
+                </div></div>`;
+        }
+        if (s.kline && s.kline.length) {
+            h += `<div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                <h2 style="font-size:13px">📊 快照 K 线（${s.kline.length} 根 1 分钟）</h2>
+                <div id="sm-chart" style="height:280px"></div></div>`;
+        }
+        const ev = s.evidence || {};
+        if ((ev.factors||[]).length || (ev.risks||[]).length) {
+            h += `<div class="panel" style="background:var(--panel2);margin-bottom:10px">
+                <h2 style="font-size:13px">📊 依据卡片</h2>`;
+            (ev.factors||[]).forEach(f => {
+                h += `<div class="ev-factor"><span class="ef-name">${esc(f.name)}</span>
+                    <span class="ev-bar pos"><i style="width:${Math.min(100,Math.abs(f.delta)*4)}%"></i></span>
+                    <span class="ef-delta pos">+${Number(f.delta).toFixed(1)}</span></div>`;
+            });
+            (ev.risks||[]).forEach(k => {
+                h += `<div class="ev-factor"><span class="ef-name">⚠️ ${esc(k.name)}</span>
+                    <span class="ev-bar neg"><i style="width:${Math.min(100,Math.abs(k.delta)*4)}%"></i></span>
+                    <span class="ef-delta neg">${Number(k.delta).toFixed(1)}</span></div>`;
+            });
+            h += `</div>`;
+        }
+        // 反馈区
+        const fbs = s.feedback || [];
+        h += `<div class="panel" style="background:var(--panel2)">
+            <h2 style="font-size:13px">🗳️ 这条预警有用吗？<span class="hint">反馈会纳入后续校准</span></h2>`;
+        if (fbs.length) {
+            h += `<div class="fb-done">已评价：${fbs.map(f=>esc(f.verdict_label)).join('、')}</div>`;
+        }
+        h += `<div class="fb-row" id="sm-fb-row">
+            <button class="fb-btn useful"  onclick="sendFeedback(${s.id},'useful')">👍 有用</button>
+            <button class="fb-btn useless" onclick="sendFeedback(${s.id},'useless')">👎 无用</button>
+            <button class="fb-btn late"    onclick="sendFeedback(${s.id},'late')">⏰ 晚了</button>
+            <span id="sm-fb-msg" class="hint"></span>
+        </div></div>`;
+
+        body.innerHTML = h;
+
+        if (s.kline && s.kline.length) {
+            const k = s.kline;
+            Plotly.react('sm-chart', [{
+                x: k.map(b => b.timestamps), open: k.map(b => b.open),
+                high: k.map(b => b.high), low: k.map(b => b.low),
+                close: k.map(b => b.close), type: 'candlestick', name: 'K线',
+                increasing: {color: schemeColor('up')}, decreasing: {color: schemeColor('down')},
+            }], {
+                paper_bgcolor: chartBg(), plot_bgcolor: chartBg(), font: {color: chartFont()},
+                xaxis: {rangeslider: {visible: false}, gridcolor: chartGrid()},
+                yaxis: {gridcolor: chartGrid()}, margin: {l: 50, r: 20, t: 20, b: 30},
+                height: 280, dragmode: 'pan',
+            });
+        }
+    } catch (e) {
+        body.innerHTML = `<div class="msg" style="display:block;color:var(--red)">加载失败: ${esc(e)}</div>`;
+    }
+}
+
+function closeSnapModal() {
+    const m = document.getElementById('snap-modal');
+    if (m) m.style.display = 'none';
+}
+
+async function sendFeedback(sid, verdict) {
+    const msg = document.getElementById('sm-fb-msg');
+    try {
+        const r = await api('/api/feedback', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({snapshot_id: sid, verdict}),
+        });
+        if (r.error) { if (msg) msg.textContent = r.error; return; }
+        if (msg) msg.textContent = `已记录：${r.verdict_label}`;
+        // 时间轴/快照缓存失效，下次切换会重新拉取
+        p2Data.timeline = null; p2Data.snapshots = null; p2Data.daily = null;
+    } catch (e) {
+        if (msg) msg.textContent = '提交失败';
+    }
+}
+
+// ---------- P3: 科学依据中心 / 模拟器 / 高级预判 ----------
+let p3Mode = 'params';
+let p3Data = { params: null, diagnose: null, advanced: null };
+let simResult = null;
+
+function switchP3(mode) {
+    p3Mode = mode;
+    const cached = (mode === 'simulator') ? null : p3Data[mode];
+    if (cached) { renderP3(mode, cached); return; }
+    loadP3();
+}
+
+async function loadP3(force) {
+    const box = document.getElementById('p3-body');
+    if (!box) return;
+    box.innerHTML = '<div class="loading">⏳ 加载中...</div>';
+    if (force) p3Data = { params: null, diagnose: null, advanced: null };
+    try {
+        if (p3Mode === 'params') {
+            const r = await api('/api/evidence/params');
+            p3Data.params = r; renderP3('params', r);
+        } else if (p3Mode === 'diagnose') {
+            const r = await api('/api/evidence/diagnose?days=30');
+            p3Data.diagnose = r; renderP3('diagnose', r);
+        } else if (p3Mode === 'simulator') {
+            renderP3('simulator', null);
+        } else {
+            if (!currentSymbol) { box.innerHTML = '<div class="loading">选择股票后加载...</div>'; return; }
+            const r = await api(`/api/p3/overview?symbol=${currentSymbol}`);
+            if (r.error || !r.ok) {
+                box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${esc(r.error||'加载失败')}</div>`;
+                return;
+            }
+            p3Data.advanced = r; renderP3('advanced', r);
+        }
+    } catch (e) {
+        box.innerHTML = `<div class="msg" style="display:block;color:var(--red)">加载失败: ${esc(e)}</div>`;
+    }
+}
+
+function p3TabsHtml() {
+    const tabs = [['params','📐 参数溯源'], ['diagnose','🩺 诊断面板'],
+                  ['simulator','🧪 模拟器'], ['advanced','⚡ 高级预判']];
+    return `<div class="p3-tabs">` + tabs.map(([k,label]) =>
+        `<span class="p3-tab${p3Mode===k?' on':''}" onclick="switchP3('${k}')">${label}</span>`
+    ).join('') + `</div>`;
+}
+
+function renderP3(mode, r) {
+    const box = document.getElementById('p3-body');
+    if (!box) return;
+    let html = p3TabsHtml();
+    if (mode === 'params')          html += renderParams(r);
+    else if (mode === 'diagnose')   html += renderDiagnose(r);
+    else if (mode === 'simulator')  html += renderSimulator();
+    else                            html += renderAdvanced(r);
+    box.innerHTML = html;
+    if (mode === 'simulator') bindSimInputs();
+}
+
+/* ---- 参数溯源 ---- */
+function renderParams(r) {
+    if (!r || !r.ok) return `<div class="hint">${esc((r&&r.error)||'暂无数据')}</div>`;
+    let h = `<div class="stat-grid" style="margin-bottom:10px">
+        <div class="stat"><div class="k">参数总数</div><div class="v">${r.total}</div></div>
+        <div class="stat"><div class="k">已改动</div><div class="v" style="color:${r.changed_count?'#f59e0b':'var(--muted)'}">${r.changed_count}</div></div>
+        <div class="stat"><div class="k">数据不可用</div><div class="v" style="color:${r.degraded_count?'#ef4444':'var(--muted)'}">${r.degraded_count}</div></div>
+        <div class="stat"><div class="k">分组</div><div class="v">${r.groups.length}</div></div>
+    </div>`;
+    h += `<div class="hint" style="margin-bottom:8px">
+        🟡 黄色行 = 已被夜间自迭代改动（可与默认值对比）；红色项 = 数据源不可得，已降级不参与计算。</div>`;
+
+    (r.groups || []).forEach(g => {
+        h += `<div class="panel" style="background:var(--panel);margin-bottom:8px">
+            <h2 style="font-size:13px">${esc(g.group)}</h2>
+            <div style="overflow-x:auto"><table class="pt-table">
+            <thead><tr><th>参数</th><th>生效值</th><th>默认</th><th>来源</th><th>允许范围</th><th>依据</th></tr></thead><tbody>`;
+        g.items.forEach(it => {
+            const cls = it.degraded ? 'pt-degraded' : (it.changed ? 'pt-changed' : '');
+            const eff = it.effective == null ? '—' : it.effective;
+            const dft = it.default == null ? '—' : it.default;
+            const rng = it.range ? `${it.range[0]} ~ ${it.range[1]}（步长 ${it.step}）` : '—';
+            h += `<tr class="${cls}">
+                <td class="pt-key">${esc(it.key)}<div class="pt-basis">${esc(it.label||'')}</div></td>
+                <td class="pt-val"><b>${eff}</b>${it.changed?` <span class="pt-from">${dft}</span>`:''}</td>
+                <td class="pt-val">${dft}</td>
+                <td><span class="ev-src src-${it.degraded?'degraded':(it.changed?'tuned':'heuristic')}">${esc(it.source)}</span></td>
+                <td class="pt-val" style="font-size:11px">${rng}</td>
+                <td class="pt-basis">${esc(it.basis||'')}</td>
+            </tr>`;
+        });
+        h += `</tbody></table></div></div>`;
+    });
+    return h;
+}
+
+/* ---- 诊断面板 ---- */
+function renderDiagnose(r) {
+    if (!r || !r.ok) return `<div class="hint">${esc((r&&r.error)||'暂无数据')}</div>`;
+    const lc = r.level_counts || {};
+    let h = `<div class="stat-grid" style="margin-bottom:10px">
+        <div class="stat"><div class="k">正常</div><div class="v" style="color:#10b981">${lc.ok||0}</div></div>
+        <div class="stat"><div class="k">需关注</div><div class="v" style="color:#f59e0b">${lc.warn||0}</div></div>
+        <div class="stat"><div class="k">提示</div><div class="v" style="color:#3b82f6">${lc.info||0}</div></div>
+        <div class="stat"><div class="k">统计区间</div><div class="v" style="font-size:14px">${r.days} 天</div></div>
+    </div>`;
+    (r.findings || []).forEach(f => {
+        const icon = {ok:'✅', warn:'⚠️', info:'ℹ️'}[f.level] || '';
+        h += `<div class="diag-item d-${f.level}">
+            <div class="di-title">${icon} ${esc(f.title)}</div>
+            <div class="di-detail">${esc(f.detail)}</div>
+            <div class="di-action">→ <b>建议：</b>${esc(f.action)}</div>
+        </div>`;
+    });
+    h += `<div class="hint" style="margin-top:8px">📌 ${esc(r.note)}</div>`;
+    return h;
+}
+
+/* ---- 模拟器 ---- */
+function renderSimulator() {
+    return `
+    <div class="hint" style="margin-bottom:8px">
+        调整下方参数，点「运行模拟」—— 会用<b>真实历史 1 分钟 K 线</b>分别跑一遍调参前后的检测，
+        对比触发次数与方向兑现率。<b>结果全部来自实际计算</b>，数据不足时会明确拒绝而非编造。</div>
+    <div class="sim-grid">
+        <div class="sim-field">
+            <label>振幅阈值 wave_pct：<span class="sf-val" id="sim-wave-val">3.0</span> %</label>
+            <input type="range" id="sim-wave" min="0.5" max="10" step="0.5" value="3.0"
+                   oninput="document.getElementById('sim-wave-val').textContent=this.value">
+        </div>
+        <div class="sim-field">
+            <label>量能倍数 vol_ratio：<span class="sf-val" id="sim-vol-val">2.5</span> 倍</label>
+            <input type="range" id="sim-vol" min="1.0" max="8" step="0.1" value="2.5"
+                   oninput="document.getElementById('sim-vol-val').textContent=this.value">
+        </div>
+        <div class="sim-field">
+            <label>冷静期 cool_down_min：<span class="sf-val" id="sim-cool-val">5</span> 分钟</label>
+            <input type="range" id="sim-cool" min="1" max="30" step="1" value="5"
+                   oninput="document.getElementById('sim-cool-val').textContent=this.value">
+        </div>
+        <div class="sim-field">
+            <label>持有期 horizon：<span class="sf-val" id="sim-hz-val">30</span> 分钟</label>
+            <input type="range" id="sim-hz" min="5" max="120" step="5" value="30"
+                   oninput="document.getElementById('sim-hz-val').textContent=this.value">
+        </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button onclick="runSimulation()">▶ 运行模拟</button>
+        <button class="ghost" onclick="resetSimInputs()">↺ 恢复默认</button>
+        <span class="hint">标的：<b>${esc(currentSymbol || '未选择')}</b>（用当前查看的股票的历史 1 分钟数据）</span>
+    </div>
+    <div id="sim-result">${simResult ? renderSimResult(simResult) : ''}</div>`;
+}
+
+function bindSimInputs() { /* 由 oninput 内联处理，无需额外绑定 */ }
+
+function resetSimInputs() {
+    const set = (id, v, valId) => {
+        const el = document.getElementById(id);
+        if (el) { el.value = v; }
+        const vv = document.getElementById(valId);
+        if (vv) vv.textContent = v;
+    };
+    set('sim-wave', 3.0, 'sim-wave-val');
+    set('sim-vol', 2.5, 'sim-vol-val');
+    set('sim-cool', 5, 'sim-cool-val');
+    set('sim-hz', 30, 'sim-hz-val');
+}
+
+async function runSimulation() {
+    const out = document.getElementById('sim-result');
+    if (!currentSymbol) { if (out) out.innerHTML = '<div class="hint">请先选择股票</div>'; return; }
+    const g = id => document.getElementById(id);
+    const body = {
+        symbol: currentSymbol,
+        wave_pct: Number(g('sim-wave').value),
+        vol_ratio: Number(g('sim-vol').value),
+        cool_down_min: Number(g('sim-cool').value),
+        horizon: Number(g('sim-hz').value),
+    };
+    if (out) out.innerHTML = '<div class="loading">⏳ 正在用真实历史数据回测...</div>';
+    try {
+        const r = await api('/api/simulate', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body),
+        });
+        simResult = r;
+        if (out) out.innerHTML = renderSimResult(r);
+    } catch (e) {
+        if (out) out.innerHTML = `<div class="msg" style="display:block;color:var(--red)">模拟失败: ${esc(e)}</div>`;
+    }
+}
+
+function renderSimResult(r) {
+    if (!r) return '';
+    if (!r.ok) {
+        return `<div class="warn-line w-amber" style="margin-top:10px">
+            <div class="wl-title">⚠️ 无法模拟</div>
+            <div>${esc(r.error || '未知原因')}</div></div>`;
+    }
+    const b = r.baseline, m = r.modified;
+    const accCell = (x) => x.accuracy_pct == null
+        ? '<span class="hint">—</span>'
+        : `<b style="color:${x.accuracy_pct>=50?'#10b981':'#ef4444'}">${x.accuracy_pct}%</b>`;
+    let h = `<div class="sim-compare">
+        <div class="sim-card">
+            <div class="sc-label">⏪ 调参前（当前生效值）</div>
+            <div class="sc-big">${b.triggers} <span style="font-size:13px;font-weight:400">次触发</span></div>
+            <div class="hint">振幅 ${b.params.wave_pct}% · 量能 ${b.params.vol_ratio} 倍 · 冷静 ${b.params.cool_down_min} 分</div>
+            <div style="font-size:12px;margin-top:6px">方向兑现率：${accCell(b)}
+                · 样本 ${b.sample}${b.skipped?`（跳过 ${b.skipped}）`:''}</div>
+        </div>
+        <div class="sim-card mod">
+            <div class="sc-label">⏩ 调参后（你的设定）</div>
+            <div class="sc-big" style="color:${r.delta_triggers>0?'#f59e0b':(r.delta_triggers<0?'#3b82f6':'var(--text)')}">
+                ${m.triggers} <span style="font-size:13px;font-weight:400">次触发</span></div>
+            <div class="hint">振幅 ${m.params.wave_pct}% · 量能 ${m.params.vol_ratio} 倍 · 冷静 ${m.params.cool_down_min} 分</div>
+            <div style="font-size:12px;margin-top:6px">方向兑现率：${accCell(m)}
+                · 样本 ${m.sample}${m.skipped?`（跳过 ${m.skipped}）`:''}</div>
+        </div>
+    </div>`;
+    h += `<div class="sim-note">`;
+    (r.notes || []).forEach(n => { h += `· ${esc(n)}<br>`; });
+    h += `<div class="hint" style="margin-top:6px">数据区间 ${esc(r.range.start)} ~ ${esc(r.range.end)}（${r.bars} 根 1 分钟 K 线，持有期 ${r.horizon_min} 分钟）</div>`;
+    if (b.note) h += `<div class="hint">调参前：${esc(b.note)}</div>`;
+    if (m.note) h += `<div class="hint">调参后：${esc(m.note)}</div>`;
+    h += `<div class="hint" style="margin-top:6px;color:#f59e0b">⚠️ ${esc(r.disclaimer)}</div>`;
+    h += `</div>`;
+    return h;
+}
+
+/* ---- 高级预判（V3.1） ---- */
+function renderAdvanced(r) {
+    if (!r || !r.ok) return `<div class="hint">${esc((r&&r.error)||'暂无数据')}</div>`;
+    const mom = r.momentum || {};
+    let h = '';
+
+    // 动量衰减
+    h += `<div class="panel" style="background:var(--panel);margin-bottom:10px">
+        <h2 style="font-size:13px">📉 动量衰减检测 <span class="hint">价格加速度 · 拐点提前预警</span></h2>`;
+    if (!mom.ok) {
+        h += `<div class="hint">${esc(mom.error || '数据不足')}</div>`;
+    } else {
+        const w = mom.warning || {};
+        const cls = mom.flat ? 'a-flat' : ('a-' + (w.type || 'neutral'));
+        h += `<div style="margin-bottom:8px"><span class="adv-badge ${cls}">${esc(w.label || '—')}</span></div>`;
+        h += `<div style="font-size:12px;line-height:1.7;margin-bottom:8px">${esc(w.why || '')}</div>`;
+        h += `<div class="adv-mom">
+            <div class="stat"><div class="k">速度</div><div class="v" style="font-size:15px">${mom.velocity}</div></div>
+            <div class="stat"><div class="k">加速度</div><div class="v" style="font-size:15px">${mom.acceleration}</div></div>
+            <div class="stat"><div class="k">峰值速度</div><div class="v" style="font-size:15px">${mom.peak_velocity_abs}</div></div>
+            <div class="stat"><div class="k">衰减至</div><div class="v" style="font-size:15px">${mom.decay_pct==null?'—':mom.decay_pct+'%'}</div></div>
+            <div class="stat"><div class="k">强度</div><div class="v" style="font-size:15px">${mom.strength}</div></div>
+            <div class="stat"><div class="k">状态</div><div class="v" style="font-size:13px">${mom.flat?'横盘':(mom.stalled?'停滞':(mom.turning?'拐点':'延续'))}</div></div>
+        </div>`;
+        h += `<div class="hint" style="margin-top:6px">${esc(mom.note||'')}</div>`;
+    }
+    h += `</div>`;
+
+    // 盘口
+    const ob = r.orderbook || {};
+    const cap = ob.capability || {};
+    h += `<div class="panel" style="background:var(--panel);margin-bottom:10px">
+        <h2 style="font-size:13px">📋 盘口异动监测 <span class="hint">Level-2 挂单量突变</span></h2>`;
+    if (!cap.available) {
+        h += `<div class="degraded-box">
+            <b>⚠️ 当前数据源无法提供真实盘口数据</b><br>${esc(cap.reason)}
+            <div style="margin-top:6px"><b>需要的数据：</b>
+                <ul style="margin:4px 0 0;padding-left:20px">${(cap.requires||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+            </div>
+            <div style="margin-top:6px"><b>已降级的因子：</b>
+                ${(cap.degraded_factors||[]).map(d=>`<div>· ${esc(d.basis)}</div>`).join('')}
+            </div>
+        </div>`;
+    }
+    const px = ob.proxy || {};
+    if (px.ok) {
+        h += `<div style="margin-top:8px;font-size:13px">
+            <b>可用替代（代理指标）：</b>
+            <span class="adv-badge ${px.suspected_stacking?'a-decay':'a-flat'}">
+                ${px.suspected_stacking?'疑似挂单堆积':'无挂单堆积迹象'}</span>
+            <div style="margin-top:6px;line-height:1.7">
+                量能 ${px.volume_ratio} 倍 · 近端振幅 ${px.amp_recent_pct}% · 前段振幅 ${px.amp_prev_pct}%<br>
+                ${esc(px.interpretation)}
+            </div>
+            <div class="hint" style="margin-top:6px;color:#f59e0b">${esc(px.disclaimer)}</div>
+        </div>`;
+    }
+    h += `</div>`;
+
+    // ML 概率分
+    const ml = r.ml || {};
+    const model = ml.model || {}, pred = ml.prediction || {};
+    h += `<div class="panel" style="background:var(--panel)">
+        <h2 style="font-size:13px">🤖 ML 异动概率分 <span class="hint">逻辑回归 · 真实历史训练</span></h2>`;
+    if (!model.ok) {
+        h += `<div class="warn-line w-amber">
+            <div class="wl-title">⚠️ 模型不可用（拒绝给出无意义的分数）</div>
+            <div>${esc(model.error || '样本不足')}</div></div>`;
+    } else {
+        const probUp = pred.prob_up;
+        const base = (pred.baseline_rate || 0.5) * 100;
+        h += `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:6px">
+            <span class="adv-badge ${pred.prob_up>0.55?'a-up':(pred.prob_up<0.45?'a-reversal':'a-neutral')}">
+                ${esc(pred.signal||'—')}</span>
+            <span style="font-size:20px;font-weight:800">上涨概率 ${(probUp*100).toFixed(1)}%</span>
+            <span class="hint">基线 ${base.toFixed(1)}% · 边际 ${pred.edge>0?'+':''}${(pred.edge*100).toFixed(1)}%</span>
+        </div>
+        <div class="prob-bar" title="绿色=上涨概率，竖线=基线率">
+            <i style="width:${(probUp*100).toFixed(1)}%"></i>
+            <div class="pb-base" style="left:${base.toFixed(1)}%"></div>
+        </div>
+        <div style="font-size:12px;line-height:1.7;margin-top:8px">${esc(pred.confidence_note||'')}</div>
+        <div class="stat-grid" style="margin-top:8px">
+            <div class="stat"><div class="k">训练样本</div><div class="v" style="font-size:15px">${model.samples}</div></div>
+            <div class="stat"><div class="k">训练准确率</div><div class="v" style="font-size:15px">${(model.train_acc*100).toFixed(1)}%</div></div>
+            <div class="stat"><div class="k">样本外准确率</div><div class="v" style="font-size:15px">${model.oos_acc==null?'—':(model.oos_acc*100).toFixed(1)+'%'}</div></div>
+            <div class="stat"><div class="k">基线率</div><div class="v" style="font-size:15px">${(model.baseline_rate*100).toFixed(1)}%</div></div>
+        </div>
+        <div style="margin-top:8px;font-size:12px"><b>特征重要性：</b>`;
+        (model.importance||[]).forEach(i => {
+            h += `<div class="bar-row"><span>${esc(i.feature)}</span>
+                <span class="br-track"><i class="br-fill" style="width:${(i.importance*100).toFixed(0)}%"></i></span>
+                <span class="br-val">${i.importance}</span></div>`;
+        });
+        h += `</div>`;
+        if (model.caveat) {
+            h += `<div class="hint" style="margin-top:8px;color:${model.informative?'#10b981':'#f59e0b'}">${esc(model.caveat)}</div>`;
+        }
+        h += `<div class="hint" style="margin-top:6px">${esc(model.note||'')}</div>`;
+    }
+    h += `</div>`;
+    return h;
+}
+
+// ---------- 实时盯盘（交易舱 v1 / P0） ----------
+let liveTimer = null;
+let liveData = null;
+let liveDnd = false;              // 静音频闪
+const _liveFlashed = {};          // cardKey -> 到期时间戳
+
+function toggleLiveDnd(v) {
+    liveDnd = !!v;
+    if (liveDnd) {
+        // 立即停止所有频闪
+        document.querySelectorAll('.live-card').forEach(el => {
+            el.classList.remove('flash-green', 'flash-red');
+        });
+    }
+}
+
+function startLivePolling() {
+    if (liveTimer) return;
+    liveTimer = setInterval(() => {
+        if (document.getElementById('tab-live') &&
+            document.getElementById('tab-live').classList.contains('active')) {
+            loadLive();
+        }
+    }, 3000);   // 前端 3 秒刷新一次（后端有 5 秒行情缓存，实际请求更少）
+}
+
+async function loadLive(force) {
+    const q = document.getElementById('live-quotes');
+    const ev = document.getElementById('live-events');
+    try {
+        const r = await api(`/api/watch/overview${force ? '?force=1' : ''}`);
+        if (!r.ok) {
+            if (q) q.innerHTML = `<div class="msg" style="display:block;color:var(--red)">${esc(r.error||'加载失败')}</div>`;
+            return;
+        }
+        liveData = r;
+        renderLive(r);
+    } catch (e) {
+        if (q) q.innerHTML = `<div class="msg" style="display:block;color:var(--red)">加载失败: ${esc(e)}</div>`;
+    }
+}
+
+function liveSessionBadge(s) {
+    if (!s) return '';
+    const color = s.open ? '#10b981' : 'var(--muted)';
+    return `<span style="color:${color};font-weight:700">${s.open ? '● 交易中' : '○ ' + esc(s.reason)}</span>`;
+}
+
+function renderLive(r) {
+    const ses = document.getElementById('live-session');
+    if (ses) ses.innerHTML = liveSessionBadge(r.session);
+
+    // ---- 引擎状态 ----
+    const st = document.getElementById('live-status');
+    if (st) {
+        const e = r.engine || {};
+        const running = e.running ? '<span style="color:#10b981;font-weight:700">运行中</span>' : '<span style="color:var(--muted)">已停止</span>';
+        const fails = e.consecutive_failures || 0;
+        const failTxt = fails > 0
+            ? `<span style="color:#f59e0b">连续失败 ${fails} 次${e.backoff_remaining ? '（退避 ' + e.backoff_remaining + 's）' : ''}</span>`
+            : '<span style="color:#10b981">连接正常</span>';
+        st.innerHTML = `引擎：${running} · ${failTxt} · 轮询 ${e.tick_count || 0} 次 · 预警 ${e.alert_count || 0} 条 ·
+            待消费 ${e.pending_events || 0} 条 · 恢复 ${e.recovered_count || 0} 次 ·
+            🔗 行情时间依据 <b>fields[30]</b> · 服务器时间 ${esc(r.server_time || '')}`;
+    }
+
+    // ---- 行情卡片 ----
+    const box = document.getElementById('live-quotes');
+    if (box) {
+        const quotes = r.quotes || [];
+        if (!quotes.length) {
+            box.innerHTML = '<div class="hint">自选股为空，请先在顶部「➕ 添加自选」加入股票。</div>';
+        } else {
+            const cfgMap = {};
+            ((r.config || {}).items || []).forEach(it => { cfgMap[it.symbol] = it; });
+            let h = '<div class="live-grid">';
+            quotes.forEach(q => {
+                const ok = q.ok;
+                const pct = q.pct;
+                const pctCls = pct > 0 ? 'pos' : (pct < 0 ? 'neg' : '');
+                const stale = q.fresh === false;
+                const period = (cfgMap[q.symbol] || {}).period_min;
+                // 频闪判定：该项在最近事件里且有 flash
+                const evHit = (r.events || []).find(e => e.symbol === q.symbol &&
+                    (e.flash === 'green' || e.flash === 'red'));
+                const flashCls = (!liveDnd && evHit && evHit.flash) ? ('flash-' + evHit.flash) : '';
+                h += `<div class="live-card ${stale ? 'stale' : ''} ${flashCls}" data-sym="${esc(q.symbol)}">
+                    <div class="lc-name"><span>${esc(q.name || q.symbol)}</span>
+                        <span class="lc-code">${esc(q.symbol)}</span></div>
+                    ${period ? `<span class="lc-period">${period}分</span>` : ''}
+                    <div class="lc-price ${pctCls}">${ok ? fmt(q.price, q.price < 10 ? 3 : 2) : '—'}</div>
+                    <div class="lc-pct ${pctCls}">${ok && pct != null ? (pct > 0 ? '+' : '') + Number(pct).toFixed(2) + '%' : '—'}</div>
+                    <div class="lc-meta">
+                        ${ok ? `高 ${fmt(q.high)} · 低 ${fmt(q.low)}<br>
+                        量比 ${q.volume_ratio != null ? fmt(q.volume_ratio) : '-'} · 换手 ${q.turnover != null ? fmt(q.turnover) + '%' : '-'}<br>
+                        行情时间 ${esc((q.quote_time || '').slice(8, 10) + ':' + (q.quote_time || '').slice(10, 12) + ':' + (q.quote_time || '').slice(12, 14))}
+                        ${q.age_sec != null ? `<b style="color:${q.age_sec > 60 ? '#f59e0b' : 'var(--muted)'}">（距今 ${Math.round(q.age_sec)}s）</b>` : ''}`
+                        : `<span style="color:var(--red)">${esc(q.error || '无行情')}</span>`}
+                    </div>
+                </div>`;
+            });
+            h += '</div>';
+            box.innerHTML = h;
+        }
+    }
+
+    // ---- 事件列表 ----
+    const evBox = document.getElementById('live-events');
+    if (evBox) {
+        const evs = r.events || [];
+        if (!evs.length) {
+            evBox.innerHTML = '<div class="hint">暂无预警。引擎运行中时，达到阈值的买卖点会实时出现在这里并驱动卡片频闪。</div>';
+        } else {
+            let h = '';
+            evs.slice().reverse().forEach(e => {
+                const cls = e.side === 'buy' ? 'ev-buy' : (e.side === 'sell' ? 'ev-sell' : 'ev-watch');
+                const sideTxt = e.side === 'buy' ? '🟢 买点（绿闪）'
+                    : (e.side === 'sell' ? '🔴 卖点（红闪）' : '🟡 关注');
+                h += `<div class="live-ev ${cls}">
+                    <span class="le-side">${sideTxt}</span>
+                    <span><b>${esc(e.name || e.symbol)}</b> ${esc(e.symbol)}
+                        <span class="${e.pct > 0 ? 'pos' : 'neg'}">${e.pct != null ? (e.pct > 0 ? '+' : '') + Number(e.pct).toFixed(2) + '%' : ''}</span>
+                        ${e.level_label ? `<span class="lv-tag lv${e.level}">${esc(e.level_label)}</span>` : ''}
+                        <div class="le-why">${(e.reasons || []).map(esc).join('；')}</div>
+                        <div class="le-why">行情时间 ${esc(e.quote_time || '-')} · 检测于 ${esc(e.detected_at || '-')}</div>
+                    </span>
+                    <span class="le-time">${fmt(e.price)}</span>
+                </div>`;
+            });
+            evBox.innerHTML = h;
+        }
+    }
+
+    renderLiveConfig(r.config || {});
+}
+
+function renderLiveConfig(cfg) {
+    const box = document.getElementById('live-config');
+    if (!box) return;
+    const items = cfg.items || [];
+    if (!items.length) { box.innerHTML = '<div class="hint">自选股为空</div>'; return; }
+    const periods = cfg.allowed_periods || [1, 3, 5, 10];
+    let h = `<div class="live-cfg-row" style="color:var(--muted);font-size:11px">
+        <span>标的</span><span>预警周期</span><span>涨幅阈值</span><span>跌幅阈值</span></div>`;
+    items.forEach(it => {
+        const opts = periods.map(p =>
+            `<option value="${p}"${it.period_min === p ? ' selected' : ''}>${p} 分钟</option>`).join('');
+        h += `<div class="live-cfg-row">
+            <span><b>${esc(it.symbol)}</b>${it.configured ? ' <span class="hint">已设</span>' : ''}</span>
+            <select onchange="liveSetPeriod('${esc(it.symbol)}', this.value)">${opts}</select>
+            <input type="number" step="0.5" value="${it.rules.pct_up}" 
+                   onchange="liveSetRules('${esc(it.symbol)}', {pct_up: this.value})">
+            <input type="number" step="0.5" value="${it.rules.pct_down}" 
+                   onchange="liveSetRules('${esc(it.symbol)}', {pct_down: this.value})">
+        </div>`;
+    });
+    box.innerHTML = h;
+
+    const tick = document.getElementById('live-tick');
+    if (tick && cfg.tick_sec != null) tick.value = String(cfg.tick_sec);
+}
+
+async function liveSetPeriod(sym, period) {
+    const r = await api('/api/watch/config', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({symbol: sym, period_min: Number(period)}),
+    });
+    if (r.ok) { showLiveMsg(`${sym} 周期已设为 ${period} 分钟`, true); loadLive(); }
+    else { showLiveMsg(r.error || '设置失败', false); }
+}
+
+async function liveSetRules(sym, rules) {
+    const r = await api('/api/watch/config', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({symbol: sym, rules}),
+    });
+    if (r.ok) { showLiveMsg(`${sym} 规则已更新`, true); loadLive(); }
+    else { showLiveMsg(r.error || '设置失败', false); }
+}
+
+async function liveSetTick() {
+    const v = Number(document.getElementById('live-tick').value);
+    const r = await api('/api/watch/config', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({tick_sec: v}),
+    });
+    if (r.ok) showLiveMsg(`tick 间隔已设为 ${v} 秒`, true);
+}
+
+async function liveSetInterval() {
+    const v = Number(document.getElementById('live-interval').value);
+    const r = await api('/api/watch/config', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({interval_ms: v}),
+    });
+    if (r.ok) showLiveMsg(`请求节流已设为 ${v}ms`, true);
+}
+
+async function liveStart() {
+    const r = await api('/api/watch/start', {method: 'POST'});
+    showLiveMsg(r.ok ? '轮询已启动' : (r.error || '启动失败'), !!r.ok);
+    loadLive();
+}
+async function liveStop() {
+    const r = await api('/api/watch/stop', {method: 'POST'});
+    showLiveMsg(r.ok ? '轮询已停止' : '停止失败', !!r.ok);
+    loadLive();
+}
+async function liveCheckNow() {
+    const r = await api('/api/watch/check', {method: 'POST'});
+    if (r.ok) {
+        showLiveMsg(`立即检查完成，触发 ${r.count} 条`, true);
+        // 触发的事件直接叠加到界面上
+        if (r.events && r.events.length) {
+            r.events.forEach(e => {
+                const card = document.querySelector(`.live-card[data-sym="${e.symbol}"]`);
+                if (card && !liveDnd && e.flash) {
+                    card.classList.remove('flash-green', 'flash-red');
+                    card.classList.add('flash-' + e.flash);
+                    setTimeout(() => card.classList.remove('flash-' + e.flash), 9000);
+                }
+            });
+        }
+        loadLive();
+    } else {
+        showLiveMsg(r.error || '检查失败', false);
+    }
+}
+
+function showLiveMsg(text, ok) {
+    const st = document.getElementById('live-status');
+    if (!st) return;
+    const old = st.innerHTML;
+    st.innerHTML = `<span style="color:${ok ? '#10b981' : '#ef4444'}">${esc(text)}</span>`;
+    setTimeout(() => { if (liveData) renderLive(liveData); }, 2500);
+}
+
+// ---- 频次探针 ----
+async function runProbe() {
+    const out = document.getElementById('probe-result');
+    const tiers = document.getElementById('probe-tiers').value;
+    const samples = Number(document.getElementById('probe-samples').value || 10);
+    const tierList = tiers.split(',').map(s => s.trim()).filter(Boolean);
+    const est = tierList.reduce((a, k) => {
+        const iv = k === '30s' ? 30 : (k === '1s' ? 1 : 0.5);
+        return a + iv * samples;
+    }, 0);
+    if (out) out.innerHTML = `<div class="loading">⏳ 探针运行中，预计约 ${Math.round(est)} 秒...</div>`;
+    try {
+        const r = await api('/api/probe/run', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({tiers: tierList, samples, block: true}),
+        });
+        if (out) out.innerHTML = renderProbeReport(r);
+    } catch (e) {
+        if (out) out.innerHTML = `<div class="msg" style="display:block;color:var(--red)">探针失败: ${esc(e)}</div>`;
+    }
+}
+
+async function loadProbeReport() {
+    const out = document.getElementById('probe-result');
+    const r = await api('/api/probe/report');
+    if (out) out.innerHTML = r.report ? renderProbeReport(r.report)
+        : '<div class="hint">还没有探针报告，先运行一次。</div>';
+}
+
+function renderProbeReport(r) {
+    if (!r || !r.ok) return `<div class="hint">${esc((r && r.error) || '无报告')}</div>`;
+    let h = '';
+    (r.tiers || []).forEach(t => {
+        const pctCls = (t.success_pct || 0) >= 99.9 ? 'probe-ok'
+            : ((t.success_pct || 0) >= 80 ? 'probe-warn' : 'probe-bad');
+        const limited = t.rate_limited || 0;
+        h += `<div class="probe-tier">
+            <div class="pt-head"><span>${esc(t.tier_label)}</span>
+                <span class="${pctCls}">成功率 ${t.success_pct}%</span></div>
+            <div style="font-size:12px;line-height:1.8">
+                样本 ${t.samples} · 成功 ${t.success} · 总耗时 ${t.duration_sec}s<br>
+                耗时 均值 ${t.latency_ms_avg}ms · 中位 ${t.latency_ms_median}ms ·
+                P95 <b>${t.latency_ms_p95}ms</b> · 最大 ${t.latency_ms_max}ms<br>
+                限流：429 <b class="${limited ? 'probe-bad' : 'probe-ok'}">${limited}</b> 次 ·
+                软限流 <b class="${t.suspect_soft_limit ? 'probe-warn' : 'probe-ok'}">${t.suspect_soft_limit}</b> 次 ·
+                其他错误 ${t.error_count} 次
+            </div></div>`;
+    });
+    const rec = r.recommendation || {};
+    if (rec.safe_tier) {
+        h += `<div class="warn-line w-green">
+            <div class="wl-title">✅ 建议安全档位：${esc(rec.safe_tier)}</div>
+            <div>${esc(rec.reason || '')}</div></div>`;
+    } else {
+        h += `<div class="warn-line w-red">
+            <div class="wl-title">⚠️ 未找到安全档位</div>
+            <div>${esc(rec.reason || '')}</div></div>`;
+    }
+    h += `<div class="hint" style="margin-top:8px;color:#f59e0b">${esc(r.caveat || '')}</div>`;
+    h += `<div class="hint">生成于 ${esc(r.generated_at || '')}</div>`;
+    return h;
+}
+
+// ---------- 全屏爆红/爆绿 + 一键静默 (P0) ----------
+const FlashAlert = (() => {
+    let audioCtx = null;
+
+    function el(id) { return document.getElementById(id); }
+
+    /** 是否处于冷静期（静默后 N 分钟内不再触发同向全屏）。 */
+    function inCooldown(dir) {
+        return Date.now() < silencedUntil && currentDir === dir;
+    }
+
+    /** 柔和/急促提示音（Web Audio，无需外部音频文件）。 */
+    function beep(kind) {
+        try {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            audioCtx = audioCtx || new Ctx();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = audioCtx.currentTime;
+            const freqs = kind === 'fast' ? [880, 1180, 880, 1180] : [660, 880];
+            const dur = kind === 'fast' ? 0.11 : 0.16;
+            freqs.forEach((f, i) => {
+                const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+                osc.type = 'sine'; osc.frequency.value = f;
+                const t0 = now + i * dur;
+                gain.gain.setValueAtTime(0.0001, t0);
+                gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(t0); osc.stop(t0 + dur + 0.02);
+            });
+        } catch (e) { /* 浏览器阻止自动播放时静默降级 */ }
+    }
+
+    /** 震动：二级及以上。移动端支持 Vibration API 才生效。 */
+    function vibrate(pattern) {
+        try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+    }
+
+    /** 浏览器通知（用户授权后可用）。 */
+    function notifyDesktop(title, body) {
+        try {
+            if (!('Notification' in window)) return;
+            if (Notification.permission === 'granted') {
+                new Notification(title, { body, tag: 'kronos-alert' });
+            }
+        } catch (e) {}
+    }
+
+    function show(opts) {
+        const dir = opts.direction === 'up' ? 'up' : 'down';
+        if (inCooldown(dir)) return false;
+
+        const ov = el('flash-overlay');
+        if (!ov) return false;
+
+        active = true; currentDir = dir;
+        ov.className = 'dir-' + dir + ' ' + (opts.fast ? 'fx-fast' : 'fx-slow') + ' fx-timing';
+        el('flash-icon').textContent = dir === 'up' ? '🚀' : '🔥';
+        el('flash-title').textContent = opts.title || (dir === 'up' ? '快速拉升' : '剧烈下杀');
+        el('flash-sub').textContent = opts.sub || '';
+        const ev = el('flash-evidence');
+        ev.innerHTML = opts.evidence || '';
+        const bar = el('flash-timer-bar');
+        const secs = opts.seconds || 3;
+        bar.style.animationDuration = secs + 's';
+        // 重置进度条动画
+        bar.style.animation = 'none'; void bar.offsetWidth; bar.style.animation = '';
+
+        if (opts.sound !== false) beep(opts.fast ? 'fast' : 'slow');
+        if (opts.vibrate !== false) vibrate(opts.fast ? [180,80,180,80,180] : [90]);
+
+        clearTimeout(timer);
+        timer = setTimeout(() => silenceFlash('timeout'), secs * 1000);
+        return true;
+    }
+
+    function silence(reason) {
+        const ov = el('flash-overlay');
+        if (!ov) return;
+        clearTimeout(timer);
+        ov.classList.add('flash-out');
+        setTimeout(() => { ov.className = 'flash-hidden'; ov.classList.remove('flash-out'); }, 250);
+        active = false;
+        // 关闭即进入冷静期（默认 5 分钟，可在设置里调），同向不重复打扰
+        const mins = (typeof AlertPrefs !== 'undefined' && AlertPrefs.cooldownMin) || 5;
+        silencedUntil = Date.now() + mins * 60 * 1000;
+        try { if (navigator.vibrate) navigator.vibrate(0); } catch (e) {}
+    }
+
+    function silenceNow() { silencedUntil = 0; silence('manual'); }
+
+    return { show, silence, silenceNow, inCooldown, notifyDesktop,
+             isActive: () => active, resetCooldown: () => { silencedUntil = 0; } };
+})();
+
+// Esc 关闭全屏预警（一键静默）
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+        const ov = document.getElementById('flash-overlay');
+        if (ov && !ov.classList.contains('flash-hidden')) { FlashAlert.silence('esc'); e.preventDefault(); }
+    }
+});
+
+function silenceFlash(reason) { FlashAlert.silence(reason); }
+
+// ---------- 全屏预警轮询 + 防干扰设置 ----------
+const AlertPrefs = {
+    strength: 70,        // 触发强度阈值
+    cooldownMin: 5,      // 冷静期（分钟）
+    dndStart: '',        // 免打扰起
+    dndEnd: '',          // 免打扰止
+    sound: true,
+    vibrate: true,
+    lockedSymbols: [],   // 单一标的锁定：仅这些标的触发全感官预警
+};
+try {
+    const saved = localStorage.getItem('kronos_alert_prefs');
+    if (saved) Object.assign(AlertPrefs, JSON.parse(saved));
+} catch (e) {}
+function saveAlertPrefs() {
+    try { localStorage.setItem('kronos_alert_prefs', JSON.stringify(AlertPrefs)); } catch (e) {}
+}
+
+/** 免打扰时段判定（支持跨零点，如 22:00~09:00）。 */
+function inDnd(now) {
+    if (!AlertPrefs.dndStart || !AlertPrefs.dndEnd) return false;
+    const cur = now.getHours() * 60 + now.getMinutes();
+    const [sh, sm] = AlertPrefs.dndStart.split(':').map(Number);
+    const [eh, em] = AlertPrefs.dndEnd.split(':').map(Number);
+    const s = sh * 60 + sm, e = eh * 60 + em;
+    return s <= e ? (cur >= s && cur < e) : (cur >= s || cur < e);
+}
+
+/** 单一标的锁定：配置了锁定列表则只有列表内标的触发全屏。 */
+function isLocked(symbol) {
+    return !AlertPrefs.lockedSymbols.length || AlertPrefs.lockedSymbols.includes(symbol);
+}
+
+let alertPollTimer = null;
+const _seenTriggers = new Set();
+
+async function pollAlerts() {
+    if (currentSymbol === null) { /* 仍轮询：预警不依赖当前查看的股票 */ }
+    const now = new Date();
+    if (inDnd(now)) return;   // 免打扰：屏蔽视觉/声音/震动
+
+    try {
+        const r = await api(`/api/anomaly/scan?threshold=${AlertPrefs.strength}&limit=5`);
+        (r.triggers || []).forEach(t => {
+            const key = `${t.symbol}|${t.event_ts}|${t.direction}`;
+            if (_seenTriggers.has(key)) return;   // 同一异动只提醒一次
+            if (!isLocked(t.symbol)) {
+                // 未锁定标的：只记录到悬浮摘要，不触发全感官预警
+                AlertDock.push({ title: t.name, body: t.sub, direction: t.direction, icon: '📝' });
+                _seenTriggers.add(key);
+                return;
+            }
+            _seenTriggers.add(key);
+
+            const evHtml = (t.factors || []).filter(f => f.delta)
+                .map(f => `· ${f.name} <b>+${Number(f.delta).toFixed(1)}</b>`)
+                .concat((t.risks || []).map(k => `· ⚠️ ${k.name} <b>${Number(k.delta).toFixed(1)}</b>`))
+                .join('<br>') || '（无显著因子）';
+
+            const shown = FlashAlert.show({
+                direction: t.direction,
+                fast: true,                 // 三级：急促闪烁
+                seconds: 3,
+                title: t.title,
+                sub: t.sub,
+                evidence: `<b>依据卡片（强度 ${t.score} 分）</b><br>${evHtml}` +
+                          (t.backtest && t.backtest.ok
+                            ? `<br><span style="opacity:.8">回测：同类场景 ${t.backtest.accuracy_pct}% 准确率（样本 ${t.backtest.sample}）</span>` : ''),
+                sound: AlertPrefs.sound,
+                vibrate: AlertPrefs.vibrate,
+            });
+            if (!shown) {
+                AlertDock.push({ title: t.title, body: t.sub + '（冷静期内，仅记录）',
+                                 direction: t.direction, icon: '🤫' });
+            } else {
+                FlashAlert.notifyDesktop(t.title, t.sub);
+            }
+            // P2：二级及以上自动存档快照（K 线 + 指标 + 依据）
+            captureSnapshot(t);
+        });
+    } catch (e) { /* 轮询失败静默重试 */ }
+}
+
+/** P2：把一条全屏预警存成快照（二级及以上）。服务端会自行判定级别。 */
+async function captureSnapshot(t) {
+    try {
+        const level = (t.score >= 75) ? 3 : 2;
+        await api('/api/snapshots/capture', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                symbol: t.symbol, name: t.name, level: level,
+                event_type: t.event_type || 'anomaly',
+                direction: t.direction, price: t.metrics ? t.metrics.close : null,
+                score: t.score, reason: t.reason || t.sub,
+                summary: t.title,
+                evidence: {factors: t.factors, risks: t.risks, degraded: t.degraded},
+            }),
+        });
+        p2Data.timeline = null; p2Data.snapshots = null;   // 让复盘面板下次重新拉取
+    } catch (e) { /* 快照失败不影响预警主流程 */ }
+}
+
+function startAlertPolling() {
+    if (alertPollTimer) return;
+    pollAlerts();
+    alertPollTimer = setInterval(pollAlerts, 60000);   // 每 60 秒与后台监控同频
+}
+
+function toggleAlertSettings() {
+    const p = document.getElementById('alert-settings-panel');
+    if (!p) return;
+    p.style.display = p.style.display === 'none' ? '' : 'none';
+}
+
+function applyAlertSettings() {
+    const g = id => document.getElementById(id);
+    AlertPrefs.strength = Number(g('ap-strength').value);
+    AlertPrefs.cooldownMin = Number(g('ap-cooldown').value);
+    AlertPrefs.dndStart = g('ap-dnd-start').value;
+    AlertPrefs.dndEnd = g('ap-dnd-end').value;
+    AlertPrefs.sound = g('ap-sound').checked;
+    AlertPrefs.vibrate = g('ap-vibrate').checked;
+    AlertPrefs.lockedSymbols = (g('ap-locked').value || '').split(',')
+        .map(s => s.trim()).filter(Boolean);
+    g('ap-strength-val').textContent = AlertPrefs.strength;
+    saveAlertPrefs();
+    showMsg('alert-pref-msg', `已保存：强度阈值 ${AlertPrefs.strength}，冷静期 ${AlertPrefs.cooldownMin} 分钟`
+        + (AlertPrefs.lockedSymbols.length ? `，锁定 ${AlertPrefs.lockedSymbols.length} 只` : '，未锁定（全部标的触发）')
+        + (inDnd(new Date()) ? ' · 当前处于免打扰时段' : ''), true);
+}
+
+function requestNotifyPermission() {
+    if (!('Notification' in window)) { showMsg('alert-pref-msg', '当前浏览器不支持桌面通知', false); return; }
+    Notification.requestPermission().then(p => {
+        showMsg('alert-pref-msg', p === 'granted' ? '桌面通知已开启' : '桌面通知未授权', p === 'granted');
+    });
+}
+
+function testFlashAlert() {
+    FlashAlert.resetCooldown();
+    FlashAlert.show({
+        direction: 'up', fast: true, seconds: 3,
+        title: '🚀 测试预警',
+        sub: '全屏爆绿 + 急促提示音 + 震动（3 秒后自动消失）',
+        evidence: '<b>这是测试</b><br>点击任意位置 / 按 Esc / 点「闭嘴」均可立即关闭',
+        sound: AlertPrefs.sound, vibrate: AlertPrefs.vibrate,
+    });
+}
+
+// ---------- 预警悬浮摘要 ----------
+const AlertDock = (() => {
+    const MAX = 4;
+    const items = [];
+    function render() {
+        const dock = document.getElementById('alert-dock');
+        if (!dock) return;
+        if (!items.length) { dock.className = 'dock-hidden'; dock.innerHTML = ''; return; }
+        dock.className = '';
+        dock.innerHTML = items.map((it, i) => `
+            <div class="dock-card lv-${it.direction}">
+                <div class="dc-head">
+                    <span>${it.icon||''} ${esc(it.title)}</span>
+                    <button class="dc-x" onclick="AlertDock.remove(${i})">✕</button>
+                </div>
+                <div class="dc-body">${esc(it.body)}</div>
+            </div>`).join('');
+    }
+    function push(it) {
+        items.unshift(it);
+        while (items.length > MAX) items.pop();
+        render();
+        const t = setTimeout(() => { const i = items.indexOf(it); if (i >= 0) { items.splice(i,1); render(); } }, 30000);
+        it._t = t;
+    }
+    function remove(i) { if (items[i]) { clearTimeout(items[i]._t); items.splice(i,1); render(); } }
+    function clear() { items.forEach(x => clearTimeout(x._t)); items.length = 0; render(); }
+    return { push, remove, clear };
+})();
 
 // ---------- trade ----------
 let tradeSymbol = null;  // symbol for the trade tab (may differ from currentSymbol)
@@ -2360,6 +5786,7 @@ document.querySelectorAll('.tabs button').forEach(btn=>{
         btn.classList.add('active');
         document.getElementById(btn.dataset.tab).classList.add('active');
         if (btn.dataset.tab==='tab-fund' && currentSymbol) loadFundamentals();
+        if (btn.dataset.tab==='tab-live') { loadLive(); startLivePolling(); }
         if (btn.dataset.tab==='tab-orders') loadOrdersFull();
         if (btn.dataset.tab==='tab-backtest' && currentSymbol) runBacktest();
         if (btn.dataset.tab==='tab-buysell' && currentSymbol) loadBuysell();
@@ -2383,6 +5810,24 @@ setInterval(loadGlobalMarkets, 60000);
 setInterval(loadAccount, 15000);
 setInterval(()=>{ if(currentSymbol) loadRealtime(); }, 15000);
 loadModelStatus();
+
+// 预警设置回填 + 启动全屏预警轮询（P0）
+(function initAlertPrefs() {
+    const g = id => document.getElementById(id);
+    if (!g('ap-strength')) return;
+    g('ap-strength').value = AlertPrefs.strength;
+    g('ap-strength-val').textContent = AlertPrefs.strength;
+    g('ap-cooldown').value = AlertPrefs.cooldownMin;
+    g('ap-dnd-start').value = AlertPrefs.dndStart || '';
+    g('ap-dnd-end').value = AlertPrefs.dndEnd || '';
+    g('ap-sound').checked = AlertPrefs.sound !== false;
+    g('ap-vibrate').checked = AlertPrefs.vibrate !== false;
+    g('ap-locked').value = (AlertPrefs.lockedSymbols || []).join(',');
+    startAlertPolling();
+})();
+
+// P3 面板首次加载（参数溯源与诊断不依赖当前标的）
+loadP3();
 
 // ---------- 深链接：?tab=research&req=1 或 #tab=research&req=1 ----------
 function applyHash() {
@@ -3128,6 +6573,35 @@ function loadOverview() {
         <div id="rm-detail"></div>
     </div>
 </div>
+
+<!-- ===== 全屏爆红/爆绿 + 一键静默 (P0) ===== -->
+<div id="flash-overlay" class="flash-hidden" onclick="silenceFlash('click')">
+    <div class="flash-inner">
+        <div class="flash-icon" id="flash-icon">🔥</div>
+        <div class="flash-title" id="flash-title">剧烈波动</div>
+        <div class="flash-sub" id="flash-sub"></div>
+        <div class="flash-evidence" id="flash-evidence"></div>
+        <button id="flash-silence" class="flash-btn" onclick="event.stopPropagation();silenceFlash('button')">
+            🤐 闭嘴
+        </button>
+        <div class="flash-hint">点击任意位置 / 按 Esc / 点「闭嘴」立即关闭</div>
+    </div>
+    <div class="flash-timer"><div class="flash-timer-bar" id="flash-timer-bar"></div></div>
+</div>
+
+<!-- 预警快照详情（P2） -->
+<div id="snap-modal" onclick="if(event.target===this)closeSnapModal()">
+    <div class="sm-box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <h2 id="sm-title" style="font-size:16px">预警快照</h2>
+            <button class="ghost" onclick="closeSnapModal()">✕ 关闭</button>
+        </div>
+        <div id="sm-body"></div>
+    </div>
+</div>
+
+<!-- 预警悬浮摘要（浏览器通知不可用时的兜底 + 桌面常驻提示） -->
+<div id="alert-dock" class="dock-hidden"></div>
 </body>
 </html>
 

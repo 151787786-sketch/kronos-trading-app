@@ -1,0 +1,7 @@
+﻿版本快照：20261021_164551
+说明：同花顺风格改造**前**的原始界面（Kronos 深色/共享网络主题版）
+文件：
+  index.html  342974 bytes
+  app.py      91061 bytes
+  README.md   24833 bytes
+复原命令：见 D:\a\kronos\trading-app\RESTORE.ps1

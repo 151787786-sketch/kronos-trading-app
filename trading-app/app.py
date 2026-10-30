@@ -8,6 +8,8 @@ Run:  python app.py   (or double-click 启动交易APP.bat)
 """
 import os
 import sys
+import time  # noqa: F401  —— 模块级导入：monitor 等后台函数在 __main__ 之外也要用
+from datetime import datetime
 
 import pandas as pd
 from flask import Flask, jsonify, render_template, request
@@ -42,16 +44,22 @@ _setup_logging()
 
 import account  # noqa: E402
 import accuracy  # noqa: E402
+import advanced  # noqa: E402
 import alerts  # noqa: E402
 import analytics  # noqa: E402
+import anomaly  # noqa: E402
 import audit  # noqa: E402
 import auto_trade  # noqa: E402
 import backtest  # noqa: E402
 import buysell  # noqa: E402
+import calibration  # noqa: E402
 import committee  # noqa: E402
 import compliance  # noqa: E402
 import deepseek  # noqa: E402
+import dip  # noqa: E402
+import evidence_center  # noqa: E402
 import fundamentals  # noqa: E402
+import freq_probe  # noqa: E402
 import global_market  # noqa: E402
 import indicators as ind  # noqa: E402
 import industry  # noqa: E402
@@ -65,6 +73,10 @@ import requirements_map  # noqa: E402
 import research_db  # noqa: E402
 import research_report  # noqa: E402
 import sentiment  # noqa: E402
+import snapshots  # noqa: E402
+import tail  # noqa: E402
+import tencent_quote  # noqa: E402
+import watch_engine  # noqa: E402
 from agents import ROLES as AGENT_ROLES  # noqa: E402
 from agents import llm as llm_adapter  # noqa: E402
 from signals import forecast_direction_signals, indicator_signals  # noqa: E402
@@ -77,6 +89,22 @@ app.config["MAX_CONTENT_LENGTH"] = 1 * 1024 * 1024  # reject bodies > 1 MB
 # 模板改动立即生效（debug=False 时 Jinja 默认会缓存模板，改了 index.html 不重启看不到）
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 app.jinja_env.auto_reload = True
+# POST 不带 body 时 request.get_json() 会抛 415/400；这里让它返回 None，
+# 各处理函数既有的 `or {}` 兜底即可生效，避免调用方（脚本/curl）踩坑。
+app.config["JSON_STRICT_DEFAULT"] = False
+
+
+@app.errorhandler(415)
+@app.errorhandler(400)
+def _handle_bad_json(e):
+    """请求体不是合法 JSON 时，对 API 返回结构化错误而非 HTML 页。"""
+    from werkzeug.exceptions import UnsupportedMediaType
+    if request.path.startswith("/api/"):
+        msg = ("请求体不是合法 JSON 或缺少 Content-Type"
+               if isinstance(e, UnsupportedMediaType)
+               else str(getattr(e, "description", e)))
+        return jsonify({"error": msg}), getattr(e, "code", 400)
+    return e
 
 
 @app.errorhandler(Exception)
@@ -301,7 +329,762 @@ def api_kline():
     return jsonify({"symbol": symbol, "period": period, "bars": payload, "signals": sig_rows})
 
 
+# ---- P1: 下探预警 / 尾盘预判 / 午间复盘 / 自适应校准 --------------------------
+
+def _sym_context(symbol: str) -> tuple:
+    """取名称 + 板块 + 大盘指数，任一失败都不影响主流程（返回 None）。"""
+    name = symbol
+    try:
+        for w in account.get_watchlist():
+            if w["symbol"] == symbol:
+                name = w["name"] or symbol
+                break
+    except Exception:
+        pass
+
+    sector = None
+    try:
+        sector = industry.industry_for(symbol)
+    except Exception:
+        sector = None
+
+    index_quote = None
+    try:
+        qs = market.fetch_realtime(["000001"])   # 上证指数
+        if qs:
+            index_quote = {"name": "上证指数", "pct": qs[0].get("pct")}
+    except Exception:
+        index_quote = None
+
+    return name, sector, index_quote
+
+
+def _fetch_1m(symbol, bars=400):
+    return market.fetch_kline(symbol, period="1m", bars=bars)
+
+
+def _no_data(symbol, e=None):
+    """1 分钟数据取不到（代码错误/无数据）→ 404 而非 500。
+
+    500 会让前端把它当成服务端故障；这类情况属于「这个标的就是没数据」，
+    用 404 语义更准确，前端也能给出更清楚的提示。
+    """
+    msg = f"未找到 {symbol} 的 1 分钟数据（请确认 6 位代码是否正确）"
+    if e is not None:
+        msg += f"；原始错误：{str(e)[:120]}"
+    return jsonify({"ok": False, "symbol": symbol, "error": msg}), 404
+
+
+@app.route("/api/dip")
+def api_dip():
+    """下探过程实时预警：四阶段拆分 + Dip Quality Score（洗盘型/出货型）。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = _fetch_1m(symbol, _int_arg("bars", 400, 30, 1000))
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 10:
+        return jsonify({"ok": False, "symbol": symbol, "error": "1 分钟数据不足"}), 200
+
+    tuned = None
+    try:
+        tuned = nightly.get_param
+    except Exception:
+        pass
+    try:
+        r = dip.dip_stage(df, dip.dip_params(tuned))
+    except Exception as e:
+        return jsonify({"error": f"下探分析失败: {e}"}), 500
+    r["symbol"] = symbol
+    return jsonify(r)
+
+
+@app.route("/api/tail")
+def api_tail():
+    """尾盘拉板信号六因子 + 三种结论 + 14:30 预警线。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = _fetch_1m(symbol, _int_arg("bars", 400, 30, 1000))
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 20:
+        return jsonify({"ok": False, "symbol": symbol, "error": "1 分钟数据不足"}), 200
+
+    name, sector, index_quote = _sym_context(symbol)
+    daily = None
+    try:
+        daily = market.fetch_daily(symbol, bars=60)
+    except Exception:
+        daily = None
+
+    tuned = None
+    try:
+        tuned = nightly.get_param
+    except Exception:
+        pass
+    try:
+        r = tail.tail_analysis(df, sector=sector, daily=daily,
+                               index_quote=index_quote, tuned_getter=tuned)
+    except Exception as e:
+        return jsonify({"error": f"尾盘分析失败: {e}"}), 500
+    r["symbol"] = symbol
+    r["name"] = name
+    return jsonify(r)
+
+
+@app.route("/api/noon")
+def api_noon():
+    """午间快照（11:30 口径）+ 三种剧本假设。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = _fetch_1m(symbol, _int_arg("bars", 400, 30, 1000))
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 10:
+        return jsonify({"ok": False, "symbol": symbol, "error": "1 分钟数据不足"}), 200
+
+    name, sector, _idx = _sym_context(symbol)
+    try:
+        r = tail.noon_snapshot(df, sector=sector)
+    except Exception as e:
+        return jsonify({"error": f"午间复盘失败: {e}"}), 500
+    r["symbol"] = symbol
+    r["name"] = name
+    return jsonify(r)
+
+
+@app.route("/api/calibration")
+def api_calibration():
+    """日内自适应校准：按当日波动率缩放异动阈值 + 溯源。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = _fetch_1m(symbol, _int_arg("bars", 400, 30, 1000))
+    except Exception as e:
+        return _no_data(symbol, e)
+
+    base = anomaly.get_params()
+    try:
+        r = calibration.calibrate(df,
+                                  base_wave_pct=base["wave_pct"]["value"],
+                                  base_vol_ratio=base["vol_ratio"]["value"])
+    except Exception as e:
+        return jsonify({"error": f"校准失败: {e}"}), 500
+    r["symbol"] = symbol
+    return jsonify(r)
+
+
+@app.route("/api/p1/overview")
+def api_p1_overview():
+    """P1 三合一总览：下探阶段 + 尾盘结论 + 午间主剧本（前端一次拉取）。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = _fetch_1m(symbol, _int_arg("bars", 400, 30, 1000))
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 20:
+        return jsonify({"ok": False, "symbol": symbol, "error": "1 分钟数据不足"}), 200
+
+    name, sector, index_quote = _sym_context(symbol)
+    daily = None
+    try:
+        daily = market.fetch_daily(symbol, bars=60)
+    except Exception:
+        daily = None
+    tuned = None
+    try:
+        tuned = nightly.get_param
+    except Exception:
+        pass
+
+    out = {"ok": True, "symbol": symbol, "name": name}
+    try:
+        out["dip"] = dip.dip_stage(df, dip.dip_params(tuned))
+    except Exception as e:
+        out["dip"] = {"ok": False, "error": str(e)[:200]}
+    try:
+        out["tail"] = tail.tail_analysis(df, sector=sector, daily=daily,
+                                         index_quote=index_quote, tuned_getter=tuned)
+    except Exception as e:
+        out["tail"] = {"ok": False, "error": str(e)[:200]}
+    try:
+        out["noon"] = tail.noon_snapshot(df, sector=sector)
+    except Exception as e:
+        out["noon"] = {"ok": False, "error": str(e)[:200]}
+    try:
+        base = anomaly.get_params()
+        out["calibration"] = calibration.calibrate(
+            df, base_wave_pct=base["wave_pct"]["value"],
+            base_vol_ratio=base["vol_ratio"]["value"])
+    except Exception as e:
+        out["calibration"] = {"applied": False, "reason": str(e)[:200]}
+    return jsonify(out)
+
+
+# ---- P3: 科学依据中心 / 模拟器 / 高级预判 -------------------------------------
+
+@app.route("/api/evidence/params")
+def api_evidence_params():
+    """参数溯源总览：全系统可调参数 + 来源 + 依据 + 是否被自迭代改动。"""
+    try:
+        r = evidence_center.provenance_table()
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"溯源总览生成失败: {e}"}), 500
+    return jsonify(r)
+
+
+@app.route("/api/evidence/diagnose")
+def api_evidence_diagnose():
+    """诊断面板：基于真实运行统计指出哪个参数可能在拖后腿。"""
+    days = _int_arg("days", 30, 1, 365)
+    try:
+        r = evidence_center.diagnose(days=days)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"诊断失败: {e}"}), 500
+    return jsonify(r)
+
+
+@app.route("/api/simulate", methods=["POST"])
+def api_simulate():
+    """模拟器：用真实历史 K 线对比调参前后的触发次数与方向兑现率。"""
+    data = request.get_json() or {}
+    symbol = (data.get("symbol") or "").strip()
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = market.fetch_kline(symbol, period="1m",
+                                bars=_int_arg("bars", 400, 60, 1000))
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 60:
+        return jsonify({"ok": False, "symbol": symbol,
+                        "error": "1 分钟历史数据不足 60 根，无法模拟"}), 200
+
+    overrides = {}
+    for k in ("wave_pct", "vol_ratio", "cool_down_min"):
+        if data.get(k) is not None:
+            try:
+                overrides[k] = float(data[k])
+            except (TypeError, ValueError):
+                pass
+    horizon = _int_arg("horizon", 30, 5, 120)
+    try:
+        r = evidence_center.simulate(symbol, df, overrides, horizon=horizon)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"模拟失败: {e}"}), 500
+    return jsonify(r)
+
+
+@app.route("/api/evidence/schedule")
+def api_evidence_schedule():
+    """周度校准 / 月度全量回测的到期状态。"""
+    return jsonify(evidence_center.calibration_schedule())
+
+
+@app.route("/api/advanced/momentum")
+def api_advanced_momentum():
+    """动量衰减检测：价格加速度与拐点提前预警。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = market.fetch_kline(symbol, period="1m",
+                                bars=_int_arg("bars", 400, 30, 1000))
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 20:
+        return jsonify({"ok": False, "symbol": symbol,
+                        "error": "1 分钟数据不足"}), 200
+    window = _int_arg("window", 5, 2, 30)
+    try:
+        r = advanced.momentum_analysis(df, window=window)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"动量分析失败: {e}"}), 500
+    r["symbol"] = symbol
+    return jsonify(r)
+
+
+@app.route("/api/advanced/orderbook")
+def api_advanced_orderbook():
+    """盘口异动监测：真实数据不可得 → 明确降级 + 提供代理指标。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    cap = advanced.orderbook_capability()
+    out = {"symbol": symbol, "capability": cap}
+    try:
+        df = market.fetch_kline(symbol, period="1m", bars=240)
+        out["proxy"] = advanced.orderbook_proxy(df) if df is not None and len(df) >= 20 \
+            else {"ok": False, "error": "数据不足"}
+    except Exception as e:
+        out["proxy"] = {"ok": False, "error": str(e)[:150]}
+    return jsonify(out)
+
+
+@app.route("/api/advanced/ml")
+def api_advanced_ml():
+    """ML 概率分：真实历史训练 + 对最新一根打分。样本不足时拒绝训练。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = market.fetch_kline(symbol, period="1m",
+                                bars=_int_arg("bars", 600, 100, 1500))
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 50:
+        return jsonify({"ok": False, "symbol": symbol,
+                        "error": "1 分钟数据不足 50 根，无法训练（拒绝给出无意义的概率）"}), 200
+    horizon = _int_arg("horizon", 30, 5, 120)
+    try:
+        model = advanced.train_model(df, horizon=horizon)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"训练失败: {e}"}), 500
+    if not model.get("ok"):
+        return jsonify({"ok": False, "symbol": symbol, **model}), 200
+    try:
+        pred = advanced.ml_predict(model, df)
+    except Exception as e:
+        pred = {"ok": False, "error": str(e)[:150]}
+    # 不返回 mu/sd/weights 原始数组之外的大对象时也保留，便于复现
+    return jsonify({"ok": True, "symbol": symbol, "model": model, "prediction": pred})
+
+
+@app.route("/api/p3/overview")
+def api_p3_overview():
+    """P3 三合一：动量 + 盘口能力 + ML 概率分（前端一次拉取）。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = market.fetch_kline(symbol, period="1m", bars=600)
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 30:
+        return jsonify({"ok": False, "symbol": symbol, "error": "1 分钟数据不足"}), 200
+
+    out = {"ok": True, "symbol": symbol}
+    try:
+        out["momentum"] = advanced.momentum_analysis(df)
+    except Exception as e:
+        out["momentum"] = {"ok": False, "error": str(e)[:150]}
+    out["orderbook"] = {"capability": advanced.orderbook_capability()}
+    try:
+        out["orderbook"]["proxy"] = advanced.orderbook_proxy(df)
+    except Exception as e:
+        out["orderbook"]["proxy"] = {"ok": False, "error": str(e)[:150]}
+    try:
+        model = advanced.train_model(df)
+        out["ml"] = {"model": model, "prediction": advanced.ml_predict(model, df)}
+    except Exception as e:
+        out["ml"] = {"model": {"ok": False, "error": str(e)[:150]},
+                     "prediction": {"ok": False, "error": str(e)[:150]}}
+    return jsonify(out)
+
+
+# ---- 实时盯盘（交易舱 v1 / P0）-----------------------------------------------
+
+def _watch_symbols() -> list:
+    """盯盘标的 = 自选股。DSA 未配置时直接用本地自选。"""
+    try:
+        return [w["symbol"] for w in account.get_watchlist()]
+    except Exception:
+        return []
+
+
+def _watch_engine():
+    """取（或惰性创建）盯盘引擎，并绑定自选来源。"""
+    return watch_engine.get_engine(symbols_provider=_watch_symbols)
+
+
+@app.route("/api/watch/status")
+def api_watch_status():
+    """盯盘引擎状态：运行中/轮询次数/退避/并发/缓存/行情时效。"""
+    try:
+        return jsonify(_watch_engine().status())
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+
+
+@app.route("/api/watch/start", methods=["POST"])
+def api_watch_start():
+    eng = _watch_engine()
+    r = eng.start()
+    return jsonify({**r, "running": eng.is_running()})
+
+
+@app.route("/api/watch/stop", methods=["POST"])
+def api_watch_stop():
+    eng = _watch_engine()
+    r = eng.stop()
+    return jsonify({**r, "running": eng.is_running()})
+
+
+@app.route("/api/watch/quotes")
+def api_watch_quotes():
+    """盯盘行情（带 5 秒缓存）。含 fields[30] 行情时间与距今秒数。"""
+    raw = request.args.get("symbols", "").strip()
+    symbols = [s for s in raw.split(",") if s] if raw else _watch_symbols()
+    if not symbols:
+        return jsonify({"ok": True, "quotes": [], "note": "自选股为空"})
+    use_cache = request.args.get("cache", "1") == "1"
+    try:
+        quotes = _watch_engine().client.fetch(symbols, use_cache=use_cache)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"抓取行情失败: {e}"}), 500
+
+    now = datetime.now()
+    out = []
+    for q in quotes:
+        item = dict(q)
+        item["age_sec"] = tencent_quote.quote_age_sec(q, now)
+        item["fresh"] = tencent_quote.is_fresh(q, max_age_sec=300, now=now)
+        out.append(item)
+    return jsonify({
+        "ok": True,
+        "quotes": out,
+        "session": tencent_quote.trading_session(now),
+        "source": "qt.gtimg.cn",
+        "time_basis": "fields[30]",
+        "server_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+    })
+
+
+@app.route("/api/watch/events")
+def api_watch_events():
+    """拉取预警事件（默认取走并清空；peek=1 则只读）。"""
+    eng = _watch_engine()
+    limit = _int_arg("limit", 50, 1, 200)
+    peek = request.args.get("peek", "0") == "1"
+    events = eng.peek_events(limit) if peek else eng.drain_events(limit)
+    return jsonify({"ok": True, "events": events, "count": len(events),
+                    "peek": peek})
+
+
+@app.route("/api/watch/events/clear", methods=["POST"])
+def api_watch_events_clear():
+    return jsonify({"ok": True, "cleared": _watch_engine().clear_events()})
+
+
+@app.route("/api/watch/check", methods=["POST"])
+def api_watch_check():
+    """立即检查一次（不改变周期节奏），用于手动验证。"""
+    # 容错：未带 body 或 Content-Type 不匹配时不应报 400/415
+    data = request.get_json(silent=True) or {}
+    syms = data.get("symbols") or None
+    if isinstance(syms, str):
+        syms = [s for s in syms.split(",") if s]
+    try:
+        events = _watch_engine().check_now(syms)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+    return jsonify({"ok": True, "events": events, "count": len(events)})
+
+
+@app.route("/api/watch/config")
+def api_watch_config():
+    """盯盘配置：tick 间隔、每只股票的周期与规则。"""
+    cfg = _watch_engine().config
+    data = cfg.all()
+    symbols = _watch_symbols()
+    items = []
+    for s in symbols:
+        code = tencent_quote.bare_code(s)
+        it = data["items"].get(code, {})
+        items.append({
+            "symbol": code,
+            "period_min": cfg.period(code),
+            "rules": cfg.rules(code),
+            "configured": code in data["items"],
+        })
+    return jsonify({
+        "ok": True,
+        "tick_sec": data["tick_sec"],
+        "enabled": data["enabled"],
+        "allowed_periods": list(watch_engine.ALLOWED_PERIODS),
+        "default_rules": watch_engine.DEFAULT_RULES,
+        "items": items,
+    })
+
+
+@app.route("/api/watch/config", methods=["POST"])
+def api_watch_config_set():
+    """设置：单只股票周期 / 规则，或全局 tick 间隔 / 开关。"""
+    data = request.get_json() or {}
+    eng = _watch_engine()
+    cfg = eng.config
+    out = {}
+
+    if data.get("symbol") and data.get("period_min") is not None:
+        try:
+            out["period"] = cfg.set_period(data["symbol"], data["period_min"])
+        except ValueError as e:
+            return jsonify({"ok": False, "error": str(e)}), 400
+
+    if data.get("symbol") and isinstance(data.get("rules"), dict):
+        out["rules"] = cfg.set_rules(data["symbol"], data["rules"])
+
+    if data.get("tick_sec") is not None:
+        out["tick"] = cfg.set_tick(data["tick_sec"])
+
+    if data.get("enabled") is not None:
+        out["enabled"] = cfg.set_enabled(bool(data["enabled"]))
+
+    if data.get("interval_ms") is not None:
+        try:
+            ms = int(data["interval_ms"])
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "interval_ms 必须是整数"}), 400
+        ms = max(100, min(10000, ms))
+        eng.client.limiter.set_interval(ms)
+        out["interval_ms"] = ms
+
+    if not out:
+        return jsonify({"ok": False, "error": "没有可应用的配置项"}), 400
+    return jsonify({"ok": True, **out, "config": cfg.all()})
+
+
+@app.route("/api/probe/run", methods=["POST"])
+def api_probe_run():
+    """频次探针：实测不同间隔的成功率/耗时/限流。"""
+    data = request.get_json() or {}
+    tiers = data.get("tiers")
+    if isinstance(tiers, str):
+        tiers = [tiers]
+    samples = data.get("samples", 10)
+    symbols = data.get("symbols")
+    if isinstance(symbols, str):
+        symbols = [s for s in symbols.split(",") if s]
+    symbols = symbols or _watch_symbols()
+
+    block = data.get("block", True)
+    try:
+        r = freq_probe.run_probe(symbols, tier_keys=tiers,
+                                 samples=samples, block=block)
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"探针执行失败: {e}"}), 500
+    return jsonify(r)
+
+
+@app.route("/api/probe/report")
+def api_probe_report():
+    return jsonify(freq_probe.last_report())
+
+
+@app.route("/api/probe/abort", methods=["POST"])
+def api_probe_abort():
+    return jsonify(freq_probe.abort_probe())
+
+
+@app.route("/api/watch/overview")
+def api_watch_overview():
+    """盯盘页一次拉全：行情 + 引擎状态 + 配置 + 待消费事件（不取走）。"""
+    symbols = _watch_symbols()
+    eng = _watch_engine()
+    now = datetime.now()
+
+    quotes = []
+    try:
+        quotes = eng.client.fetch(symbols) if symbols else []
+    except Exception:
+        quotes = []
+    for q in quotes:
+        q["age_sec"] = tencent_quote.quote_age_sec(q, now)
+        q["fresh"] = tencent_quote.is_fresh(q, max_age_sec=300, now=now)
+
+    cfg = eng.config
+    items = []
+    for s in symbols:
+        code = tencent_quote.bare_code(s)
+        items.append({"symbol": code, "period_min": cfg.period(code),
+                      "rules": cfg.rules(code)})
+
+    st = eng.status()
+    return jsonify({
+        "ok": True,
+        "quotes": quotes,
+        "config": {"tick_sec": cfg.all()["tick_sec"],
+                   "enabled": cfg.all()["enabled"],
+                   "allowed_periods": list(watch_engine.ALLOWED_PERIODS),
+                   "items": items},
+        "engine": {
+            "running": st.get("running"),
+            "tick_count": st.get("tick_count"),
+            "alert_count": st.get("alert_count"),
+            "consecutive_failures": st.get("consecutive_failures"),
+            "recovered_count": st.get("recovered_count"),
+            "pending_events": st.get("pending_events"),
+            "backoff_remaining": st.get("backoff_remaining"),
+        },
+        "events": eng.peek_events(50),
+        "session": tencent_quote.trading_session(now),
+        "time_basis": "fields[30]",
+        "server_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+    })
+
+
 # ---- forecast -----------------------------------------------------------------
+
+
+@app.route("/api/anomaly")
+def api_anomaly():
+    """盘中变化时刻线 + 前置预警线 + 依据卡片 + 参数溯源 + 回测参考。
+
+    基于 1 分钟 K 线。Level-2 类因子（撤单率/大单流向/主动买卖比/封单比）
+    在本机数据源下不可得，结果里以 degraded 显式标注，不编造数值。
+    """
+    symbol = request.args.get("symbol", "")
+    bars = _int_arg("bars", 400, 20, 1000)
+    force = request.args.get("force", "0") == "1"
+    with_bt = request.args.get("backtest", "1") == "1"
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    try:
+        df = market.fetch_kline(symbol, period="1m", bars=bars, force=force)
+    except Exception as e:
+        return _no_data(symbol, e)
+    if df is None or len(df) < 5:
+        return jsonify({"ok": False, "symbol": symbol,
+                        "error": "1 分钟 K 线数据不足，无法检测异动"}), 200
+
+    name = symbol
+    try:
+        for w in account.get_watchlist():
+            if w["symbol"] == symbol:
+                name = w["name"] or symbol
+                break
+    except Exception:
+        pass
+
+    tuned = None
+    try:
+        tuned = nightly.get_param
+    except Exception:
+        pass
+
+    try:
+        result = anomaly.analyze(symbol, df, name=name, tuned_getter=tuned,
+                                 with_backtest=with_bt)
+    except Exception as e:
+        return jsonify({"error": f"异动分析失败: {e}"}), 500
+    return jsonify(result)
+
+
+@app.route("/api/anomaly/params")
+def api_anomaly_params():
+    """参数溯源表：每个阈值的生效值、来源、依据、样本量。"""
+    tuned = None
+    try:
+        tuned = nightly.get_param
+    except Exception:
+        pass
+    return jsonify({
+        "params": list(anomaly.get_params(tuned).values()),
+        "degraded": anomaly.unavailable_factors(),
+        "defaults": {k: {"value": v[0], "unit": v[1], "source": v[2], "basis": v[3]}
+                     for k, v in anomaly.DEFAULTS.items()},
+    })
+
+
+@app.route("/api/anomaly/watchlist")
+def api_anomaly_watchlist():
+    """批量扫描自选股，返回每只的异动摘要（供总览与预警面板用）。"""
+    limit = _int_arg("limit", 8, 1, 40)
+    out = []
+    try:
+        watch = account.get_watchlist()[:limit]
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    for w in watch:
+        sym = w["symbol"]
+        try:
+            df = market.fetch_kline(sym, period="1m", bars=240)
+            if df is None or len(df) < 5:
+                out.append({"symbol": sym, "name": w["name"], "ok": False,
+                            "error": "数据不足"})
+                continue
+            r = anomaly.analyze(sym, df, name=w["name"], with_backtest=False)
+            card = r.get("card") or {}
+            evs = r.get("events") or []
+            out.append({
+                "symbol": sym,
+                "name": w["name"],
+                "ok": True,
+                "event_count": len(evs),
+                "score": card.get("score"),
+                "level": card.get("level"),
+                "level_label": card.get("level_label"),
+                "latest": evs[-1] if evs else None,
+                "conclusion": card.get("conclusion"),
+            })
+        except Exception as e:
+            out.append({"symbol": sym, "name": w.get("name"), "ok": False,
+                        "error": str(e)[:120]})
+    ranked = sorted([o for o in out if o.get("ok")],
+                    key=lambda x: x.get("score") or 0, reverse=True)
+    return jsonify({"items": out, "ranked": ranked, "count": len(out)})
+
+
+@app.route("/api/anomaly/scan")
+def api_anomaly_scan():
+    """扫描重点标的的剧烈异动，返回需要「全屏爆红/爆绿」的事件。
+
+    前端轮询本接口；服务端只做判定与依据组装，是否真正全屏由前端
+    （冷静期 / 免打扰 / 用户静默）决定——避免服务端无法感知用户已关闭。
+    """
+    threshold = _float_arg("threshold", 70.0, 0.0, 100.0)
+    limit = _int_arg("limit", 5, 1, 20)
+    try:
+        watch = account.get_watchlist()[:limit]
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+    triggers = []
+    for w in watch:
+        sym, nm = w["symbol"], w["name"] or w["symbol"]
+        try:
+            df = market.fetch_kline(sym, period="1m", bars=240)
+            if df is None or len(df) < 5:
+                continue
+            r = anomaly.analyze(sym, df, name=nm, with_backtest=False)
+            card = r.get("card") or {}
+            evs = r.get("events") or []
+            if not evs:
+                continue
+            score = card.get("score") or 0
+            last = evs[-1]
+            # 触发条件：评分过阈值 且 最新异动振幅显著（真正的剧烈波动）
+            if score < threshold or float(last.get("magnitude") or 0) < 1.0:
+                continue
+            up = last["direction"] == "up"
+            triggers.append({
+                "symbol": sym, "name": nm, "score": score,
+                "level": card.get("level"), "level_label": card.get("level_label"),
+                "direction": last["direction"],
+                "event_ts": last["ts"],
+                "reason": last["reason"],
+                "magnitude": last.get("magnitude"),
+                "vol_ratio": last.get("vol_ratio"),
+                "title": ("🚀 " + nm + " 快速拉升") if up else ("🔥 " + nm + " 剧烈下杀"),
+                "sub": f"{last['ts']} · {last['reason']} · 强度 {score} 分",
+                "factors": card.get("factors") or [],
+                "risks": card.get("risks") or [],
+                "backtest": card.get("backtest"),
+                "degraded": r.get("degraded") or [],
+            })
+        except Exception:
+            continue
+    return jsonify({"triggers": triggers, "scanned": len(watch),
+                    "threshold": threshold})
 
 
 @app.route("/api/forecast")
@@ -1264,6 +2047,156 @@ def api_compare_forecast():
         return jsonify({"error": str(e)}), 500
 
 
+# ---- P2: 预警快照 / 时间轴 / 日报 / 反馈闭环 ---------------------------------
+
+def _bars_payload(symbol, bars=120):
+    """取用于快照的 K 线（1 分钟），失败返回 []。"""
+    try:
+        df = market.fetch_kline(symbol, period="1m", bars=max(240, bars * 2))
+        if df is None or len(df) == 0:
+            return []
+        tail = df.tail(bars)
+        return [{"timestamps": str(r["timestamps"])[:16],
+                 "open": round(float(r["open"]), 3),
+                 "high": round(float(r["high"]), 3),
+                 "low": round(float(r["low"]), 3),
+                 "close": round(float(r["close"]), 3),
+                 "volume": float(r["volume"])}
+                for _, r in tail.iterrows()]
+    except Exception:
+        return []
+
+
+@app.route("/api/snapshots")
+def api_snapshots():
+    """预警快照列表（二级及以上自动存）。"""
+    symbol = request.args.get("symbol") or None
+    day = request.args.get("day") or None
+    limit = _int_arg("limit", 50, 1, 500)
+    full = request.args.get("full", "0") == "1"
+    items = snapshots.list_snapshots(symbol=symbol, day=day, limit=limit,
+                                     with_payload=full)
+    return jsonify({"snapshots": items, "count": len(items)})
+
+
+@app.route("/api/snapshots/<int:sid>")
+def api_snapshot_get(sid):
+    s = snapshots.get_snapshot(sid)
+    if not s:
+        return jsonify({"error": "快照不存在"}), 404
+    return jsonify(s)
+
+
+@app.route("/api/snapshots/<int:sid>", methods=["DELETE"])
+def api_snapshot_delete(sid):
+    snapshots.delete_snapshot(sid)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/snapshots/clear", methods=["POST"])
+def api_snapshots_clear():
+    n = snapshots.clear_snapshots()
+    return jsonify({"ok": True, "deleted": n})
+
+
+@app.route("/api/snapshots/capture", methods=["POST"])
+def api_snapshots_capture():
+    """手动/自动捕获一条预警快照。
+
+    供前端在全屏预警触发、以及后台 monitor 检测到异动时调用。
+    级别 < 2 的请求会被拒绝保存（返回 saved=False）。
+    """
+    data = request.get_json() or {}
+    symbol = (data.get("symbol") or "").strip()
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    level = int(data.get("level") or 2)
+    if level < 2:
+        return jsonify({"saved": False, "reason": "二级以下预警不存快照", "level": level})
+
+    name = data.get("name") or symbol
+    try:
+        for w in account.get_watchlist():
+            if w["symbol"] == symbol:
+                name = w.get("name") or name
+                break
+    except Exception:
+        pass
+
+    bars = data.get("bars") or _bars_payload(symbol, _int_arg("window", 120, 20, 400))
+    res = snapshots.save_snapshot(
+        symbol=symbol, name=name,
+        event_type=data.get("event_type") or "manual",
+        direction=data.get("direction") or "up",
+        level=level,
+        price=data.get("price"),
+        ts=time.time(),
+        reason=data.get("reason") or "",
+        score=data.get("score"),
+        bars=bars,
+        evidence=data.get("evidence"),
+        summary=data.get("summary"),
+    )
+    if res is None:
+        return jsonify({"saved": False, "reason": "级别不足或保存失败"})
+    return jsonify({**res, "level": level, "bars": len(bars or [])})
+
+
+@app.route("/api/timeline")
+def api_timeline():
+    """预警时间轴：某标的某日的全部预警点（按时间升序）。"""
+    symbol = request.args.get("symbol", "")
+    if not symbol:
+        return jsonify({"error": "missing symbol"}), 400
+    day = request.args.get("day") or None
+    limit = _int_arg("limit", 200, 1, 500)
+    return jsonify(snapshots.timeline(symbol, day=day, limit=limit))
+
+
+@app.route("/api/daily-report")
+def api_daily_report():
+    """每日预警报告：次数、类型/方向/级别分布、小时分布、走势回溯、反馈汇总。"""
+    day = request.args.get("day") or None
+    verify = request.args.get("verify", "1") == "1"
+    try:
+        r = snapshots.daily_report(day=day, with_verify=verify)
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+    return jsonify(r)
+
+
+@app.route("/api/feedback", methods=["POST"])
+def api_feedback_add():
+    """提交用户反馈：有用 / 无用 / 晚了。"""
+    data = request.get_json() or {}
+    verdict = (data.get("verdict") or "").strip()
+    if not verdict:
+        return jsonify({"error": "missing verdict"}), 400
+    try:
+        res = snapshots.add_feedback(
+            snapshot_id=data.get("snapshot_id"),
+            verdict=verdict,
+            note=data.get("note") or "",
+            symbol=data.get("symbol"),
+            event_type=data.get("event_type"),
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"ok": True, **res})
+
+
+@app.route("/api/feedback")
+def api_feedback_list():
+    limit = _int_arg("limit", 100, 1, 500)
+    return jsonify({"feedback": snapshots.list_feedback(limit=limit)})
+
+
+@app.route("/api/feedback/stats")
+def api_feedback_stats():
+    days = _int_arg("days", 30, 1, 365)
+    return jsonify(snapshots.feedback_stats(days=days))
+
+
 # ---- alerts / notify --------------------------------------------------------------
 
 
@@ -1367,6 +2300,81 @@ def api_alerts_events_clear():
 
 _MONITOR_RUNNING = False
 
+#: 快照去重：同一标的同一异动时点只存一次
+_SNAPSHOT_SEEN = {}
+
+
+def _capture_momentum_snapshots(name_map: dict, quotes: list,
+                                min_score: float = 55.0) -> list:
+    """对自选股跑异动分析，达标的存快照（P2）。
+
+    达标条件：依据卡片评分 >= min_score（默认 55，即「中等信号」以上），
+    且最新异动方向明确。按 symbol+异动时点去重，避免每轮重复落库。
+    """
+    saved = []
+    for q in quotes:
+        sym = q.get("symbol")
+        if not sym:
+            continue
+        try:
+            df = market.fetch_kline(sym, period="1m", bars=240)
+            if df is None or len(df) < 20:
+                continue
+            nm = name_map.get(sym) or q.get("name") or sym
+            r = anomaly.analyze(sym, df, name=nm, with_backtest=False)
+            card = r.get("card") or {}
+            evs = r.get("events") or []
+            if not evs:
+                continue
+            score = card.get("score") or 0
+            if score < min_score:
+                continue
+            last = evs[-1]
+            key = f"{sym}|{last['ts']}|{last['direction']}"
+            if _SNAPSHOT_SEEN.get(key):
+                continue
+            # 级别：评分 >=75 记三级，>=55 记二级
+            level = 3 if score >= 75 else 2
+
+            df2 = market.fetch_kline(sym, period="1m", bars=240)
+            bars = []
+            if df2 is not None and len(df2):
+                t = df2.tail(120)
+                bars = [{"timestamps": str(x["timestamps"])[:16],
+                         "open": round(float(x["open"]), 3),
+                         "high": round(float(x["high"]), 3),
+                         "low": round(float(x["low"]), 3),
+                         "close": round(float(x["close"]), 3),
+                         "volume": float(x["volume"])}
+                        for _, x in t.iterrows()]
+
+            res = snapshots.save_snapshot(
+                symbol=sym, name=nm,
+                event_type=last.get("kind") or "anomaly",
+                direction=last.get("direction"),
+                level=level, price=last.get("price"),
+                ts=time.time(),
+                reason=last.get("reason") or "",
+                score=score, bars=bars,
+                evidence={"factors": card.get("factors"),
+                          "risks": card.get("risks"),
+                          "degraded": r.get("degraded"),
+                          "params": r.get("params")},
+                summary=card.get("conclusion"),
+            )
+            if res:
+                _SNAPSHOT_SEEN[key] = time.time()
+                saved.append({**res, "symbol": sym, "level": level, "score": score})
+                print(f"[monitor] snapshot #{res['id']} {nm} lv{level} score={score}")
+        except Exception:
+            continue
+
+    # 清理过期的去重键（保留 6 小时）
+    cutoff = time.time() - 6 * 3600
+    for k in [k for k, v in _SNAPSHOT_SEEN.items() if v < cutoff]:
+        _SNAPSHOT_SEEN.pop(k, None)
+    return saved
+
 
 def _monitor_loop():
     """Periodically check alert plans + watchlist momentum. Daemon thread."""
@@ -1422,6 +2430,12 @@ def _monitor_loop():
                     print(f"[monitor] near: {ev['message']}")
             except Exception as ex:
                 print(f"[monitor] near_plans error: {ex}")
+
+            # 2.6) 盘中异动快照：二级及以上自动存 K 线+指标（P2）
+            try:
+                _capture_momentum_snapshots(name_map, quotes)
+            except Exception as ex:
+                print(f"[monitor] snapshot error: {ex}")
 
             # 3) 自动接管交易（规则触发 → 自动下单）
             try:
@@ -1486,6 +2500,7 @@ if __name__ == "__main__":
     alerts.init_tables()
     auto_trade.init_tables()
     nightly.init_tables()
+    snapshots.init_tables()
 
     if _port_in_use(HOST, PORT):
         print("=" * 52)
