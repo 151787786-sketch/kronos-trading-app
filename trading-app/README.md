@@ -12,6 +12,38 @@
 
 ## 功能一览
 
+### 🔌 数据源适配层（腾讯 / Wind 可切换）
+
+行情取数已抽象为**可插拔后端**，`market.py` 的 68 个调用点无需改动。
+
+| 后端 | 状态 | 说明 |
+|---|---|---|
+| `tencent` | ✅ 默认可用 | 腾讯免费接口，无需配置 |
+| `wind` | ⏳ 待接入 | 需本机装 Wind 终端 + `pip install WindPy` |
+
+```
+GET  /api/datasource          # 查看所有后端与能力
+POST /api/datasource/select   # {"backend": "auto" | "tencent" | "wind"}
+POST /api/datasource/probe    # 重新探测（装完 Wind 不用重启）
+```
+
+- `auto`（默认）：按优先级自动挑 —— **装了 Wind 就优先用 Wind**，否则腾讯
+- 显式选 `wind` 但未装时：**明确报错并回退**，不静默降级
+
+| 能力 | tencent | wind |
+|---|---|---|
+| K 线真实成交额 | ❌ 估算 | ✅ |
+| 实时真实成交额 | ✅ | ✅ |
+| Level-2 | ❌ | ✅ |
+| 复权价 | ✅（日线 qfq） | ✅ |
+| 历史深度 | ~640 根 | 不限 |
+
+> **关于成交额的诚实说明**：腾讯 K 线接口（日线与分钟线）**都不返回成交额字段**
+> （已实测确认：日线 6 字段、分钟线第 7 位是空 dict）。项目里的 `amount` 是
+> `volume × close` 的**估算值**，已在 DataFrame 的 `attrs['amount_estimated']`
+> 与源码注释中标注。这会影响 VWAP 精度（等于"收盘价的成交量加权"而非真实成交均价），
+> 正常行情下差异很小，但大幅单边行情会有偏移。**需要精确成交额请接入 Wind。**
+
 ### 🔴 实时盯盘（交易舱 v1 · P0 新增）
 
 独立标签页 `🔴 实时盯盘`，基于腾讯免费行情接口的多周期轮询引擎。
@@ -324,6 +356,7 @@ K 线页底部新增「🗂️ 预警复盘」面板，三个标签页：
 | `p1_features.py` | **97 项** 下探四阶段/评分/尾盘六因子/午间剧本/自适应校准（P1） | `python tests/p1_features.py` |
 | `p2_features.py` | **129 项** 预警快照/时间轴/日报统计/反馈闭环（P2） | `python tests/p2_features.py` |
 | `p3_features.py` | **139 项** 参数溯源/诊断/模拟器/动量衰减/ML 概率分（P3） | `python tests/p3_features.py` |
+| `datasource_features.py` | **75 项** 数据源适配层：腾讯/Wind 切换与降级（新） | `python tests/datasource_features.py` |
 | `live_features.py` | **165 项** 实时盯盘/红绿频闪/多周期轮询/限流/频次探针（交易舱 v1 P0） | `python tests/live_features.py` |
 
 运行前提：先启动服务（双击 `启动交易APP.bat`），再在 `trading-app` 目录执行测试。

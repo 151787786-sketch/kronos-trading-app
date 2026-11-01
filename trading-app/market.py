@@ -85,12 +85,16 @@ def _cache_ttl(period: str) -> int:
     return 12 * 3600
 
 
-def fetch_kline(symbol: str, period: str = "day", bars: int = 600, force: bool = False) -> pd.DataFrame:
+def _tencent_fetch_kline(symbol: str, period: str = "day", bars: int = 600, force: bool = False) -> pd.DataFrame:
     """Fetch OHLCV K-lines for an A-share symbol at any supported period.
 
     period: day / 1m / 5m / 15m / 30m / 60m
     Returns sorted DataFrame with columns
     timestamps/open/high/low/close/volume/amount.
+
+    NOTE: this is the Tencent implementation. It is registered as the
+    ``tencent`` backend in ``market_backend``; callers should use
+    ``fetch_kline()`` below, which dispatches to whichever backend is active.
     """
     if period not in PERIODS:
         raise ValueError(f"unsupported period {period}, use {list(PERIODS)}")
@@ -103,6 +107,9 @@ def fetch_kline(symbol: str, period: str = "day", bars: int = 600, force: bool =
         df = pd.read_csv(cache, parse_dates=["timestamps"])
         mtime = os.path.getmtime(cache)
         if time.time() - mtime < _cache_ttl(period):
+            # attrs 不随 CSV 往返持久化，缓存命中时必须重新打标 ——
+            # 否则同一份数据「首次取」与「读缓存」会给出不同的诚实性信息。
+            df.attrs["amount_estimated"] = True
             return df
 
     if period == "day":
@@ -152,15 +159,22 @@ def fetch_kline(symbol: str, period: str = "day", bars: int = 600, force: bool =
         raise RuntimeError(f"未获取到 {symbol} 的 {period} 周期数据，请稍后重试")
     df["timestamps"] = pd.to_datetime(df["timestamps"])
     df = df.sort_values("timestamps").reset_index(drop=True)
+    # ⚠️ 成交额为估算值：腾讯 K 线接口（日线与分钟线）都不返回成交额字段
+    # （日线 6 字段、分钟线第 7 位是空 dict，已实测确认）。这里用 量 × 收盘价
+    # 近似，误差来自当日均价与收盘价之差。需要真实成交额请切到 Wind 后端。
     df["amount"] = (df["volume"] * df["close"]).round(2)
+    df.attrs["amount_estimated"] = True
 
     df.to_csv(cache, index=False)
     return df
 
 
-def fetch_realtime(codes) -> list:
+def _tencent_fetch_realtime(codes) -> list:
     """Fetch realtime quotes for a list of 6-digit symbols.
-    Returns list of dicts: symbol/name/price/change/pct/open/high/low/volume/amount/time."""
+    Returns list of dicts: symbol/name/price/change/pct/open/high/low/volume/amount/time.
+
+    Tencent implementation; see ``fetch_realtime()`` below for the dispatcher.
+    """
     if not codes:
         return []
     fs = [full_symbol(c) for c in codes]
@@ -202,9 +216,90 @@ def fetch_realtime(codes) -> list:
     return result
 
 
+# ---------------------------------------------------------------------------
+# 数据源适配层分发
+# ---------------------------------------------------------------------------
+# 本项目所有取数都经过下面三个函数。它们把调用转发给 market_backend 中
+# 当前生效的后端（默认腾讯；装了 Wind 并配置后会优先用 Wind）。
+#
+# 关键设计：**调用方无需改动**。68 个既有调用点写法不变，因为签名与返回契约
+# 完全保持原样。想看当前用的是哪个后端，调 market_backend.state() 或
+# API /api/datasource。
+
+_backend_ready = False
+
+
+def _ensure_backends():
+    """惰性注册内置后端（只做一次）。"""
+    global _backend_ready
+    if _backend_ready:
+        return
+    import market_backend as _mb
+    if "tencent" not in _mb._BACKENDS:
+        _mb.register(_mb.TencentBackend())
+    if "wind" not in _mb._BACKENDS:
+        _mb.register(_mb.WindBackend())
+    _backend_ready = True
+
+
+def _preferred_backend():
+    """当前配置的后端偏好：'auto' / 'tencent' / 'wind'。
+
+    'auto' 返回 None，交给适配层按优先级挑（有 Wind 就用 Wind）。
+    """
+    try:
+        import market_backend as _mb
+        pref = _mb.get_preference()
+        return None if pref == "auto" else pref
+    except Exception:
+        return None
+
+
+def fetch_kline(symbol: str, period: str = "day", bars: int = 600,
+                force: bool = False) -> pd.DataFrame:
+    """取 K 线（经数据源适配层分发）。
+
+    force=True 时跳过本地 CSV 缓存，强制向后端要数据。
+    缓存策略只作用于腾讯后端（本地 CSV）；Wind 后端每次直连终端。
+    """
+    _ensure_backends()
+    import market_backend as _mb
+    pref = _preferred_backend()
+
+    name = "tencent"
+    try:
+        name = _mb.get_backend(pref).name
+    except Exception:
+        pass
+
+    if name == "tencent":
+        return _tencent_fetch_kline(symbol, period, bars, force)
+
+    # 非腾讯后端：不走本地 CSV 缓存（专业源通常自己有时效控制）
+    return _mb.fetch_kline(symbol, period, bars, backend=name)
+
+
+def fetch_realtime(codes) -> list:
+    """取实时行情（经数据源适配层分发）。"""
+    _ensure_backends()
+    import market_backend as _mb
+    return _mb.fetch_realtime(list(codes), backend=_preferred_backend())
+
+
 def fetch_realtime_one(symbol: str):
     rows = fetch_realtime([symbol])
     return rows[0] if rows else None
+
+
+def datasource_info() -> dict:
+    """当前数据源状况（供 API / 诊断面板）。"""
+    _ensure_backends()
+    import market_backend as _mb
+    return {
+        "state": _mb.state(),
+        "backends": _mb.list_backends(),
+        "preferred": _preferred_backend(),
+    }
 
 
 # ---------------------------------------------------------------------------

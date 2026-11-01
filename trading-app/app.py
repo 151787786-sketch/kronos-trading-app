@@ -530,6 +530,67 @@ def api_p1_overview():
     return jsonify(out)
 
 
+# ---- 数据源适配层（腾讯 / Wind 可切换）--------------------------------------
+
+@app.route("/api/datasource")
+def api_datasource():
+    """当前数据源状况：注册了哪些后端、各自的可用性与能力、当前生效的是哪个。"""
+    try:
+        info = market.datasource_info()
+    except Exception as e:
+        return jsonify({"ok": False, "error": f"读取数据源状态失败: {e}"}), 500
+    try:
+        import market_backend as _mb
+        info["preference"] = _mb.get_preference()
+        info["effective"] = _mb.effective_backend_name()
+        info["choices"] = list(_mb.VALID_CHOICES)
+    except Exception:
+        info["preference"] = "auto"
+        info["effective"] = "tencent"
+        info["choices"] = ["auto", "tencent", "wind"]
+    info["ok"] = True
+    return jsonify(info)
+
+
+@app.route("/api/datasource/select", methods=["POST"])
+def api_datasource_select():
+    """切换数据源：{"backend": "auto" | "tencent" | "wind"}。
+
+    auto = 按优先级自动挑（装了 Wind 就用 Wind，否则腾讯）。
+    选 wind 但 Wind 不可用时会明确报错，不会静默降级。
+    """
+    data = request.get_json(silent=True) or {}
+    choice = data.get("backend")
+    if not choice:
+        return jsonify({"ok": False, "error": "缺少 backend 参数"}), 400
+    import market_backend as _mb
+    try:
+        _mb.set_preference(choice)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)[:200]}), 500
+
+    eff = _mb.effective_backend_name()
+    out = {"ok": True, "preference": _mb.get_preference(), "effective": eff}
+    if eff is None:
+        out["warning"] = "已保存选择，但当前没有任何可用后端"
+    elif choice != "auto" and eff != choice:
+        out["warning"] = f"已保存选择 {choice}，但该后端不可用，实际回退到 {eff}"
+    return jsonify(out)
+
+
+@app.route("/api/datasource/probe", methods=["POST"])
+def api_datasource_probe():
+    """重新探测后端可用性（例如刚装了 Wind 之后不用重启）。"""
+    import market_backend as _mb
+    for b in _mb._BACKENDS.values():
+        if hasattr(b, "refresh_probe"):
+            b.refresh_probe()
+    return jsonify({"ok": True, "backends": _mb.list_backends(),
+                    "effective": _mb.effective_backend_name()})
+
+
 # ---- P3: 科学依据中心 / 模拟器 / 高级预判 -------------------------------------
 
 @app.route("/api/evidence/params")
