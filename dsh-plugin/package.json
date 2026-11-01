@@ -1,0 +1,34 @@
+{
+  "name": "dsh-kronos-watch",
+  "version": "0.1.0",
+  "description": "DeepSeek Harness plugin: A-share realtime watch (quotes, alerts, anomaly scan) backed by the free Tencent quote API",
+  "type": "module",
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "stock",
+    "a-share",
+    "quotes",
+    "realtime"
+  ],
+  "files": [
+    "dsh",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./dsh/index.js",
+    "./dsh": "./dsh/index.js",
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

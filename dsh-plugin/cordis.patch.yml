@@ -1,0 +1,4 @@
+# dsh bundle layer: mount the Kronos A-share watch plugin.
+- insert:
+    - id: kronos-watch
+      name: dsh-kronos-watch
